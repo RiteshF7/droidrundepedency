@@ -1,0 +1,63 @@
+# ============================================================================
+# BUILD NUMPY WHEEL (Based on Error #2 Fix - Patchelf Build Error)
+# ============================================================================
+# Prerequisites: Install build tools first (required for patchelf/numpy)
+pkg install -y autoconf automake libtool make binutils clang cmake ninja
+
+# Install Python build tools
+pip install --upgrade pip wheel build setuptools
+pip install "meson-python<0.19.0,>=0.16.0"
+
+# Set parallelism limits (prevents memory exhaustion)
+export NINJAFLAGS="-j2"
+export MAKEFLAGS="-j2"
+export MAX_JOBS=2
+
+# Navigate to wheels directory
+cd ~/wheels
+
+# Download numpy source
+pip download numpy --dest . --no-cache-dir
+
+# Build numpy wheel (patchelf will be built automatically if needed)
+pip wheel numpy --no-deps --wheel-dir .
+
+# Install numpy from wheel
+pip install --find-links . --no-index numpy*.whl
+
+# Verify installation
+pip show numpy
+python3 -c "import numpy; print('numpy version:', numpy.__version__)"
+
+# ============================================================================
+# BUILD JITER WHEEL
+# ============================================================================
+# Download jiter with all dependencies
+pip download jiter==0.12.0 --dest . --no-cache-dir
+
+# Check what needs building (source tarballs)
+ls -lh *.tar.gz
+
+# Build wheels for packages that need compilation
+# (jiter, and any other .tar.gz files that need building)
+pip wheel jiter-0.12.0.tar.gz --no-deps --wheel-dir .
+
+# Install jiter from wheel (will use pre-built dependency wheels)
+pip install --find-links . --no-index jiter*.whl
+
+# ============================================================================
+# UTILITY COMMANDS
+# ============================================================================
+# Check if package is installed
+pip show <package-name> && echo "Installed" || echo "Not installed"
+
+# Build all wheels from downloaded source tarballs
+for pkg in *.tar.gz; do [ -f "$pkg" ] && pip wheel "$pkg" --no-deps --wheel-dir .; done
+
+# Install droidrun using pre-built wheels
+pip install droidrun[google] --find-links .
+
+
+//oneliner
+
+pkg install -y openssl libc++ zlib && pip install Cython "setuptools>=65.0.0" && export NINJAFLAGS="-j2" && export MAKEFLAGS="-j2" && export MAX_JOBS=2 && cd ~/wheels && pip download grpcio --dest . --no-cache-dir && pip wheel grpcio --no-deps --wheel-dir . && pip install --find-links . --no-index grpcio*.whl && pip show grpcio

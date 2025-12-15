@@ -1,0 +1,17 @@
+# Ignore everything by default
+*
+
+# But don't ignore these directories and files
+!.gitignore
+!scripts/
+!scripts/**
+!docs/
+!docs/**
+!DEPENDENCIES.md
+!scripts/README.md
+
+# Explicitly ignore dependency files and archives (redundant but explicit)
+depedencies/
+*.zip
+*.whl
+*.gz

@@ -1,0 +1,14 @@
+Quick one-liner to open WSL in current directory
+
+From PowerShell in E:\Code\LunarLand\MiniLinux:
+wsl -d Ubuntu
+
+Then in the WSL terminal:
+cd /mnt/e/Code/LunarLand/MiniLinux
+bash scripts/generate-bootstraps.sh --add python,android-tools
+
+The script will generate bootstrap zip files for all architectures (aarch64, arm, i686, x86_64) with python and android-tools included.
+
+Run a command while keeping directory changes:
+cd $PREFIX && pwd && ls
+
