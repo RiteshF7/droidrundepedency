@@ -66,71 +66,6 @@ validate_tar_gz() {
     return 0
 }
 
-# Safe source file usage - validates before using, downloads if needed
-use_source_file() {
-    local pkg_name=$1
-    local version_spec=$2
-    local source_file=$(get_source_file "$pkg_name")
-    
-    log_info "Checking source for $pkg_name..."
-    
-    if [ -f "$source_file" ]; then
-        if validate_tar_gz "$source_file"; then
-            local size=$(stat -c%s "$source_file" 2>/dev/null || stat -f%z "$source_file" 2>/dev/null || echo "0")
-            log_success "Found valid local source: $(basename "$source_file") ($(numfmt --to=iec-i --suffix=B $size 2>/dev/null || echo "${size}B"))"
-            return 0
-        else
-            log_warning "$(basename "$source_file") is corrupted or invalid"
-            log_info "Removing corrupted file and downloading fresh copy..."
-            rm -f "$source_file"
-        fi
-    fi
-    
-    # Download source file
-    log_info "Downloading $pkg_name source ($version_spec)..."
-    if pip download "$version_spec" --dest "$SOURCE_DIR" --no-cache-dir --no-binary :all: 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "Downloading" | grep -v "^$" | while read line; do log_info "  $line"; done; then
-        # Find downloaded file and rename to standard name
-        local downloaded_file=$(ls "$SOURCE_DIR"/${pkg_name}-*.tar.gz 2>/dev/null | head -1)
-        if [ -n "$downloaded_file" ] && [ "$downloaded_file" != "$source_file" ]; then
-            mv "$downloaded_file" "$source_file"
-            log_success "Downloaded and renamed: $(basename "$source_file")"
-        fi
-        
-        # Validate downloaded file
-        if [ -f "$source_file" ] && validate_tar_gz "$source_file"; then
-            local size=$(stat -c%s "$source_file" 2>/dev/null || stat -f%z "$source_file" 2>/dev/null || echo "0")
-            log_success "Downloaded and validated: $(basename "$source_file") ($(numfmt --to=iec-i --suffix=B $size 2>/dev/null || echo "${size}B"))"
-            return 0
-        else
-            log_error "Downloaded file validation failed for $pkg_name"
-            rm -f "$source_file"
-            return 1
-        fi
-    else
-        log_error "Failed to download $pkg_name source"
-        return 1
-    fi
-}
-
-# Validate tar.gz file integrity
-validate_tar_gz() {
-    local file=$1
-    if [ ! -f "$file" ]; then
-        return 1
-    fi
-    
-    # Check if file is a valid gzip file
-    if ! gzip -t "$file" 2>/dev/null; then
-        return 1
-    fi
-    
-    # Check if file is a valid tar archive
-    if ! tar -tzf "$file" >/dev/null 2>&1; then
-        return 1
-    fi
-    
-    return 0
-}
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}droidrun Installation Script${NC}"
@@ -223,12 +158,6 @@ WHEELS_DIR="${HOME}/wheels"
 mkdir -p "$WHEELS_DIR"
 
 log_success "Build environment configured"
-
-# Helper function to get source file path
-get_source_file() {
-    local pkg_name=$1
-    echo "${SOURCE_DIR}/${pkg_name}.tar.gz"
-}
 
 # ============================================
 # Create gfortran symlink for scipy compatibility
