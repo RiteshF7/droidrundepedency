@@ -1,0 +1,67 @@
+================================================================================
+MANUAL STEPS TO CREATE GITHUB RELEASE
+================================================================================
+
+Your GitHub token doesn't have 'repo' scope permissions, so you need to create
+the release manually through the GitHub web interface.
+
+STEP 1: Open GitHub Releases Page
+-----------------------------------
+Copy and paste this URL in your browser:
+https://github.com/RiteshF7/droidrundepedency/releases/new
+
+STEP 2: Fill in Release Information
+------------------------------------
+Tag version (REQUIRED):
+    sourceversion1
+
+Release title:
+    Source Version 1
+
+Description (copy and paste):
+    Source packages archive with all standardized source files (24 packages)
+
+    This archive contains 24 standardized source packages:
+    - numpy, scipy, pandas, scikit-learn
+    - jiter, pyarrow, psutil, grpcio, pillow
+    - tokenizers, safetensors, cryptography, pydantic-core, orjson
+    - and more...
+
+    All files are renamed to standardized names for easy recognition.
+
+STEP 3: Upload the File
+-----------------------
+1. Click "Attach binaries by dropping them here or selecting them"
+2. Navigate to: E:\Code\LunarLand\MiniLinux\droidrunBuild\depedencies\
+3. Select the file: sourceversion1.7z (155 MB)
+4. Wait for upload to complete (this may take a few minutes)
+
+STEP 4: Publish
+---------------
+Click the green "Publish release" button at the bottom
+
+STEP 5: Verify
+--------------
+After publishing, check:
+https://github.com/RiteshF7/droidrundepedency/releases/tag/sourceversion1
+
+The download URL will be:
+https://github.com/RiteshF7/droidrundepedency/releases/download/sourceversion1/sourceversion1.7z
+
+================================================================================
+ALTERNATIVE: Fix Token Permissions (for future automated releases)
+================================================================================
+
+If you want to use automated scripts in the future:
+
+1. Go to: https://github.com/settings/tokens
+2. Click "Generate new token" -> "Generate new token (classic)"
+3. Name: "droidrun-releases"
+4. Select scope: "repo" (full control of private repositories)
+5. Click "Generate token"
+6. Copy the token
+7. Set it: export GITHUB_TOKEN=your_token_here
+8. Then run: python update_release.py
+
+================================================================================
+
