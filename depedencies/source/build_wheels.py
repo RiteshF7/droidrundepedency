@@ -510,8 +510,11 @@ class WheelBuilder:
             if file_size == 0:
                 print(f"  ✗ Source file is empty: {source_file}")
                 return False
-            if file_size < 1000:  # Very small files are likely corrupted
+            if file_size < 1000:  # Very small files are likely corrupted or symlinks
                 print(f"  ✗ Source file is suspiciously small ({file_size} bytes): {source_file}")
+                print(f"  ⚠ This file may be corrupted. Try re-downloading from PyPI:")
+                pkg_name = source_file.stem.replace('.tar', '').replace('-fixed', '')
+                print(f"     pip download {pkg_name} --dest {source_file.parent}")
                 return False
             
             if source_file.suffix == '.gz' or source_file.name.endswith('.tar.gz'):
