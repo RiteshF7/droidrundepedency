@@ -47,12 +47,25 @@ install_pkg_with_deps() {
         return 0
     fi
     
+    # Final check before installation - skip if already installed
+    if pkg list-installed 2>/dev/null | grep -qE "^$pkg_name[[:space:]]"; then
+        log "INFO" "System package $pkg_name already installed, skipping installation"
+        INSTALLED_PKGS[$pkg_name]=1
+        return 0
+    fi
+    
     # Install the package
     log "INFO" "Installing system package: $pkg_name"
     if pkg install -y "$pkg_name" >> "$BUILD_LOG" 2>&1; then
-        log "SUCCESS" "Installed $pkg_name"
-        INSTALLED_PKGS[$pkg_name]=1
-        return 0
+        # Verify installation succeeded
+        if pkg list-installed 2>/dev/null | grep -qE "^$pkg_name[[:space:]]"; then
+            log "SUCCESS" "Installed $pkg_name"
+            INSTALLED_PKGS[$pkg_name]=1
+            return 0
+        else
+            log "WARNING" "Installation reported success but package not found in list-installed"
+            return 1
+        fi
     else
         log "WARNING" "Failed to install $pkg_name, continuing..."
         return 1
