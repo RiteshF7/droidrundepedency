@@ -391,8 +391,16 @@ log_info "Phase 2: Building numpy..."
 cd "$WHEELS_DIR"
 
 if [ -f "$NUMPY_SOURCE_FILE" ]; then
-    log_info "Using local source: numpy.tar.gz"
-    pip wheel "$NUMPY_SOURCE_FILE" --no-deps --wheel-dir .
+    if validate_tar_gz "$NUMPY_SOURCE_FILE"; then
+        log_info "Using local source: numpy.tar.gz"
+        pip wheel "$NUMPY_SOURCE_FILE" --no-deps --wheel-dir .
+    else
+        log_error "numpy.tar.gz is corrupted or invalid (not a valid gzip/tar file)"
+        log_warning "Removing corrupted file and downloading fresh copy..."
+        rm -f "$NUMPY_SOURCE_FILE"
+        pip download numpy --dest . --no-cache-dir
+        pip wheel numpy --no-deps --wheel-dir .
+    fi
 else
     log_warning "numpy source not found locally, downloading..."
     pip download numpy --dest . --no-cache-dir
