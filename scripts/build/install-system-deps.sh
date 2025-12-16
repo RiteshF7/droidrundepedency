@@ -14,8 +14,15 @@ declare -A INSTALLED_PKGS
 install_pkg_with_deps() {
     local pkg_name="$1"
     
-    # Skip if already installed
+    # Skip if already processed/installed in this session
     if [ -n "${INSTALLED_PKGS[$pkg_name]:-}" ]; then
+        return 0
+    fi
+    
+    # Check if package is already installed on the system (before doing any work)
+    if pkg list-installed 2>/dev/null | grep -qE "^$pkg_name[[:space:]]"; then
+        log "INFO" "System package $pkg_name already installed, skipping"
+        INSTALLED_PKGS[$pkg_name]=1
         return 0
     fi
     
@@ -33,9 +40,9 @@ install_pkg_with_deps() {
         done
     fi
     
-    # Check if package is already installed
-    if pkg list-installed 2>/dev/null | grep -q "^$pkg_name "; then
-        log "INFO" "System package $pkg_name already installed"
+    # Double-check if package got installed as a dependency of a prerequisite
+    if pkg list-installed 2>/dev/null | grep -qE "^$pkg_name[[:space:]]"; then
+        log "INFO" "System package $pkg_name was installed as a dependency, skipping"
         INSTALLED_PKGS[$pkg_name]=1
         return 0
     fi
