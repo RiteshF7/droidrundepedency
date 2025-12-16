@@ -12,6 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/config.sh"
 source "$SCRIPT_DIR/common.sh"
 source "$SCRIPT_DIR/build-wheels.sh"
+source "$SCRIPT_DIR/detect-wheels.sh"
 
 # Main function
 main() {
@@ -21,8 +22,22 @@ main() {
     log "INFO" "Sources directory: $SOURCES_DIR"
     log "INFO" "=========================================="
     
-    # Create sources directory if it doesn't exist
-    mkdir -p "$SOURCES_DIR"
+    # Verify sources directory exists and has files
+    if [ ! -d "$SOURCES_DIR" ]; then
+        log "ERROR" "Sources directory does not exist: $SOURCES_DIR"
+        log "ERROR" "Please run ./install-system-deps.sh first to download and extract sources"
+        exit 1
+    fi
+    
+    # Check if sources directory has any source files
+    local source_count=$(find "$SOURCES_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) 2>/dev/null | wc -l)
+    if [ "$source_count" -eq 0 ]; then
+        log "WARNING" "Sources directory is empty: $SOURCES_DIR"
+        log "WARNING" "No source files found. Please run ./install-system-deps.sh to download sources"
+        log "WARNING" "Continuing anyway, but builds may fail if sources are missing..."
+    else
+        log "INFO" "Found $source_count source files in $SOURCES_DIR"
+    fi
     
     # Check if need_build.txt exists
     local need_build_file="$WHEELS_DIR/need_build.txt"
@@ -50,9 +65,9 @@ main() {
     log "INFO" "Installing/upgrading build tools..."
     install_build_tools
     
-    # Process packages with priority: wheel -> source -> pip
-    local failed_builds=()
-    local pip_fallback_needed=()
+    # Process packages with priority: existing wheel -> pip wheel -> source -> error
+    local failed_packages=()
+    local error_packages=()
     
     for pkg_name in "${need_build_array[@]}"; do
         if [ -z "$pkg_name" ]; then
@@ -75,9 +90,9 @@ main() {
         
         log "INFO" "Processing $pkg_name${version:+ $version}..."
         
-        # Priority 1: Check if wheel already exists
+        # Priority 1: Check if wheel already exists locally
         if wheel_exists "$pkg_name" "$version"; then
-            log "INFO" "Wheel already exists for $pkg_name, no building needed"
+            log "INFO" "Wheel already exists for $pkg_name, installing from local wheel"
             # Install the existing wheel
             local existing_wheel=$(ls "$WHEELS_DIR/${pkg_name}-"*"${PLATFORM_TAG}.whl" 2>/dev/null | head -1)
             if [ -z "$existing_wheel" ]; then
@@ -87,15 +102,48 @@ main() {
                 log "INFO" "Installing $pkg_name from existing wheel: $(basename "$existing_wheel")"
                 local PIP_CMD=$(get_pip_cmd)
                 if [[ "$PIP_CMD" == *"python3 -m pip"* ]]; then
-                    python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$existing_wheel" >> "$BUILD_LOG" 2>&1 || true
+                    python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$existing_wheel" >> "$BUILD_LOG" 2>&1 || {
+                        log "ERROR" "Failed to install $pkg_name from existing wheel"
+                        failed_packages+=("$pkg_name")
+                    }
                 else
-                    $PIP_CMD install --find-links "$WHEELS_DIR" --no-index "$existing_wheel" >> "$BUILD_LOG" 2>&1 || true
+                    $PIP_CMD install --find-links "$WHEELS_DIR" --no-index "$existing_wheel" >> "$BUILD_LOG" 2>&1 || {
+                        log "ERROR" "Failed to install $pkg_name from existing wheel"
+                        failed_packages+=("$pkg_name")
+                    }
                 fi
             fi
             continue
         fi
         
-        # Priority 2: Check if source file is available in directory
+        # Priority 2: Check if wheel is available on pip server
+        log "INFO" "Checking if wheel is available on pip server for $pkg_name..."
+        if check_pip_wheel_available "$pkg_name" "$version" "$constraint"; then
+            log "INFO" "Wheel available on pip server, installing $pkg_name from pip"
+            local PIP_CMD=$(get_pip_cmd)
+            local package_spec="$pkg_name"
+            if [ -n "$constraint" ]; then
+                package_spec="$pkg_name$constraint"
+            elif [ -n "$version" ]; then
+                package_spec="$pkg_name==$version"
+            fi
+            
+            if [[ "$PIP_CMD" == *"python3 -m pip"* ]]; then
+                python3 -m pip install "$package_spec" >> "$BUILD_LOG" 2>&1 || {
+                    log "ERROR" "Failed to install $pkg_name from pip"
+                    failed_packages+=("$pkg_name")
+                }
+            else
+                $PIP_CMD install "$package_spec" >> "$BUILD_LOG" 2>&1 || {
+                    log "ERROR" "Failed to install $pkg_name from pip"
+                    failed_packages+=("$pkg_name")
+                }
+            fi
+            continue
+        fi
+        
+        # Priority 3: Check if source file is available in directory
+        log "INFO" "No wheel available on pip server, checking for source file..."
         local source_file=$(find_source_file "$pkg_name" "$version")
         if [ -n "$source_file" ] && [ -f "$source_file" ]; then
             log "INFO" "Source file found for $pkg_name: $(basename "$source_file")"
@@ -116,24 +164,35 @@ main() {
                 log "SUCCESS" "Successfully built $pkg_name from source"
                 continue
             else
-                log "WARNING" "Failed to build $pkg_name from source, will try pip fallback"
-                pip_fallback_needed+=("$pkg_name")
+                log "ERROR" "Failed to build $pkg_name from source"
+                failed_packages+=("$pkg_name")
             fi
         else
-            # Priority 3: No source file available, use pip as last resort
-            log "WARNING" "No source file found for $pkg_name in $SOURCES_DIR"
-            log "INFO" "Will use pip install as last resort for $pkg_name"
-            pip_fallback_needed+=("$pkg_name")
+            # Priority 4: No source file available - ERROR
+            log "ERROR" "=========================================="
+            log "ERROR" "No source file found for $pkg_name in $SOURCES_DIR"
+            log "ERROR" "Source file is required but not available"
+            log "ERROR" "Please ensure source.7z is extracted to $SOURCES_DIR"
+            log "ERROR" "=========================================="
+            error_packages+=("$pkg_name")
         fi
     done
     
-    # Use pip as last resort for packages without sources or failed builds
-    if [ ${#pip_fallback_needed[@]} -gt 0 ]; then
-        log "INFO" "=========================================="
-        log "INFO" "Using pip as last resort for packages"
-        log "INFO" "Packages: ${pip_fallback_needed[*]}"
-        log "INFO" "=========================================="
-        fallback_pip_install "${pip_fallback_needed[@]}"
+    # Report results
+    if [ ${#error_packages[@]} -gt 0 ]; then
+        log "ERROR" "=========================================="
+        log "ERROR" "Build failed: Missing source files"
+        log "ERROR" "Packages with missing sources: ${error_packages[*]}"
+        log "ERROR" "Please run ./install-system-deps.sh to download sources"
+        log "ERROR" "=========================================="
+        exit 1
+    fi
+    
+    if [ ${#failed_packages[@]} -gt 0 ]; then
+        log "WARNING" "=========================================="
+        log "WARNING" "Some packages failed to install/build"
+        log "WARNING" "Failed packages: ${failed_packages[*]}"
+        log "WARNING" "=========================================="
     else
         log "SUCCESS" "All packages processed successfully!"
     fi
