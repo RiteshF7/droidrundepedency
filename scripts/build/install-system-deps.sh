@@ -212,11 +212,22 @@ download_source_archive() {
         fi
     elif [[ "$SOURCE_ARCHIVE_NAME" == *.7z ]] || [[ "$SOURCE_ARCHIVE_NAME" == *.7Z ]]; then
         if command -v 7z >/dev/null 2>&1; then
-            if ! 7z x "$temp_archive" -o"$SOURCES_DIR" -y 2>&1 | tee -a "$BUILD_LOG"; then
+            # Extract to a temp directory first, then move files to SOURCES_DIR
+            local temp_extract_dir="$SOURCES_DIR/.temp_extract"
+            mkdir -p "$temp_extract_dir"
+            if ! 7z x "$temp_archive" -o"$temp_extract_dir" -y 2>&1 | tee -a "$BUILD_LOG"; then
                 log "ERROR" "Failed to extract 7z archive"
+                rm -rf "$temp_extract_dir"
                 rm -f "$temp_archive"
                 return 1
             fi
+            # Move all extracted files to SOURCES_DIR (handle nested directories)
+            find "$temp_extract_dir" -mindepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec mv {} "$SOURCES_DIR/" \; 2>/dev/null
+            # If no files found at top level, check subdirectories
+            if [ $(find "$SOURCES_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) 2>/dev/null | wc -l) -eq 0 ]; then
+                find "$temp_extract_dir" -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec mv {} "$SOURCES_DIR/" \; 2>/dev/null
+            fi
+            rm -rf "$temp_extract_dir"
         else
             log "ERROR" "7z is not available. Please install p7zip: pkg install -y p7zip"
             rm -f "$temp_archive"
