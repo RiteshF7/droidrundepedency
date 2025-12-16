@@ -91,17 +91,26 @@ done
 
 if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
     log_warning "Missing system packages: ${MISSING_PKGS[*]}"
-    echo
-    read -p "Install missing packages? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        log_info "Installing system packages..."
+    
+    # Auto-install if running non-interactively (no TTY) or CI mode
+    if [ ! -t 0 ] || [ "${CI:-}" = "true" ] || [ "${AUTO_INSTALL:-}" = "true" ]; then
+        log_info "Non-interactive mode: Auto-installing missing packages..."
         pkg update -y
         pkg install -y "${MISSING_PKGS[@]}"
         log_success "System packages installed"
     else
-        log_error "Cannot proceed without required system packages"
-        exit 1
+        echo
+        read -p "Install missing packages? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Installing system packages..."
+            pkg update -y
+            pkg install -y "${MISSING_PKGS[@]}"
+            log_success "System packages installed"
+        else
+            log_error "Cannot proceed without required system packages"
+            exit 1
+        fi
     fi
 else
     log_success "All system dependencies are installed"
