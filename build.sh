@@ -144,6 +144,38 @@ mkdir -p "$TMPDIR"
 # Ensure wheels directory exists
 mkdir -p "$WHEELS_DIR"
 
+# ============================================
+# 5a. Copy pre-built wheels if available
+# ============================================
+PREBUILT_WHEELS_DIR="${SCRIPT_DIR}/depedencies/wheels/_x86_64_wheels"
+if [ -d "$PREBUILT_WHEELS_DIR" ]; then
+    log_info "Checking for pre-built wheels in $PREBUILT_WHEELS_DIR..."
+    PREBUILT_COUNT=$(find "$PREBUILT_WHEELS_DIR" -maxdepth 1 -name "*.whl" 2>/dev/null | wc -l)
+    
+    if [ "$PREBUILT_COUNT" -gt 0 ]; then
+        log_info "Found $PREBUILT_COUNT pre-built wheels, copying to $WHEELS_DIR..."
+        # Copy all .whl files to wheels directory
+        find "$PREBUILT_WHEELS_DIR" -maxdepth 1 -name "*.whl" -exec cp {} "$WHEELS_DIR"/ \; 2>/dev/null || true
+        
+        COPIED_COUNT=$(find "$WHEELS_DIR" -maxdepth 1 -name "*.whl" 2>/dev/null | wc -l)
+        log_success "Copied $COPIED_COUNT pre-built wheels to $WHEELS_DIR"
+        
+        # Install pre-built wheels so they're available for dependent packages
+        log_info "Installing pre-built wheels for dependency resolution..."
+        pip install --find-links "$WHEELS_DIR" --no-index --force-reinstall "$WHEELS_DIR"/*.whl 2>/dev/null || {
+            # Install wheels one by one if batch install fails
+            for wheel in "$WHEELS_DIR"/*.whl; do
+                [ -f "$wheel" ] && pip install --find-links "$WHEELS_DIR" --no-index --force-reinstall "$wheel" 2>/dev/null || true
+            done
+        }
+        log_success "Pre-built wheels installed for dependency resolution"
+    else
+        log_info "No pre-built wheels found in $PREBUILT_WHEELS_DIR"
+    fi
+else
+    log_info "Pre-built wheels directory not found: $PREBUILT_WHEELS_DIR"
+fi
+
 # Package-specific environment variables (will be set per-package in build_wheels.py)
 # These are documented here for reference:
 # - pyarrow: ARROW_HOME=$PREFIX
