@@ -102,13 +102,15 @@ def upload_release_asset(owner: str, repo: str, release_id: str, file_path: Path
     file_name = file_path.name
     
     # Determine content type based on file extension
-    content_type = "application/zip"
+    content_type = "application/octet-stream"
     if file_path.suffix.lower() == ".zip":
         content_type = "application/zip"
     elif file_path.suffix.lower() == ".tar":
         content_type = "application/x-tar"
     elif file_path.suffix.lower() == ".gz":
         content_type = "application/gzip"
+    elif file_path.suffix.lower() == ".7z":
+        content_type = "application/x-7z-compressed"
     
     params = {"name": file_name}
     
