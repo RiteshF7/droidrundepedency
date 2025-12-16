@@ -512,10 +512,38 @@ class WheelBuilder:
                 return False
             if file_size < 1000:  # Very small files are likely corrupted or symlinks
                 print(f"  ✗ Source file is suspiciously small ({file_size} bytes): {source_file}")
-                print(f"  ⚠ This file may be corrupted. Try re-downloading from PyPI:")
-                pkg_name = source_file.stem.replace('.tar', '').replace('-fixed', '')
-                print(f"     pip download {pkg_name} --dest {source_file.parent}")
-                return False
+                print(f"  ⚠ Attempting to re-download from PyPI...")
+                pkg_name = source_file.stem.replace('.tar', '').replace('-fixed', '').replace('_', '-')
+                # Try to download fresh source
+                try:
+                    import subprocess
+                    result = subprocess.run(
+                        [sys.executable, "-m", "pip", "download", pkg_name, 
+                         "--dest", str(source_file.parent), "--no-binary", ":all:", "--no-cache-dir"],
+                        capture_output=True,
+                        text=True,
+                        timeout=300
+                    )
+                    if result.returncode == 0:
+                        # Check if new file was downloaded
+                        new_files = list(source_file.parent.glob(f"{pkg_name}*.tar.gz")) + list(source_file.parent.glob(f"{pkg_name}*.zip"))
+                        if new_files:
+                            new_file = new_files[0]
+                            if new_file.stat().st_size > 1000:
+                                print(f"  ✓ Re-downloaded {new_file.name} ({new_file.stat().st_size} bytes)")
+                                source_file = new_file
+                            else:
+                                print(f"  ✗ Re-downloaded file is also corrupted")
+                                return False
+                        else:
+                            print(f"  ✗ Failed to download {pkg_name}")
+                            return False
+                    else:
+                        print(f"  ✗ Failed to download {pkg_name}: {result.stderr[:200]}")
+                        return False
+                except Exception as e:
+                    print(f"  ✗ Error downloading {pkg_name}: {e}")
+                    return False
             
             if source_file.suffix == '.gz' or source_file.name.endswith('.tar.gz'):
                 # Try multiple extraction methods for corrupted archives
