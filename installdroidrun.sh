@@ -198,18 +198,9 @@ log_success "Phase 1 complete: Build tools installed"
 # Phase 2: Foundation (numpy)
 # ============================================
 log_info "Phase 2: Building numpy..."
-cd "$WHEELS_DIR"
-
-log_info "Building numpy wheel (pip will download source automatically)..."
-if pip wheel numpy --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-    log_success "numpy wheel built successfully"
-else
-    log_error "Failed to build numpy wheel"
+if ! build_package "numpy" "numpy"; then
     exit 1
 fi
-
-log_info "Installing numpy wheel..."
-pip install --find-links . --no-index numpy*.whl
 log_success "Phase 2 complete: numpy installed"
 
 # ============================================
@@ -218,70 +209,23 @@ log_success "Phase 2 complete: numpy installed"
 log_info "Phase 3: Building scientific stack..."
 
 # Build scipy
-log_info "Building scipy..."
-log_info "Building scipy wheel (pip will download source automatically)..."
-if pip wheel "scipy>=1.8.0,<1.17.0" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-    log_success "scipy wheel built successfully"
-else
-    log_error "Failed to build scipy wheel"
+if ! build_package "scipy" "scipy>=1.8.0,<1.17.0"; then
     exit 1
 fi
-log_info "Installing scipy wheel..."
-pip install --find-links . --no-index scipy*.whl
-log_success "scipy installed"
 
 # Build pandas (with meson.build fix)
-log_info "Building pandas (applying meson.build fix)..."
-FIXED_SOURCE=$(download_and_fix_source "pandas" "pandas<2.3.0" "pandas")
-if [ -z "$FIXED_SOURCE" ] || [ ! -f "$FIXED_SOURCE" ]; then
-    log_error "Failed to download and fix pandas source"
+if ! build_package "pandas" "pandas<2.3.0" --fix-source=pandas; then
     exit 1
 fi
-
-cd "$WHEELS_DIR"
-log_info "Building wheel from fixed source..."
-if pip wheel "$FIXED_SOURCE" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-    log_success "pandas wheel built successfully"
-else
-    log_error "Failed to build pandas wheel"
-    rm -rf "$(dirname "$FIXED_SOURCE")"
-    exit 1
-fi
-
-# Cleanup temp directory
-rm -rf "$(dirname "$FIXED_SOURCE")"
-
-log_info "Installing pandas wheel..."
-pip install --find-links . --no-index pandas*.whl
-log_success "pandas installed"
 
 # Build scikit-learn (with source fixes)
-log_info "Building scikit-learn..."
-FIXED_SOURCE=$(download_and_fix_source "scikit-learn" "scikit-learn" "scikit-learn")
-if [ -z "$FIXED_SOURCE" ] || [ ! -f "$FIXED_SOURCE" ]; then
-    log_error "Failed to download and fix scikit-learn source"
-    exit 1
-fi
-
-cd "$WHEELS_DIR"
-log_info "Building wheel from fixed source..."
-if pip wheel "$FIXED_SOURCE" --no-deps --no-build-isolation --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-    log_success "scikit-learn wheel built successfully"
-else
-    log_error "Failed to build scikit-learn wheel"
-    rm -rf "$(dirname "$FIXED_SOURCE")"
-    exit 1
-fi
-
-# Cleanup temp directory
-rm -rf "$(dirname "$FIXED_SOURCE")"
-
-# Install missing dependencies first (required before installing scikit-learn)
+# Install dependencies first
+log_info "Installing scikit-learn dependencies..."
 pip install joblib>=1.3.0 threadpoolctl>=3.2.0 --quiet
 
-# Install the wheel
-pip install --find-links . --no-index scikit_learn*.whl
-log_success "scikit-learn installed"
+if ! build_package "scikit-learn" "scikit-learn" --fix-source=scikit-learn --no-build-isolation --wheel-pattern="scikit_learn*.whl"; then
+    exit 1
+fi
 
 log_success "Phase 3 complete: Scientific stack installed"
 
@@ -289,17 +233,9 @@ log_success "Phase 3 complete: Scientific stack installed"
 # Phase 4: Rust Packages (jiter)
 # ============================================
 log_info "Phase 4: Building jiter..."
-cd "$WHEELS_DIR"
-
-log_info "Building jiter wheel (pip will download source automatically)..."
-if pip wheel "jiter==0.12.0" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-    log_success "jiter wheel built successfully"
-else
-    log_error "Failed to build jiter wheel"
+if ! build_package "jiter" "jiter==0.12.0"; then
     exit 1
 fi
-log_info "Installing jiter wheel..."
-pip install --find-links . --no-index jiter*.whl
 log_success "Phase 4 complete: jiter installed"
 
 # ============================================
@@ -308,42 +244,17 @@ log_success "Phase 4 complete: jiter installed"
 log_info "Phase 5: Building other compiled packages..."
 
 # Build pyarrow
-log_info "Building pyarrow..."
-log_info "Checking for pre-built pyarrow wheel first..."
-pip download pyarrow --dest . --no-cache-dir 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done || true
-if pip install --find-links . --no-index pyarrow*.whl 2>/dev/null; then
-    log_success "pyarrow installed (pre-built wheel)"
-else
-    log_info "No pre-built wheel found, building from source..."
-    export ARROW_HOME=$PREFIX
-    log_info "Building pyarrow wheel (pip will download source automatically)..."
-    if pip wheel pyarrow --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "pyarrow wheel built successfully"
-    else
-        log_error "Failed to build pyarrow wheel"
-        exit 1
-    fi
-    log_info "Installing pyarrow wheel..."
-    pip install --find-links . --no-index pyarrow*.whl
-    log_success "pyarrow installed (built from source)"
+if ! build_package "pyarrow" "pyarrow" --pre-check --env-var="ARROW_HOME=$PREFIX"; then
+    exit 1
 fi
 
 # Build psutil
-log_info "Building psutil..."
-log_info "Building psutil wheel (pip will download source automatically)..."
-if pip wheel psutil --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-    log_success "psutil wheel built successfully"
-else
-    log_error "Failed to build psutil wheel"
+if ! build_package "psutil" "psutil"; then
     exit 1
 fi
-log_info "Installing psutil wheel..."
-pip install --find-links . --no-index psutil*.whl
-log_success "psutil installed"
 
 # Build grpcio (with wheel patching)
 log_info "Building grpcio (this may take a while)..."
-
 # Set GRPC build flags to use system libraries
 export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
 export GRPC_PYTHON_BUILD_SYSTEM_ZLIB=1
@@ -352,6 +263,7 @@ export GRPC_PYTHON_BUILD_SYSTEM_RE2=1
 export GRPC_PYTHON_BUILD_SYSTEM_ABSL=1
 export GRPC_PYTHON_BUILD_WITH_CYTHON=1
 
+cd "$WHEELS_DIR"
 log_info "Building grpcio wheel (pip will download source automatically)..."
 if pip wheel grpcio --no-deps --no-build-isolation --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
     log_success "grpcio wheel built successfully"
@@ -360,55 +272,13 @@ else
     exit 1
 fi
 
-# Fix wheel: extract, patch .so, repackage
-WHEEL_FILE=$(ls grpcio-*.whl | head -1)
-if [ -z "$WHEEL_FILE" ]; then
-    log_error "Failed to build grpcio wheel"
+# Fix grpcio wheel
+if ! fix_grpcio_wheel; then
     exit 1
 fi
-
-log_info "Fixing grpcio wheel: $WHEEL_FILE"
-
-# Extract wheel
-unzip -q "$WHEEL_FILE" -d grpcio_extract
-
-# Find and patch the .so file
-SO_FILE=$(find grpcio_extract -name "cygrpc*.so" | head -1)
-if [ -z "$SO_FILE" ]; then
-    log_error "Error: cygrpc*.so not found in wheel"
-    rm -rf grpcio_extract
-    exit 1
-fi
-
-# Add abseil libraries to NEEDED list and set RPATH
-patchelf --add-needed libabsl_flags_internal.so "$SO_FILE"
-patchelf --add-needed libabsl_flags.so "$SO_FILE"
-patchelf --add-needed libabsl_flags_commandlineflag.so "$SO_FILE"
-patchelf --add-needed libabsl_flags_reflection.so "$SO_FILE"
-patchelf --set-rpath "$PREFIX/lib" "$SO_FILE"
-
-# Repackage the wheel
-cd grpcio_extract
-python3 << 'PYEOF'
-import zipfile
-import os
-zf = zipfile.ZipFile('../grpcio-fixed.whl', 'w', zipfile.ZIP_DEFLATED)
-for root, dirs, files in os.walk('.'):
-    for file in files:
-        filepath = os.path.join(root, file)
-        arcname = os.path.relpath(filepath, '.')
-        zf.write(filepath, arcname)
-zf.close()
-print('Fixed wheel created: grpcio-fixed.whl')
-PYEOF
-cd ..
-
-# Replace original wheel with fixed one
-rm -rf grpcio_extract
-rm "$WHEEL_FILE"
-mv grpcio-fixed.whl "$WHEEL_FILE"
 
 # Install the fixed wheel
+log_info "Installing grpcio wheel..."
 pip install --find-links . --no-index grpcio*.whl
 
 # Set LD_LIBRARY_PATH for runtime (REQUIRED for grpcio to work)
@@ -421,21 +291,9 @@ fi
 log_success "grpcio installed (wheel fixed)"
 
 # Build Pillow
-log_info "Building Pillow..."
-export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH
-export LDFLAGS="-L$PREFIX/lib"
-export CPPFLAGS="-I$PREFIX/include"
-
-log_info "Building pillow wheel (pip will download source automatically)..."
-if pip wheel pillow --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-    log_success "pillow wheel built successfully"
-else
-    log_error "Failed to build pillow wheel"
+if ! build_package "pillow" "pillow" --env-var="PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH" --env-var="LDFLAGS=-L$PREFIX/lib" --env-var="CPPFLAGS=-I$PREFIX/include"; then
     exit 1
 fi
-log_info "Installing pillow wheel..."
-pip install --find-links . --no-index pillow*.whl
-log_success "Pillow installed"
 
 log_success "Phase 5 complete: Other compiled packages installed"
 
@@ -450,48 +308,28 @@ if pip install tokenizers safetensors cryptography pydantic-core orjson --find-l
 else
     log_info "Some packages need building from source..."
     
-    # Build tokenizers
-    log_info "Building tokenizers..."
-    if pip wheel tokenizers --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "tokenizers built"
-    else
-        log_warning "Skipping tokenizers (build failed)"
-    fi
+    # List of optional packages to build
+    local optional_packages=("tokenizers" "safetensors" "cryptography" "pydantic-core" "orjson")
+    local built_packages=()
     
-    # Build safetensors
-    log_info "Building safetensors..."
-    if pip wheel safetensors --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "safetensors built"
-    else
-        log_warning "Skipping safetensors (build failed)"
-    fi
-    
-    # Build cryptography
-    log_info "Building cryptography..."
-    if pip wheel cryptography --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "cryptography built"
-    else
-        log_warning "Skipping cryptography (build failed)"
-    fi
-    
-    # Build pydantic-core
-    log_info "Building pydantic-core..."
-    if pip wheel pydantic-core --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "pydantic-core built"
-    else
-        log_warning "Skipping pydantic-core (build failed)"
-    fi
-    
-    # Build orjson
-    log_info "Building orjson..."
-    if pip wheel orjson --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "orjson built"
-    else
-        log_warning "Skipping orjson (build failed)"
-    fi
+    # Build each package (continue on failure)
+    for pkg in "${optional_packages[@]}"; do
+        if build_package "$pkg" "$pkg" 2>/dev/null; then
+            built_packages+=("$pkg")
+        else
+            log_warning "Skipping $pkg (build failed)"
+        fi
+    done
     
     # Install any wheels that were built
-    pip install --find-links . --no-index tokenizers*.whl safetensors*.whl cryptography*.whl pydantic-core*.whl orjson*.whl 2>/dev/null || true
+    if [ ${#built_packages[@]} -gt 0 ]; then
+        local wheel_patterns=""
+        for pkg in "${built_packages[@]}"; do
+            wheel_patterns="${wheel_patterns} ${pkg}*.whl"
+        done
+        pip install --find-links . --no-index $wheel_patterns 2>/dev/null || true
+    fi
+    
     log_success "Phase 6 complete: Optional packages processed"
 fi
 
