@@ -128,221 +128,16 @@ fi
 log_info "PREFIX: $PREFIX"
 
 # ============================================
-# Step 0: Download and extract sourceversion1.7z (Independent task)
-# ============================================
-log_info "Step 0: Setting up source packages..."
-
 # Setup source directory paths
+# ============================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="${SCRIPT_DIR}/depedencies/source"
 DEPENDENCIES_DIR="${SCRIPT_DIR}/depedencies"
-SOURCE_7Z="${DEPENDENCIES_DIR}/sourceversion1.7z"
-GITHUB_REPO="${GITHUB_REPO:-RiteshF7/droidrundepedency}"
-GITHUB_RELEASE_TAG="${GITHUB_RELEASE_TAG:-hellow}"
 
 # Ensure directories exist
 mkdir -p "$SOURCE_DIR" "$DEPENDENCIES_DIR"
 
-# Install p7zip if not already installed (only if network is available)
-if ! command_exists 7z && ! command_exists 7za; then
-    log_info "Installing p7zip (required for extracting archives)..."
-    if pkg install p7zip -y 2>/dev/null; then
-        log_success "p7zip installed"
-    else
-        log_warning "Failed to install p7zip (network may be unavailable)"
-        log_warning "Please install manually: pkg install p7zip"
-        log_warning "Or ensure 7z/7za is available in PATH"
-    fi
-fi
-
-# Check if source directory already has files
-SOURCE_COUNT=$(find "$SOURCE_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null | wc -l)
-
-if [ "$SOURCE_COUNT" -eq 0 ]; then
-    log_warning "No source packages found in $SOURCE_DIR"
-    
-    # Check if sourceversion1.7z exists locally
-    if [ -f "$SOURCE_7Z" ]; then
-        log_info "Found sourceversion1.7z locally, extracting..."
-    else
-        log_info "sourceversion1.7z not found locally, downloading from GitHub releases..."
-        
-        # Check for download tools
-        if ! command_exists curl && ! command_exists wget; then
-            log_error "Neither curl nor wget is available. Cannot download sourceversion1.7z"
-            log_error "Please install curl or wget: pkg install curl"
-            exit 1
-        fi
-        
-        # Use release tag (default: hellow)
-        RELEASE_TAG="${GITHUB_RELEASE_TAG:-hellow}"
-        log_info "Using release tag: $RELEASE_TAG"
-        
-        # Download sourceversion1.7z from GitHub releases
-        # URL format: https://github.com/OWNER/REPO/releases/download/TAG/FILENAME
-        DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/sourceversion1.7z"
-        log_info "Downloading from: $DOWNLOAD_URL"
-        log_info "Saving to: $SOURCE_7Z"
-        
-        if command_exists curl; then
-            HTTP_CODE=$(curl -sL -w "%{http_code}" -o "$SOURCE_7Z" "$DOWNLOAD_URL" || echo "000")
-            if [ "$HTTP_CODE" = "200" ]; then
-                SIZE=$(du -h "$SOURCE_7Z" | cut -f1)
-                log_success "Downloaded sourceversion1.7z ($SIZE)"
-            else
-                rm -f "$SOURCE_7Z"
-                if [ "$HTTP_CODE" = "404" ]; then
-                    log_error "Release not found (404): $DOWNLOAD_URL"
-                    log_error "The GitHub release '$RELEASE_TAG' does not exist or file not found."
-                    log_info "To fix this:"
-                    log_info "1. Check release exists at: https://github.com/${GITHUB_REPO}/releases"
-                    log_info "2. Verify tag name matches: $RELEASE_TAG"
-                    log_info "3. Ensure sourceversion1.7z is attached to the release"
-                    log_info ""
-                    log_info "Alternatively, place sourceversion1.7z in: $DEPENDENCIES_DIR/"
-                else
-                    log_error "Failed to download sourceversion1.7z (HTTP $HTTP_CODE)"
-                    log_error "URL: $DOWNLOAD_URL"
-                fi
-                exit 1
-            fi
-        elif command_exists wget; then
-            if wget --progress=bar:force -O "$SOURCE_7Z" "$DOWNLOAD_URL" 2>&1; then
-                SIZE=$(du -h "$SOURCE_7Z" | cut -f1)
-                log_success "Downloaded sourceversion1.7z ($SIZE)"
-            else
-                rm -f "$SOURCE_7Z"
-                log_error "Failed to download sourceversion1.7z"
-                log_error "The GitHub release '$RELEASE_TAG' may not exist or file not found."
-                log_info "Check release at: https://github.com/${GITHUB_REPO}/releases"
-                log_info "Or place sourceversion1.7z in: $DEPENDENCIES_DIR/"
-                exit 1
-            fi
-        fi
-    fi
-    
-    # Extract sourceversion1.7z
-    if [ -f "$SOURCE_7Z" ]; then
-        log_info "Extracting sourceversion1.7z to $SOURCE_DIR..."
-        
-        # Check for 7z extraction tool
-        if ! command_exists 7z && ! command_exists 7za; then
-            log_error "7z or 7za is not available"
-            log_error "Install with: pkg install p7zip"
-            exit 1
-        fi
-        
-        # Verify archive integrity first
-        log_info "Verifying archive integrity..."
-        if command_exists 7z; then
-            if ! 7z t "$SOURCE_7Z" >/dev/null 2>&1; then
-                log_error "Archive integrity check failed - sourceversion1.7z may be corrupted"
-                log_error "Please re-download the archive"
-                exit 1
-            fi
-        elif command_exists 7za; then
-            if ! 7za t "$SOURCE_7Z" >/dev/null 2>&1; then
-                log_error "Archive integrity check failed - sourceversion1.7z may be corrupted"
-                log_error "Please re-download the archive"
-                exit 1
-            fi
-        fi
-        log_success "Archive integrity verified"
-        
-        # Extract to a temporary directory first to handle subdirectory structure
-        TEMP_EXTRACT_DIR=$(mktemp -d)
-        trap "rm -rf '$TEMP_EXTRACT_DIR'" EXIT
-        
-        log_info "Extracting files (this may take a moment)..."
-        if command_exists 7z; then
-            # Use verbose output to catch errors, but redirect to log
-            EXTRACT_LOG=$(mktemp)
-            if ! 7z x "$SOURCE_7Z" -o"$TEMP_EXTRACT_DIR" -y >"$EXTRACT_LOG" 2>&1; then
-                log_error "Failed to extract sourceversion1.7z with 7z"
-                log_error "Extraction log:"
-                tail -20 "$EXTRACT_LOG" | while read line; do log_error "  $line"; done
-                rm -f "$EXTRACT_LOG"
-                exit 1
-            fi
-            rm -f "$EXTRACT_LOG"
-        elif command_exists 7za; then
-            EXTRACT_LOG=$(mktemp)
-            if ! 7za x "$SOURCE_7Z" -o"$TEMP_EXTRACT_DIR" -y >"$EXTRACT_LOG" 2>&1; then
-                log_error "Failed to extract sourceversion1.7z with 7za"
-                log_error "Extraction log:"
-                tail -20 "$EXTRACT_LOG" | while read line; do log_error "  $line"; done
-                rm -f "$EXTRACT_LOG"
-                exit 1
-            fi
-            rm -f "$EXTRACT_LOG"
-        fi
-        
-        # Move extracted files to SOURCE_DIR with verification
-        EXTRACTED_FILES=$(find "$TEMP_EXTRACT_DIR" -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null)
-        
-        if [ -z "$EXTRACTED_FILES" ]; then
-            # Check if files are in a subdirectory
-            SUBDIR=$(find "$TEMP_EXTRACT_DIR" -mindepth 1 -maxdepth 1 -type d | head -1)
-            if [ -n "$SUBDIR" ]; then
-                log_info "Files extracted to subdirectory, moving to $SOURCE_DIR..."
-                find "$SUBDIR" -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" -exec sh -c 'mv "$1" "$2" && echo "Moved: $(basename "$1")"' _ {} "$SOURCE_DIR"/ \; 2>/dev/null || true
-            else
-                log_warning "No source packages found in extracted archive"
-            fi
-        else
-            # Files are directly in temp directory - move with verification
-            log_info "Moving extracted files to $SOURCE_DIR..."
-            for file in $EXTRACTED_FILES; do
-                filename=$(basename "$file")
-                # Verify file is not empty and has reasonable size (> 1KB)
-                if [ -s "$file" ] && [ $(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo 0) -gt 1024 ]; then
-                    mv "$file" "$SOURCE_DIR/" && log_info "  Moved: $filename"
-                else
-                    log_warning "  Skipping suspicious file: $filename (too small or empty)"
-                fi
-            done
-        fi
-        
-        # Cleanup temp directory
-        rm -rf "$TEMP_EXTRACT_DIR"
-        trap - EXIT
-        
-        # Verify extracted files are valid
-        log_info "Verifying extracted files..."
-        INVALID_FILES=0
-        for file in "$SOURCE_DIR"/*.tar.gz "$SOURCE_DIR"/*.zip; do
-            if [ -f "$file" ] && ! [[ "$file" =~ (sources|home_sources|test_) ]]; then
-                filename=$(basename "$file")
-                # Quick check: tar.gz files should start with gzip magic bytes
-                if [[ "$filename" == *.tar.gz ]]; then
-                    if ! head -c 2 "$file" | od -An -tx1 | grep -q "1f 8b"; then
-                        log_warning "File may be corrupted: $filename (invalid gzip header)"
-                        INVALID_FILES=$((INVALID_FILES + 1))
-                    fi
-                fi
-            fi
-        done
-        
-        # Re-count source packages after extraction
-        SOURCE_COUNT=$(find "$SOURCE_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null | wc -l)
-        
-        if [ "$SOURCE_COUNT" -gt 0 ]; then
-            if [ "$INVALID_FILES" -eq 0 ]; then
-                log_success "Extracted $SOURCE_COUNT source packages to $SOURCE_DIR (all files verified)"
-            else
-                log_warning "Extracted $SOURCE_COUNT source packages, but $INVALID_FILES files may be corrupted"
-                log_warning "Corrupted files will be re-downloaded when needed"
-            fi
-        else
-            log_error "No source packages found after extraction"
-            log_error "Please check if sourceversion1.7z contains valid source packages"
-            exit 1
-        fi
-    fi
-else
-    log_success "Found $SOURCE_COUNT source packages in $SOURCE_DIR (using local sources)"
-fi
-
+log_info "Source directory: $SOURCE_DIR"
 echo
 
 # ============================================
@@ -550,14 +345,75 @@ else
     fi
 fi
 
-# Build scikit-learn (use pre-fixed tarball)
+# Build scikit-learn (with source fixes)
 log_info "Building scikit-learn..."
-if [ -f "$SCIKIT_LEARN_SOURCE_FILE" ]; then
+if use_source_file "$SCIKIT_LEARN_SOURCE_FILE" "scikit-learn" ""; then
     log_info "Using local source: scikit-learn.tar.gz"
-    pip wheel "$SCIKIT_LEARN_SOURCE_FILE" --no-deps --no-build-isolation --wheel-dir .
+    # Fix scikit-learn source files
+    WORK_DIR=$(mktemp -d)
+    cp "$SCIKIT_LEARN_SOURCE_FILE" "$WORK_DIR/"
+    cd "$WORK_DIR"
+    tar -xzf scikit-learn.tar.gz
+    SCIKIT_DIR=$(ls -d scikit-learn-* | head -1)
+    
+    # Fix 1: Add shebang to version.py
+    if [ -f "$SCIKIT_DIR/sklearn/_build_utils/version.py" ]; then
+        if ! head -1 "$SCIKIT_DIR/sklearn/_build_utils/version.py" | grep -q "^#!/"; then
+            log_info "Fixing sklearn/_build_utils/version.py: adding shebang"
+            sed -i '1i#!/usr/bin/env python3' "$SCIKIT_DIR/sklearn/_build_utils/version.py"
+        fi
+    fi
+    
+    # Fix 2: Fix meson.build version extraction (line 4)
+    if [ -f "$SCIKIT_DIR/meson.build" ]; then
+        SCIKIT_VERSION=$(echo "$SCIKIT_DIR" | sed 's/scikit-learn-//')
+        log_info "Fixing meson.build: using extracted version $SCIKIT_VERSION"
+        # Replace version extraction with hardcoded version
+        sed -i "s/version: run_command.*/version: '$SCIKIT_VERSION',/" "$SCIKIT_DIR/meson.build" 2>/dev/null || \
+        sed -i "s/version:.*/version: '$SCIKIT_VERSION',/" "$SCIKIT_DIR/meson.build"
+    fi
+    
+    # Repackage fixed tarball
+    tar -czf scikit-learn.tar.gz "$SCIKIT_DIR/"
+    pip wheel scikit-learn.tar.gz --no-deps --no-build-isolation --wheel-dir "$WHEELS_DIR"
+    cd "$WHEELS_DIR"
+    rm -rf "$WORK_DIR"
 else
-    log_warning "scikit-learn source not found locally, using GitHub..."
-    pip wheel https://raw.githubusercontent.com/RiteshF7/termux-packages/master/tmp_scikit_fixed.tar.gz --no-deps --no-build-isolation --wheel-dir .
+    log_warning "scikit-learn source not found locally or corrupted, downloading..."
+    pip download scikit-learn --dest . --no-cache-dir --no-binary :all:
+    SCIKIT_SOURCE=$(ls scikit-learn-*.tar.gz | head -1)
+    if [ -n "$SCIKIT_SOURCE" ]; then
+        SCIKIT_DIR=$(basename "$SCIKIT_SOURCE" .tar.gz)
+        WORK_DIR=$(mktemp -d)
+        cp "$SCIKIT_SOURCE" "$WORK_DIR/"
+        cd "$WORK_DIR"
+        tar -xzf "$(basename "$SCIKIT_SOURCE")"
+        
+        # Fix 1: Add shebang to version.py
+        if [ -f "$SCIKIT_DIR/sklearn/_build_utils/version.py" ]; then
+            if ! head -1 "$SCIKIT_DIR/sklearn/_build_utils/version.py" | grep -q "^#!/"; then
+                log_info "Fixing sklearn/_build_utils/version.py: adding shebang"
+                sed -i '1i#!/usr/bin/env python3' "$SCIKIT_DIR/sklearn/_build_utils/version.py"
+            fi
+        fi
+        
+        # Fix 2: Fix meson.build version extraction
+        if [ -f "$SCIKIT_DIR/meson.build" ]; then
+            SCIKIT_VERSION=$(echo "$SCIKIT_DIR" | sed 's/scikit-learn-//')
+            log_info "Fixing meson.build: using extracted version $SCIKIT_VERSION"
+            sed -i "s/version: run_command.*/version: '$SCIKIT_VERSION',/" "$SCIKIT_DIR/meson.build" 2>/dev/null || \
+            sed -i "s/version:.*/version: '$SCIKIT_VERSION',/" "$SCIKIT_DIR/meson.build"
+        fi
+        
+        # Repackage fixed tarball
+        tar -czf "$(basename "$SCIKIT_SOURCE")" "$SCIKIT_DIR/"
+        pip wheel "$(basename "$SCIKIT_SOURCE")" --no-deps --no-build-isolation --wheel-dir "$WHEELS_DIR"
+        cd "$WHEELS_DIR"
+        rm -rf "$WORK_DIR"
+    else
+        log_error "Failed to download scikit-learn source"
+        exit 1
+    fi
 fi
 
 # Install missing dependencies first (required before installing scikit-learn)
