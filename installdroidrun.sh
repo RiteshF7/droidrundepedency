@@ -69,7 +69,7 @@ SOURCE_DIR="${SCRIPT_DIR}/depedencies/source"
 DEPENDENCIES_DIR="${SCRIPT_DIR}/depedencies"
 SOURCE_7Z="${DEPENDENCIES_DIR}/sourceversion1.7z"
 GITHUB_REPO="${GITHUB_REPO:-RiteshF7/droidrundepedency}"
-GITHUB_RELEASE_TAG="${GITHUB_RELEASE_TAG:-sourceversion1}"
+GITHUB_RELEASE_TAG="${GITHUB_RELEASE_TAG:-hellow}"
 
     pkg install p7zip -y
 # Ensure directories exist
@@ -94,8 +94,8 @@ if [ "$SOURCE_COUNT" -eq 0 ]; then
             exit 1
         fi
         
-        # Use release tag (default: sourceversion1)
-        RELEASE_TAG="${GITHUB_RELEASE_TAG:-sourceversion1}"
+        # Use release tag (default: hellow)
+        RELEASE_TAG="${GITHUB_RELEASE_TAG:-hellow}"
         log_info "Using release tag: $RELEASE_TAG"
         
         # Download sourceversion1.7z from GitHub releases
@@ -113,11 +113,11 @@ if [ "$SOURCE_COUNT" -eq 0 ]; then
                 rm -f "$SOURCE_7Z"
                 if [ "$HTTP_CODE" = "404" ]; then
                     log_error "Release not found (404): $DOWNLOAD_URL"
-                    log_error "The GitHub release 'sourceversion1' does not exist yet."
+                    log_error "The GitHub release '$RELEASE_TAG' does not exist or file not found."
                     log_info "To fix this:"
-                    log_info "1. Create a release at: https://github.com/${GITHUB_REPO}/releases/new"
-                    log_info "2. Tag: sourceversion1"
-                    log_info "3. Upload: sourceversion1.7z"
+                    log_info "1. Check release exists at: https://github.com/${GITHUB_REPO}/releases"
+                    log_info "2. Verify tag name matches: $RELEASE_TAG"
+                    log_info "3. Ensure sourceversion1.7z is attached to the release"
                     log_info ""
                     log_info "Alternatively, place sourceversion1.7z in: $DEPENDENCIES_DIR/"
                 else
