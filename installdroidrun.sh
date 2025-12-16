@@ -309,8 +309,8 @@ else
     log_info "Some packages need building from source..."
     
     # List of optional packages to build
-    local optional_packages=("tokenizers" "safetensors" "cryptography" "pydantic-core" "orjson")
-    local built_packages=()
+    optional_packages=("tokenizers" "safetensors" "cryptography" "pydantic-core" "orjson")
+    built_packages=()
     
     # Build each package (continue on failure)
     for pkg in "${optional_packages[@]}"; do
@@ -323,7 +323,7 @@ else
     
     # Install any wheels that were built
     if [ ${#built_packages[@]} -gt 0 ]; then
-        local wheel_patterns=""
+        wheel_patterns=""
         for pkg in "${built_packages[@]}"; do
             wheel_patterns="${wheel_patterns} ${pkg}*.whl"
         done
