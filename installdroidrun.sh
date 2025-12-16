@@ -201,23 +201,52 @@ if [ "$SOURCE_COUNT" -eq 0 ]; then
             exit 1
         fi
         
+        # Verify archive integrity first
+        log_info "Verifying archive integrity..."
+        if command_exists 7z; then
+            if ! 7z t "$SOURCE_7Z" >/dev/null 2>&1; then
+                log_error "Archive integrity check failed - sourceversion1.7z may be corrupted"
+                log_error "Please re-download the archive"
+                exit 1
+            fi
+        elif command_exists 7za; then
+            if ! 7za t "$SOURCE_7Z" >/dev/null 2>&1; then
+                log_error "Archive integrity check failed - sourceversion1.7z may be corrupted"
+                log_error "Please re-download the archive"
+                exit 1
+            fi
+        fi
+        log_success "Archive integrity verified"
+        
         # Extract to a temporary directory first to handle subdirectory structure
         TEMP_EXTRACT_DIR=$(mktemp -d)
         trap "rm -rf '$TEMP_EXTRACT_DIR'" EXIT
         
+        log_info "Extracting files (this may take a moment)..."
         if command_exists 7z; then
-            if ! 7z x "$SOURCE_7Z" -o"$TEMP_EXTRACT_DIR" -y >/dev/null 2>&1; then
+            # Use verbose output to catch errors, but redirect to log
+            EXTRACT_LOG=$(mktemp)
+            if ! 7z x "$SOURCE_7Z" -o"$TEMP_EXTRACT_DIR" -y >"$EXTRACT_LOG" 2>&1; then
                 log_error "Failed to extract sourceversion1.7z with 7z"
+                log_error "Extraction log:"
+                tail -20 "$EXTRACT_LOG" | while read line; do log_error "  $line"; done
+                rm -f "$EXTRACT_LOG"
                 exit 1
             fi
+            rm -f "$EXTRACT_LOG"
         elif command_exists 7za; then
-            if ! 7za x "$SOURCE_7Z" -o"$TEMP_EXTRACT_DIR" -y >/dev/null 2>&1; then
+            EXTRACT_LOG=$(mktemp)
+            if ! 7za x "$SOURCE_7Z" -o"$TEMP_EXTRACT_DIR" -y >"$EXTRACT_LOG" 2>&1; then
                 log_error "Failed to extract sourceversion1.7z with 7za"
+                log_error "Extraction log:"
+                tail -20 "$EXTRACT_LOG" | while read line; do log_error "  $line"; done
+                rm -f "$EXTRACT_LOG"
                 exit 1
             fi
+            rm -f "$EXTRACT_LOG"
         fi
         
-        # Move extracted files to SOURCE_DIR
+        # Move extracted files to SOURCE_DIR with verification
         EXTRACTED_FILES=$(find "$TEMP_EXTRACT_DIR" -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null)
         
         if [ -z "$EXTRACTED_FILES" ]; then
@@ -225,25 +254,54 @@ if [ "$SOURCE_COUNT" -eq 0 ]; then
             SUBDIR=$(find "$TEMP_EXTRACT_DIR" -mindepth 1 -maxdepth 1 -type d | head -1)
             if [ -n "$SUBDIR" ]; then
                 log_info "Files extracted to subdirectory, moving to $SOURCE_DIR..."
-                find "$SUBDIR" -type f -exec mv {} "$SOURCE_DIR"/ \; 2>/dev/null || true
+                find "$SUBDIR" -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" -exec sh -c 'mv "$1" "$2" && echo "Moved: $(basename "$1")"' _ {} "$SOURCE_DIR"/ \; 2>/dev/null || true
             else
                 log_warning "No source packages found in extracted archive"
             fi
         else
-            # Files are directly in temp directory
+            # Files are directly in temp directory - move with verification
             log_info "Moving extracted files to $SOURCE_DIR..."
-            find "$TEMP_EXTRACT_DIR" -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" -exec mv {} "$SOURCE_DIR"/ \; 2>/dev/null || true
+            for file in $EXTRACTED_FILES; do
+                filename=$(basename "$file")
+                # Verify file is not empty and has reasonable size (> 1KB)
+                if [ -s "$file" ] && [ $(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo 0) -gt 1024 ]; then
+                    mv "$file" "$SOURCE_DIR/" && log_info "  Moved: $filename"
+                else
+                    log_warning "  Skipping suspicious file: $filename (too small or empty)"
+                fi
+            done
         fi
         
         # Cleanup temp directory
         rm -rf "$TEMP_EXTRACT_DIR"
         trap - EXIT
         
+        # Verify extracted files are valid
+        log_info "Verifying extracted files..."
+        INVALID_FILES=0
+        for file in "$SOURCE_DIR"/*.tar.gz "$SOURCE_DIR"/*.zip; do
+            if [ -f "$file" ] && ! [[ "$file" =~ (sources|home_sources|test_) ]]; then
+                filename=$(basename "$file")
+                # Quick check: tar.gz files should start with gzip magic bytes
+                if [[ "$filename" == *.tar.gz ]]; then
+                    if ! head -c 2 "$file" | od -An -tx1 | grep -q "1f 8b"; then
+                        log_warning "File may be corrupted: $filename (invalid gzip header)"
+                        INVALID_FILES=$((INVALID_FILES + 1))
+                    fi
+                fi
+            fi
+        done
+        
         # Re-count source packages after extraction
         SOURCE_COUNT=$(find "$SOURCE_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null | wc -l)
         
         if [ "$SOURCE_COUNT" -gt 0 ]; then
-            log_success "Extracted $SOURCE_COUNT source packages to $SOURCE_DIR"
+            if [ "$INVALID_FILES" -eq 0 ]; then
+                log_success "Extracted $SOURCE_COUNT source packages to $SOURCE_DIR (all files verified)"
+            else
+                log_warning "Extracted $SOURCE_COUNT source packages, but $INVALID_FILES files may be corrupted"
+                log_warning "Corrupted files will be re-downloaded when needed"
+            fi
         else
             log_error "No source packages found after extraction"
             log_error "Please check if sourceversion1.7z contains valid source packages"
