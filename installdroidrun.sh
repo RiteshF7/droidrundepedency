@@ -122,7 +122,173 @@ mkdir -p "$TMPDIR"
 WHEELS_DIR="${HOME}/wheels"
 mkdir -p "$WHEELS_DIR"
 
+# Setup source directory (local source packages)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="${SCRIPT_DIR}/depedencies/source"
+DEPENDENCIES_DIR="${SCRIPT_DIR}/depedencies"
+SOURCE_7Z="${DEPENDENCIES_DIR}/source.7z"
+GITHUB_REPO="${GITHUB_REPO:-RiteshF7/droidrundepedency}"
+GITHUB_RELEASE_TAG="${GITHUB_RELEASE_TAG:-latest}"
+
 log_success "Build environment configured"
+
+# ============================================
+# Setup local source directory
+# ============================================
+log_info "Setting up source directory..."
+
+# Function to find source file locally
+find_source_file() {
+    local pkg_name=$1
+    local version_pattern=$2
+    
+    # Try exact match first
+    if [ -n "$version_pattern" ]; then
+        local exact_match=$(find "$SOURCE_DIR" -maxdepth 1 -type f \( -name "${pkg_name}-${version_pattern}*.tar.gz" -o -name "${pkg_name}-${version_pattern}*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null | head -1)
+        if [ -n "$exact_match" ]; then
+            echo "$exact_match"
+            return 0
+        fi
+    fi
+    
+    # Try pattern match
+    local pattern_match=$(find "$SOURCE_DIR" -maxdepth 1 -type f \( -name "${pkg_name}-*.tar.gz" -o -name "${pkg_name}-*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null | head -1)
+    if [ -n "$pattern_match" ]; then
+        echo "$pattern_match"
+        return 0
+    fi
+    
+    return 1
+}
+
+# Check if source directory exists and has files
+SOURCE_COUNT=$(find "$SOURCE_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null | wc -l)
+
+if [ "$SOURCE_COUNT" -eq 0 ]; then
+    log_warning "No source packages found in $SOURCE_DIR"
+    
+    # Check if source.7z exists locally
+    if [ -f "$SOURCE_7Z" ]; then
+        log_info "Found source.7z locally, extracting..."
+    else
+        log_info "source.7z not found locally, downloading from GitHub releases..."
+        
+        # Get latest release tag if needed
+        if [ "$GITHUB_RELEASE_TAG" = "latest" ]; then
+            log_info "Fetching latest release tag from $GITHUB_REPO..."
+            if command_exists curl; then
+                RELEASE_TAG=$(curl -sL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
+            elif command_exists wget; then
+                RELEASE_TAG=$(wget -qO- "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
+            else
+                log_error "Neither curl nor wget is available. Cannot download source.7z"
+                exit 1
+            fi
+            
+            if [ -z "$RELEASE_TAG" ]; then
+                log_error "Failed to get latest release tag"
+                exit 1
+            fi
+            log_success "Latest release tag: $RELEASE_TAG"
+        else
+            RELEASE_TAG="$GITHUB_RELEASE_TAG"
+        fi
+        
+        # Download source.7z
+        DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/source.7z"
+        log_info "Downloading from: $DOWNLOAD_URL"
+        log_info "Saving to: $SOURCE_7Z"
+        
+        # Create depedencies directory if it doesn't exist
+        mkdir -p "$DEPENDENCIES_DIR"
+        
+        if command_exists curl; then
+            if curl -fL --progress-bar -o "$SOURCE_7Z" "$DOWNLOAD_URL"; then
+                SIZE=$(du -h "$SOURCE_7Z" | cut -f1)
+                log_success "Downloaded source.7z ($SIZE)"
+            else
+                log_error "Failed to download source.7z"
+                rm -f "$SOURCE_7Z"
+                exit 1
+            fi
+        elif command_exists wget; then
+            if wget --progress=bar:force -O "$SOURCE_7Z" "$DOWNLOAD_URL" 2>&1; then
+                SIZE=$(du -h "$SOURCE_7Z" | cut -f1)
+                log_success "Downloaded source.7z ($SIZE)"
+            else
+                log_error "Failed to download source.7z"
+                rm -f "$SOURCE_7Z"
+                exit 1
+            fi
+        fi
+    fi
+    
+    # Extract source.7z
+    if [ -f "$SOURCE_7Z" ]; then
+        log_info "Extracting source.7z to $SOURCE_DIR..."
+        
+        # Ensure source directory exists
+        mkdir -p "$SOURCE_DIR"
+        
+        # Check for 7z extraction tool
+        if ! command_exists 7z && ! command_exists 7za; then
+            log_error "7z or 7za is not available"
+            log_error "Install with: pkg install p7zip"
+            exit 1
+        fi
+        
+        # Extract to a temporary directory first to handle subdirectory structure
+        TEMP_EXTRACT_DIR=$(mktemp -d)
+        trap "rm -rf '$TEMP_EXTRACT_DIR'" EXIT
+        
+        if command_exists 7z; then
+            if ! 7z x "$SOURCE_7Z" -o"$TEMP_EXTRACT_DIR" -y >/dev/null 2>&1; then
+                log_error "Failed to extract source.7z with 7z"
+                exit 1
+            fi
+        elif command_exists 7za; then
+            if ! 7za x "$SOURCE_7Z" -o"$TEMP_EXTRACT_DIR" -y >/dev/null 2>&1; then
+                log_error "Failed to extract source.7z with 7za"
+                exit 1
+            fi
+        fi
+        
+        # Move extracted files to SOURCE_DIR
+        EXTRACTED_FILES=$(find "$TEMP_EXTRACT_DIR" -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null)
+        
+        if [ -z "$EXTRACTED_FILES" ]; then
+            # Check if files are in a subdirectory
+            SUBDIR=$(find "$TEMP_EXTRACT_DIR" -mindepth 1 -maxdepth 1 -type d | head -1)
+            if [ -n "$SUBDIR" ]; then
+                log_info "Files extracted to subdirectory, moving to $SOURCE_DIR..."
+                find "$SUBDIR" -type f -exec mv {} "$SOURCE_DIR"/ \; 2>/dev/null || true
+            else
+                log_warning "No source packages found in extracted archive"
+            fi
+        else
+            # Files are directly in temp directory
+            log_info "Moving extracted files to $SOURCE_DIR..."
+            find "$TEMP_EXTRACT_DIR" -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" -exec mv {} "$SOURCE_DIR"/ \; 2>/dev/null || true
+        fi
+        
+        # Cleanup temp directory
+        rm -rf "$TEMP_EXTRACT_DIR"
+        trap - EXIT
+        
+        # Re-count source packages after extraction
+        SOURCE_COUNT=$(find "$SOURCE_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null | wc -l)
+        
+        if [ "$SOURCE_COUNT" -gt 0 ]; then
+            log_success "Extracted $SOURCE_COUNT source packages to $SOURCE_DIR"
+        else
+            log_error "No source packages found after extraction"
+            log_error "Please check if source.7z contains valid source packages"
+            exit 1
+        fi
+    fi
+else
+    log_success "Found $SOURCE_COUNT source packages in $SOURCE_DIR (using local sources)"
+fi
 
 # ============================================
 # Create gfortran symlink for scipy compatibility
@@ -165,8 +331,15 @@ log_success "Phase 1 complete: Build tools installed"
 log_info "Phase 2: Building numpy..."
 cd "$WHEELS_DIR"
 
-pip download numpy --dest . --no-cache-dir
-pip wheel numpy --no-deps --wheel-dir .
+NUMPY_SOURCE=$(find_source_file "numpy" "")
+if [ -n "$NUMPY_SOURCE" ]; then
+    log_info "Using local source: $(basename "$NUMPY_SOURCE")"
+    pip wheel "$NUMPY_SOURCE" --no-deps --wheel-dir .
+else
+    log_warning "numpy source not found locally, downloading..."
+    pip download numpy --dest . --no-cache-dir
+    pip wheel numpy --no-deps --wheel-dir .
+fi
 pip install --find-links . --no-index numpy*.whl
 log_success "Phase 2 complete: numpy installed"
 
@@ -177,36 +350,59 @@ log_info "Phase 3: Building scientific stack..."
 
 # Build scipy
 log_info "Building scipy..."
-pip download "scipy>=1.8.0,<1.17.0" --dest . --no-cache-dir
-pip wheel scipy --no-deps --wheel-dir .
+SCIPY_SOURCE=$(find_source_file "scipy" "")
+if [ -n "$SCIPY_SOURCE" ]; then
+    log_info "Using local source: $(basename "$SCIPY_SOURCE")"
+    pip wheel "$SCIPY_SOURCE" --no-deps --wheel-dir .
+else
+    log_warning "scipy source not found locally, downloading..."
+    pip download "scipy>=1.8.0,<1.17.0" --dest . --no-cache-dir
+    pip wheel scipy --no-deps --wheel-dir .
+fi
 pip install --find-links . --no-index scipy*.whl
 log_success "scipy installed"
 
 # Build pandas (with meson.build fix)
 log_info "Building pandas (applying meson.build fix)..."
-pip download "pandas<2.3.0" --dest . --no-cache-dir
+PANDAS_SOURCE=$(find_source_file "pandas" "")
+if [ -z "$PANDAS_SOURCE" ]; then
+    log_warning "pandas source not found locally, downloading..."
+    pip download "pandas<2.3.0" --dest . --no-cache-dir
+    PANDAS_SOURCE=$(ls pandas-*.tar.gz | head -1)
+fi
 
-# Fix meson.build version detection issue
-PANDAS_TARBALL=$(ls pandas-*.tar.gz | head -1)
-if [ -n "$PANDAS_TARBALL" ]; then
-    PANDAS_DIR=$(basename "$PANDAS_TARBALL" .tar.gz)
-    tar -xzf "$PANDAS_TARBALL"
+if [ -n "$PANDAS_SOURCE" ]; then
+    log_info "Using local source: $(basename "$PANDAS_SOURCE")"
+    # Fix meson.build version detection issue
+    PANDAS_DIR=$(basename "$PANDAS_SOURCE" .tar.gz)
+    WORK_DIR=$(mktemp -d)
+    cp "$PANDAS_SOURCE" "$WORK_DIR/"
+    cd "$WORK_DIR"
+    tar -xzf "$(basename "$PANDAS_SOURCE")"
     if [ -f "$PANDAS_DIR/meson.build" ]; then
         sed -i "s/version: run_command.*/version: '$(echo $PANDAS_DIR | sed 's/pandas-//')',/" "$PANDAS_DIR/meson.build"
-        tar -czf "$PANDAS_TARBALL" "$PANDAS_DIR/"
-        rm -rf "$PANDAS_DIR"
+        tar -czf "$(basename "$PANDAS_SOURCE")" "$PANDAS_DIR/"
     fi
-    pip wheel "$PANDAS_TARBALL" --no-deps --wheel-dir .
+    pip wheel "$(basename "$PANDAS_SOURCE")" --no-deps --wheel-dir "$WHEELS_DIR"
+    cd "$WHEELS_DIR"
+    rm -rf "$WORK_DIR"
     pip install --find-links . --no-index pandas*.whl
     log_success "pandas installed"
 else
-    log_error "Failed to download pandas tarball"
+    log_error "Failed to find pandas tarball"
     exit 1
 fi
 
-# Build scikit-learn (use pre-fixed tarball from GitHub)
+# Build scikit-learn (use pre-fixed tarball)
 log_info "Building scikit-learn..."
-pip wheel https://raw.githubusercontent.com/RiteshF7/termux-packages/master/tmp_scikit_fixed.tar.gz --no-deps --no-build-isolation --wheel-dir .
+SCIKIT_SOURCE=$(find "$SOURCE_DIR" -maxdepth 1 -type f \( -name "scikit*.tar.gz" -o -name "*scikit*.tar.gz" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null | head -1)
+if [ -n "$SCIKIT_SOURCE" ]; then
+    log_info "Using local source: $(basename "$SCIKIT_SOURCE")"
+    pip wheel "$SCIKIT_SOURCE" --no-deps --no-build-isolation --wheel-dir .
+else
+    log_warning "scikit-learn source not found locally, using GitHub..."
+    pip wheel https://raw.githubusercontent.com/RiteshF7/termux-packages/master/tmp_scikit_fixed.tar.gz --no-deps --no-build-isolation --wheel-dir .
+fi
 
 # Install missing dependencies first (required before installing scikit-learn)
 pip install joblib>=1.3.0 threadpoolctl>=3.2.0 --quiet
@@ -223,8 +419,15 @@ log_success "Phase 3 complete: Scientific stack installed"
 log_info "Phase 4: Building jiter..."
 cd "$WHEELS_DIR"
 
-pip download jiter==0.12.0 --dest . --no-cache-dir
-pip wheel jiter --no-deps --wheel-dir .
+JITER_SOURCE=$(find_source_file "jiter" "0.12.0")
+if [ -n "$JITER_SOURCE" ]; then
+    log_info "Using local source: $(basename "$JITER_SOURCE")"
+    pip wheel "$JITER_SOURCE" --no-deps --wheel-dir .
+else
+    log_warning "jiter source not found locally, downloading..."
+    pip download jiter==0.12.0 --dest . --no-cache-dir
+    pip wheel jiter --no-deps --wheel-dir .
+fi
 pip install --find-links . --no-index jiter*.whl
 log_success "Phase 4 complete: jiter installed"
 
@@ -235,27 +438,43 @@ log_info "Phase 5: Building other compiled packages..."
 
 # Build pyarrow
 log_info "Building pyarrow..."
-pip download pyarrow --dest . --no-cache-dir
-if pip install --find-links . --no-index pyarrow*.whl 2>/dev/null; then
-    log_success "pyarrow installed (pre-built wheel)"
-else
-    log_info "No pre-built wheel found, building from source..."
+PYARROW_SOURCE=$(find_source_file "pyarrow" "")
+if [ -n "$PYARROW_SOURCE" ]; then
+    log_info "Using local source: $(basename "$PYARROW_SOURCE")"
     export ARROW_HOME=$PREFIX
-    pip wheel pyarrow --no-deps --wheel-dir .
+    pip wheel "$PYARROW_SOURCE" --no-deps --wheel-dir .
     pip install --find-links . --no-index pyarrow*.whl
     log_success "pyarrow installed (built from source)"
+else
+    log_warning "pyarrow source not found locally, trying pre-built wheel..."
+    pip download pyarrow --dest . --no-cache-dir
+    if pip install --find-links . --no-index pyarrow*.whl 2>/dev/null; then
+        log_success "pyarrow installed (pre-built wheel)"
+    else
+        log_info "No pre-built wheel found, building from source..."
+        export ARROW_HOME=$PREFIX
+        pip wheel pyarrow --no-deps --wheel-dir .
+        pip install --find-links . --no-index pyarrow*.whl
+        log_success "pyarrow installed (built from source)"
+    fi
 fi
 
 # Build psutil
 log_info "Building psutil..."
-pip download psutil --dest . --no-cache-dir
-pip wheel psutil --no-deps --wheel-dir .
+PSUTIL_SOURCE=$(find_source_file "psutil" "")
+if [ -n "$PSUTIL_SOURCE" ]; then
+    log_info "Using local source: $(basename "$PSUTIL_SOURCE")"
+    pip wheel "$PSUTIL_SOURCE" --no-deps --wheel-dir .
+else
+    log_warning "psutil source not found locally, downloading..."
+    pip download psutil --dest . --no-cache-dir
+    pip wheel psutil --no-deps --wheel-dir .
+fi
 pip install --find-links . --no-index psutil*.whl
 log_success "psutil installed"
 
 # Build grpcio (with wheel patching)
 log_info "Building grpcio (this may take a while)..."
-pip download grpcio --dest . --no-cache-dir
 
 # Set GRPC build flags to use system libraries
 export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
@@ -265,8 +484,17 @@ export GRPC_PYTHON_BUILD_SYSTEM_RE2=1
 export GRPC_PYTHON_BUILD_SYSTEM_ABSL=1
 export GRPC_PYTHON_BUILD_WITH_CYTHON=1
 
-# Build wheel
-pip wheel grpcio --no-deps --no-build-isolation --wheel-dir .
+GRPCIO_SOURCE=$(find_source_file "grpcio" "")
+if [ -n "$GRPCIO_SOURCE" ]; then
+    log_info "Using local source: $(basename "$GRPCIO_SOURCE")"
+    # Build wheel from local source
+    pip wheel "$GRPCIO_SOURCE" --no-deps --no-build-isolation --wheel-dir .
+else
+    log_warning "grpcio source not found locally, downloading..."
+    pip download grpcio --dest . --no-cache-dir
+    # Build wheel
+    pip wheel grpcio --no-deps --no-build-isolation --wheel-dir .
+fi
 
 # Fix wheel: extract, patch .so, repackage
 WHEEL_FILE=$(ls grpcio-*.whl | head -1)
@@ -334,8 +562,15 @@ export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH
 export LDFLAGS="-L$PREFIX/lib"
 export CPPFLAGS="-I$PREFIX/include"
 
-pip download pillow --dest . --no-cache-dir
-pip wheel pillow --no-deps --wheel-dir .
+PILLOW_SOURCE=$(find_source_file "pillow" "")
+if [ -n "$PILLOW_SOURCE" ]; then
+    log_info "Using local source: $(basename "$PILLOW_SOURCE")"
+    pip wheel "$PILLOW_SOURCE" --no-deps --wheel-dir .
+else
+    log_warning "pillow source not found locally, downloading..."
+    pip download pillow --dest . --no-cache-dir
+    pip wheel pillow --no-deps --wheel-dir .
+fi
 pip install --find-links . --no-index pillow*.whl
 log_success "Pillow installed"
 
@@ -351,13 +586,24 @@ if pip install tokenizers safetensors cryptography pydantic-core orjson --find-l
     log_success "Phase 6 complete: Optional packages installed (pre-built wheels)"
 else
     log_info "Some packages need building from source..."
-    pip download tokenizers safetensors cryptography pydantic-core orjson --dest . --no-cache-dir
     
     for pkg in tokenizers safetensors cryptography pydantic-core orjson; do
-        if pip wheel "$pkg" --no-deps --wheel-dir . 2>/dev/null; then
-            log_success "$pkg built"
+        PKG_SOURCE=$(find_source_file "$pkg" "")
+        if [ -n "$PKG_SOURCE" ]; then
+            log_info "Using local source for $pkg: $(basename "$PKG_SOURCE")"
+            if pip wheel "$PKG_SOURCE" --no-deps --wheel-dir . 2>/dev/null; then
+                log_success "$pkg built"
+            else
+                log_warning "Skipping $pkg (build failed)"
+            fi
         else
-            log_warning "Skipping $pkg (may have wheel or build failed)"
+            log_warning "$pkg source not found locally, downloading..."
+            pip download "$pkg" --dest . --no-cache-dir
+            if pip wheel "$pkg" --no-deps --wheel-dir . 2>/dev/null; then
+                log_success "$pkg built"
+            else
+                log_warning "Skipping $pkg (may have wheel or build failed)"
+            fi
         fi
     done
     
