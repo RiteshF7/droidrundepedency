@@ -399,10 +399,15 @@ echo -e "${BLUE}========================================${NC}"
 echo "Source directory: $SOURCE_DIR"
 echo "Wheels directory: $WHEELS_DIR"
 echo "Python version: $PYTHON_VERSION"
+echo "Architecture: $(uname -m)"
 echo "PREFIX: $PREFIX"
 echo "Parallelism: 2 jobs (NINJAFLAGS=$NINJAFLAGS)"
 echo "Source packages: $SOURCE_COUNT"
 echo -e "${BLUE}========================================${NC}"
+echo
+log_info "Building wheels for architecture: $(uname -m)"
+log_info "Note: Reference wheels in depedencies/wheels/_x86_64_wheels/ are for x86_64 only"
+log_info "This script builds wheels for the current Android architecture"
 echo
 
 # ============================================
