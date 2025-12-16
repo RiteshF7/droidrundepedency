@@ -145,6 +145,31 @@ main() {
         # Priority 3: Check if source file is available in directory
         log "INFO" "No wheel available on pip server, checking for source file..."
         local source_file=$(find_source_file "$pkg_name" "$version")
+        
+        # If not found, try alternative search patterns
+        if [ -z "$source_file" ] || [ ! -f "$source_file" ]; then
+            log "INFO" "Trying alternative search patterns for $pkg_name..."
+            # Try with underscores instead of hyphens
+            local alt_name=$(echo "$pkg_name" | tr '-' '_')
+            source_file=$(find_source_file "$alt_name" "$version")
+            
+            # Try searching in SOURCES_DIR directly
+            if [ -z "$source_file" ] || [ ! -f "$source_file" ]; then
+                log "INFO" "Searching directly in $SOURCES_DIR..."
+                # List what files are actually there (for debugging)
+                local available_files=$(ls "$SOURCES_DIR"/*.{tar.gz,zip} 2>/dev/null | head -5)
+                if [ -n "$available_files" ]; then
+                    log "INFO" "Sample files in sources directory:"
+                    echo "$available_files" | while read -r file; do
+                        log "INFO" "  - $(basename "$file")"
+                    done
+                fi
+                
+                # Try more flexible pattern matching
+                source_file=$(find "$SOURCES_DIR" -maxdepth 1 -type f \( -iname "*${pkg_name}*" -o -iname "*${alt_name}*" \) \( -name "*.tar.gz" -o -name "*.zip" \) 2>/dev/null | head -1)
+            fi
+        fi
+        
         if [ -n "$source_file" ] && [ -f "$source_file" ]; then
             log "INFO" "Source file found for $pkg_name: $(basename "$source_file")"
             
