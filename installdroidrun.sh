@@ -144,8 +144,8 @@ if [ "$SOURCE_COUNT" -eq 0 ]; then
             else
                 rm -f "$SOURCE_7Z"
                 log_error "Failed to download sourceversion1.7z"
-                log_error "The GitHub release 'sourceversion1' may not exist yet."
-                log_info "Create a release at: https://github.com/${GITHUB_REPO}/releases/new"
+                log_error "The GitHub release '$RELEASE_TAG' may not exist or file not found."
+                log_info "Check release at: https://github.com/${GITHUB_REPO}/releases"
                 log_info "Or place sourceversion1.7z in: $DEPENDENCIES_DIR/"
                 exit 1
             fi
