@@ -139,6 +139,146 @@ def check_prerequisites(scripts_dir: Path) -> Dict[str, bool]:
     
     return status
 
+def check_system_dependencies() -> Dict[str, bool]:
+    """Check if all system dependencies are installed"""
+    # System dependencies from config.sh
+    system_deps = [
+        "python", "python-pip", "autoconf", "automake", "libtool", "make", 
+        "binutils", "clang", "cmake", "ninja", "rust", "flang", "blas-openblas",
+        "libjpeg-turbo", "libpng", "libtiff", "libwebp", "freetype", 
+        "libarrow-cpp", "openssl", "libc++", "zlib", "protobuf", "libprotobuf",
+        "abseil-cpp", "c-ares", "libre2", "patchelf", "p7zip"
+    ]
+    
+    status = {}
+    print_info("Checking system dependencies...")
+    
+    try:
+        result = subprocess.run(
+            ["pkg", "list-installed"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        installed_packages = result.stdout if result.returncode == 0 else ""
+        
+        for pkg in system_deps:
+            # Check if package is installed
+            is_installed = pkg in installed_packages or f"{pkg} " in installed_packages
+            status[pkg] = is_installed
+            if is_installed:
+                print_success(f"{pkg} - installed")
+            else:
+                print_warning(f"{pkg} - NOT installed")
+    except Exception as e:
+        print_error(f"Error checking system dependencies: {e}")
+        for pkg in system_deps:
+            status[pkg] = False
+    
+    return status
+
+def check_python_build_tools() -> Dict[str, bool]:
+    """Check if Phase 1 Python build tools are installed"""
+    build_tools = {
+        "Cython": "",
+        "meson-python": "<0.19.0,>=0.16.0",
+        "maturin": "<2,>=1.9.4"
+    }
+    
+    status = {}
+    print_info("Checking Python build tools (Phase 1)...")
+    
+    try:
+        result = subprocess.run(
+            ["python3", "-m", "pip", "list"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        installed_packages = result.stdout.lower() if result.returncode == 0 else ""
+        
+        for pkg, constraint in build_tools.items():
+            # Check if package is installed
+            pkg_lower = pkg.lower().replace("-", "-").replace("_", "-")
+            is_installed = pkg_lower in installed_packages or pkg.lower() in installed_packages
+            status[pkg] = is_installed
+            if is_installed:
+                print_success(f"{pkg}{' ' + constraint if constraint else ''} - installed")
+            else:
+                print_warning(f"{pkg}{' ' + constraint if constraint else ''} - NOT installed")
+    except Exception as e:
+        print_error(f"Error checking Python build tools: {e}")
+        for pkg in build_tools:
+            status[pkg] = False
+    
+    return status
+
+def install_python_build_tools() -> bool:
+    """Install Phase 1 Python build tools"""
+    print_header("Installing Python Build Tools (Phase 1)")
+    
+    build_tools = [
+        "Cython",
+        "meson-python<0.19.0,>=0.16.0",
+        "maturin<2,>=1.9.4"
+    ]
+    
+    try:
+        for tool in build_tools:
+            print_info(f"Installing {tool}...")
+            result = subprocess.run(
+                ["python3", "-m", "pip", "install", tool],
+                capture_output=False,
+                text=True,
+                timeout=300
+            )
+            if result.returncode == 0:
+                print_success(f"Installed {tool}")
+            else:
+                print_error(f"Failed to install {tool}")
+                return False
+        
+        print_success("All Python build tools installed!")
+        return True
+    except Exception as e:
+        print_error(f"Error installing Python build tools: {e}")
+        return False
+
+def check_all_dependencies(scripts_dir: Path):
+    """Check all dependencies (system and Python)"""
+    print_header("Dependency Check")
+    
+    # Check system dependencies
+    sys_deps = check_system_dependencies()
+    missing_sys = [pkg for pkg, installed in sys_deps.items() if not installed]
+    
+    print()
+    
+    # Check Python build tools
+    py_tools = check_python_build_tools()
+    missing_py = [pkg for pkg, installed in py_tools.items() if not installed]
+    
+    print()
+    
+    # Summary
+    print_colored("Summary:", Colors.BOLD)
+    if missing_sys:
+        print_warning(f"Missing system dependencies ({len(missing_sys)}): {', '.join(missing_sys)}")
+        print_info("Run 'Install System Dependencies' to install them")
+    else:
+        print_success("All system dependencies are installed")
+    
+    if missing_py:
+        print_warning(f"Missing Python build tools ({len(missing_py)}): {', '.join(missing_py)}")
+        print_info("Run 'Install Python Build Tools' to install them")
+    else:
+        print_success("All Python build tools are installed")
+    
+    if not missing_sys and not missing_py:
+        print_success("All dependencies are ready!")
+    
+    print()
+
 def show_menu() -> str:
     """Show main menu and get user choice"""
     print_header("Droidrun Build Manager")
@@ -153,12 +293,14 @@ def show_menu() -> str:
     print_colored("  7. Check Status", Colors.CYAN)
     print_colored("  8. View Logs", Colors.CYAN)
     print_colored("  9. List All Built Wheels", Colors.CYAN)
-    print_colored("  10. Exit", Colors.CYAN)
+    print_colored("  10. Check All Dependencies", Colors.CYAN)
+    print_colored("  11. Install Python Build Tools (Phase 1)", Colors.CYAN)
+    print_colored("  12. Exit", Colors.CYAN)
     print()
     print_colored("  Tip: Run with --auto or -a flag for automatic execution", Colors.YELLOW)
     print()
     
-    return get_user_input("Enter your choice", default="10", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"])
+    return get_user_input("Enter your choice", default="12", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"])
 
 def get_build_status(scripts_dir: Path, config: Dict) -> Dict:
     """Get current build status"""
@@ -507,11 +649,20 @@ def main():
                 print_error(f"Error listing wheels: {e}")
             
         elif choice == "10":
+            check_all_dependencies(scripts_dir)
+            
+        elif choice == "11":
+            if install_python_build_tools():
+                print_success("Python build tools installation complete!")
+            else:
+                print_error("Failed to install some Python build tools")
+            
+        elif choice == "12":
             print_colored("\nExiting...", Colors.CYAN)
             break
         
         # Ask if user wants to continue
-        if choice != "10":
+        if choice != "12":
             print()
             continue_choice = get_user_input(
                 "Return to main menu?",
