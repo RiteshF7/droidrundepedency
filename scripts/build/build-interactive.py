@@ -152,12 +152,13 @@ def show_menu() -> str:
     print_colored("  6. Run All Steps (Auto Mode) - No Prompts", Colors.CYAN)
     print_colored("  7. Check Status", Colors.CYAN)
     print_colored("  8. View Logs", Colors.CYAN)
-    print_colored("  9. Exit", Colors.CYAN)
+    print_colored("  9. List All Built Wheels", Colors.CYAN)
+    print_colored("  10. Exit", Colors.CYAN)
     print()
     print_colored("  Tip: Run with --auto or -a flag for automatic execution", Colors.YELLOW)
     print()
     
-    return get_user_input("Enter your choice", default="9", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9"])
+    return get_user_input("Enter your choice", default="10", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"])
 
 def get_build_status(scripts_dir: Path, config: Dict) -> Dict:
     """Get current build status"""
@@ -197,6 +198,20 @@ def get_build_status(scripts_dir: Path, config: Dict) -> Dict:
     
     return status
 
+def list_wheels(directory: Path, max_show: int = 20):
+    """List wheel files in a directory"""
+    wheels = list(directory.glob("*.whl"))
+    if wheels:
+        print_colored(f"  Found {len(wheels)} wheel files:", Colors.GREEN)
+        for wheel in sorted(wheels)[:max_show]:
+            size = wheel.stat().st_size / (1024 * 1024)  # Size in MB
+            print(f"    - {wheel.name} ({size:.2f} MB)")
+        if len(wheels) > max_show:
+            print(f"    ... and {len(wheels) - max_show} more")
+    else:
+        print_colored("  No wheel files found", Colors.YELLOW)
+    return wheels
+
 def show_status(scripts_dir: Path):
     """Show current build status"""
     print_header("Build Status")
@@ -230,6 +245,38 @@ def show_status(scripts_dir: Path):
     print(f"  Source files: {status['sources_count']}")
     print(f"  Built wheels: {status['wheels_count']}")
     print(f"  Exported wheels: {status['exported_wheels_count']}")
+    print()
+    
+    # Show wheel locations
+    print_colored("Wheel Locations:", Colors.BOLD)
+    
+    # Check wheels directory
+    wheels_dir = Path(status['wheels_dir'])
+    if wheels_dir.exists():
+        print_colored(f"\n  Wheels Directory ({status['wheels_dir']}):", Colors.CYAN)
+        list_wheels(wheels_dir)
+    else:
+        print_colored(f"  Wheels directory does not exist: {status['wheels_dir']}", Colors.YELLOW)
+    
+    # Check export directory
+    export_dir = Path(status['export_dir'])
+    if export_dir.exists():
+        print_colored(f"\n  Export Directory ({status['export_dir']}):", Colors.CYAN)
+        list_wheels(export_dir)
+    else:
+        print_colored(f"  Export directory does not exist: {status['export_dir']}", Colors.YELLOW)
+    
+    # Check pip cache for wheels
+    try:
+        pip_cache = Path.home() / ".cache" / "pip" / "wheels"
+        if pip_cache.exists():
+            pip_wheels = list(pip_cache.rglob("*.whl"))
+            if pip_wheels:
+                print_colored(f"\n  Pip Cache ({pip_cache}):", Colors.CYAN)
+                print_colored(f"    Found {len(pip_wheels)} cached wheel files", Colors.GREEN)
+    except:
+        pass
+    
     print()
     
     if status['need_build_file']:
@@ -415,11 +462,56 @@ def main():
             view_logs(scripts_dir)
             
         elif choice == "9":
+            print_header("All Built Wheels")
+            # Try to detect architecture and find export directory
+            try:
+                result = subprocess.run(["uname", "-m"], capture_output=True, text=True)
+                arch = result.stdout.strip()
+                project_root = scripts_dir.parent.parent
+                export_dir = project_root / f"wheels_{arch}"
+                wheels_dir = Path(os.environ.get("WHEELS_DIR", os.path.expanduser("~/wheels")))
+                
+                all_wheels = []
+                
+                # Check export directory
+                if export_dir.exists():
+                    print_colored(f"Export Directory: {export_dir}", Colors.CYAN)
+                    wheels = list_wheels(export_dir, max_show=1000)
+                    all_wheels.extend(wheels)
+                    print()
+                
+                # Check wheels directory
+                if wheels_dir.exists():
+                    print_colored(f"Wheels Directory: {wheels_dir}", Colors.CYAN)
+                    wheels = list_wheels(wheels_dir, max_show=1000)
+                    all_wheels.extend(wheels)
+                    print()
+                
+                # Check pip cache
+                pip_cache = Path.home() / ".cache" / "pip" / "wheels"
+                if pip_cache.exists():
+                    pip_wheels = list(pip_cache.rglob("*.whl"))
+                    if pip_wheels:
+                        print_colored(f"Pip Cache: {pip_cache}", Colors.CYAN)
+                        print_colored(f"  Found {len(pip_wheels)} cached wheel files", Colors.GREEN)
+                        print()
+                
+                if all_wheels:
+                    total_size = sum(w.stat().st_size for w in all_wheels) / (1024 * 1024)
+                    print_colored(f"Total: {len(all_wheels)} wheel files ({total_size:.2f} MB)", Colors.GREEN)
+                else:
+                    print_warning("No wheel files found in expected locations")
+                    print_info("Wheels will be created in the export directory after successful builds")
+                
+            except Exception as e:
+                print_error(f"Error listing wheels: {e}")
+            
+        elif choice == "10":
             print_colored("\nExiting...", Colors.CYAN)
             break
         
         # Ask if user wants to continue
-        if choice != "9":
+        if choice != "10":
             print()
             continue_choice = get_user_input(
                 "Return to main menu?",
