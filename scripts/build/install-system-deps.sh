@@ -6,7 +6,6 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/config.sh"
 source "$SCRIPT_DIR/common.sh"
-source "$SCRIPT_DIR/build-wheels.sh"
 
 # Track installed packages
 declare -A INSTALLED_PKGS
@@ -101,7 +100,7 @@ download_source_archive() {
     
     # Check if sources directory already has files (unless force download)
     if [ "${FORCE_DOWNLOAD:-0}" != "1" ]; then
-        local existing_files=$(find "$SOURCES_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) 2>/dev/null | wc -l)
+        local existing_files=$(find "$SOURCES_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.7z" \) 2>/dev/null | wc -l)
         if [ "$existing_files" -gt 0 ]; then
             log "INFO" "Source directory already contains $existing_files files"
             log "INFO" "Skipping download. Use --force-download to re-download."
@@ -202,7 +201,7 @@ download_source_archive() {
     rm -f "$temp_archive"
     
     # Count extracted files
-    local extracted_count=$(find "$SOURCES_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) 2>/dev/null | wc -l)
+    local extracted_count=$(find "$SOURCES_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.7z" \) 2>/dev/null | wc -l)
     
     log "SUCCESS" "=========================================="
     log "SUCCESS" "Source archive extracted successfully!"
@@ -212,69 +211,9 @@ download_source_archive() {
     return 0
 }
 
-# Download all source files for Python packages (fallback method)
-download_all_sources_individual() {
-    log "INFO" "=========================================="
-    log "INFO" "Downloading source files individually (fallback)"
-    log "INFO" "Sources directory: $SOURCES_DIR"
-    log "INFO" "=========================================="
-    
-    # Create sources directory if it doesn't exist
-    mkdir -p "$SOURCES_DIR"
-    
-    # Setup build environment (needed for pip)
-    setup_build_environment
-    
-    local downloaded_count=0
-    local skipped_count=0
-    local failed_count=0
-    
-    # Download sources for all Python packages
-    for pkg_name in "${!PYTHON_PACKAGES[@]}"; do
-        local constraint="${PYTHON_PACKAGES[$pkg_name]}"
-        local version=""
-        
-        # Extract version from constraint if it's ==
-        if [[ "$constraint" == ==* ]]; then
-            version="${constraint#==}"
-        fi
-        
-        # Check if source file already exists
-        local source_file=$(find_source_file "$pkg_name" "$version")
-        if [ -n "$source_file" ]; then
-            log "INFO" "Source file already exists for $pkg_name: $(basename "$source_file")"
-            skipped_count=$((skipped_count + 1))
-            continue
-        fi
-        
-        # Download source file
-        log "INFO" "Downloading source for $pkg_name${version:+ $version}..."
-        if download_source_file "$pkg_name" "$version" "$constraint"; then
-            downloaded_count=$((downloaded_count + 1))
-        else
-            log "WARNING" "Failed to download source for $pkg_name"
-            failed_count=$((failed_count + 1))
-        fi
-    done
-    
-    log "SUCCESS" "=========================================="
-    log "SUCCESS" "Source download complete!"
-    log "INFO" "Downloaded: $downloaded_count"
-    log "INFO" "Skipped (already exists): $skipped_count"
-    log "INFO" "Failed: $failed_count"
-    log "SUCCESS" "=========================================="
-}
-
-# Main download function - tries archive first, falls back to individual
+# Main download function - downloads source archive only
 download_all_sources() {
-    # Try downloading archive first
-    if download_source_archive; then
-        log "SUCCESS" "Sources downloaded from release archive"
-        return 0
-    else
-        log "WARNING" "Failed to download source archive, falling back to individual downloads"
-        download_all_sources_individual
-    fi
+    download_source_archive
 }
 
 # Main function that installs system deps and downloads sources
@@ -296,10 +235,6 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
         install_all_system_deps
         export FORCE_DOWNLOAD=1
         download_source_archive
-    elif [ "$1" = "--individual" ] || [ "$1" = "-i" ]; then
-        # Use individual downloads instead of archive
-        install_all_system_deps
-        download_all_sources_individual
     else
         # By default, install system deps and download sources from archive
         install_all_and_download_sources

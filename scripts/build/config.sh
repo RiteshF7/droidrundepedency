@@ -154,7 +154,7 @@ declare -A PYTHON_TRANSITIVE_DEPS=(
 # Default to the current repository
 GITHUB_REPO="${GITHUB_REPO:-RiteshF7/droidrundepedency}"
 GITHUB_RELEASE_TAG="${GITHUB_RELEASE_TAG:-latest}"
-SOURCE_ARCHIVE_NAME="${SOURCE_ARCHIVE_NAME:-sources.tar.gz}"
+SOURCE_ARCHIVE_NAME="${SOURCE_ARCHIVE_NAME:-source.7z}"
 
 # Export all variables
 export SCRIPT_DIR BUILD_SCRIPTS_DIR PROJECT_ROOT
