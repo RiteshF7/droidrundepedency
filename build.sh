@@ -144,53 +144,9 @@ mkdir -p "$TMPDIR"
 # Ensure wheels directory exists
 mkdir -p "$WHEELS_DIR"
 
-# ============================================
-# 5a. Copy pre-built wheels if available
-# ============================================
-PREBUILT_WHEELS_DIR="${SCRIPT_DIR}/depedencies/wheels/_x86_64_wheels"
-if [ -d "$PREBUILT_WHEELS_DIR" ]; then
-    log_info "Checking for pre-built wheels in $PREBUILT_WHEELS_DIR..."
-    PREBUILT_COUNT=$(find "$PREBUILT_WHEELS_DIR" -maxdepth 1 -name "*.whl" 2>/dev/null | wc -l)
-    
-    if [ "$PREBUILT_COUNT" -gt 0 ]; then
-        log_info "Found $PREBUILT_COUNT pre-built wheels, copying to $WHEELS_DIR..."
-        # Copy all .whl files to wheels directory
-        find "$PREBUILT_WHEELS_DIR" -maxdepth 1 -name "*.whl" -exec cp {} "$WHEELS_DIR"/ \; 2>/dev/null || true
-        
-        COPIED_COUNT=$(find "$WHEELS_DIR" -maxdepth 1 -name "*.whl" 2>/dev/null | wc -l)
-        if [ "$COPIED_COUNT" -gt 0 ]; then
-            log_success "Copied $COPIED_COUNT pre-built wheels to $WHEELS_DIR"
-            
-            # Install pre-built wheels so they're available for dependent packages
-            log_info "Installing pre-built wheels for dependency resolution..."
-            # Install wheels one by one to handle errors gracefully
-            INSTALLED=0
-            for wheel in "$WHEELS_DIR"/*.whl; do
-                if [ -f "$wheel" ]; then
-                    if pip install --find-links "$WHEELS_DIR" --no-index --force-reinstall "$wheel" --quiet 2>/dev/null; then
-                        INSTALLED=$((INSTALLED + 1))
-                    fi
-                fi
-            done
-            if [ "$INSTALLED" -gt 0 ]; then
-                log_success "Installed $INSTALLED pre-built wheels for dependency resolution"
-            else
-                log_warning "Could not install pre-built wheels (may already be installed)"
-            fi
-        else
-            log_warning "No wheels were copied (check permissions)"
-        fi
-    else
-        log_info "No pre-built wheels found in $PREBUILT_WHEELS_DIR"
-    fi
-else
-    log_info "Pre-built wheels directory not found: $PREBUILT_WHEELS_DIR"
-    log_info "Will build all wheels from source"
-    log_info ""
-    log_info "To use pre-built wheels, sync them first:"
-    log_info "  bash sync_wheels.sh"
-    log_info "  (or manually copy wheels to: $PREBUILT_WHEELS_DIR)"
-fi
+# Note: depedencies/wheels/_x86_64_wheels/ contains reference wheels for x86_64 architecture only.
+# This script builds wheels for the CURRENT Android architecture, so we don't copy reference wheels.
+# The reference wheels are for documentation/reference purposes only.
 
 # Package-specific environment variables (will be set per-package in build_wheels.py)
 # These are documented here for reference:
