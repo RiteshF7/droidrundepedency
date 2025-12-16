@@ -50,8 +50,10 @@ main() {
     log "INFO" "Installing/upgrading build tools..."
     install_build_tools
     
-    # Try building from source
+    # Process packages with priority: wheel -> source -> pip
     local failed_builds=()
+    local pip_fallback_needed=()
+    
     for pkg_name in "${need_build_array[@]}"; do
         if [ -z "$pkg_name" ]; then
             continue
@@ -59,7 +61,7 @@ main() {
         
         # Skip if already installed
         if is_package_installed "$pkg_name"; then
-            log "INFO" "$pkg_name is already installed, skipping build"
+            log "INFO" "$pkg_name is already installed, skipping"
             continue
         fi
         
@@ -71,33 +73,69 @@ main() {
             version="${constraint#==}"
         fi
         
-        # Special handling for scikit-learn dependencies
-        if [ "$pkg_name" = "scikit-learn" ]; then
-            log "INFO" "Installing scikit-learn dependencies..."
-            local PIP_CMD=$(get_pip_cmd)
-            if [[ "$PIP_CMD" == *"python3 -m pip"* ]]; then
-                python3 -m pip install "joblib>=1.3.0" "threadpoolctl>=3.2.0" >> "$BUILD_LOG" 2>&1 || true
-            else
-                $PIP_CMD install "joblib>=1.3.0" "threadpoolctl>=3.2.0" >> "$BUILD_LOG" 2>&1 || true
+        log "INFO" "Processing $pkg_name${version:+ $version}..."
+        
+        # Priority 1: Check if wheel already exists
+        if wheel_exists "$pkg_name" "$version"; then
+            log "INFO" "Wheel already exists for $pkg_name, no building needed"
+            # Install the existing wheel
+            local existing_wheel=$(ls "$WHEELS_DIR/${pkg_name}-"*"${PLATFORM_TAG}.whl" 2>/dev/null | head -1)
+            if [ -z "$existing_wheel" ]; then
+                existing_wheel=$(ls "$EXPORT_DIR/${pkg_name}-"*"${PLATFORM_TAG}.whl" 2>/dev/null | head -1)
             fi
+            if [ -n "$existing_wheel" ]; then
+                log "INFO" "Installing $pkg_name from existing wheel: $(basename "$existing_wheel")"
+                local PIP_CMD=$(get_pip_cmd)
+                if [[ "$PIP_CMD" == *"python3 -m pip"* ]]; then
+                    python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$existing_wheel" >> "$BUILD_LOG" 2>&1 || true
+                else
+                    $PIP_CMD install --find-links "$WHEELS_DIR" --no-index "$existing_wheel" >> "$BUILD_LOG" 2>&1 || true
+                fi
+            fi
+            continue
         fi
         
-        log "INFO" "Building $pkg_name${version:+ $version}..."
-        if ! build_with_deps "$pkg_name" "$version" "$constraint"; then
-            log "WARNING" "Failed to build $pkg_name, will try pip fallback"
-            failed_builds+=("$pkg_name")
+        # Priority 2: Check if source file is available in directory
+        local source_file=$(find_source_file "$pkg_name" "$version")
+        if [ -n "$source_file" ] && [ -f "$source_file" ]; then
+            log "INFO" "Source file found for $pkg_name: $(basename "$source_file")"
+            
+            # Special handling for scikit-learn dependencies
+            if [ "$pkg_name" = "scikit-learn" ]; then
+                log "INFO" "Installing scikit-learn dependencies..."
+                local PIP_CMD=$(get_pip_cmd)
+                if [[ "$PIP_CMD" == *"python3 -m pip"* ]]; then
+                    python3 -m pip install "joblib>=1.3.0" "threadpoolctl>=3.2.0" >> "$BUILD_LOG" 2>&1 || true
+                else
+                    $PIP_CMD install "joblib>=1.3.0" "threadpoolctl>=3.2.0" >> "$BUILD_LOG" 2>&1 || true
+                fi
+            fi
+            
+            log "INFO" "Building $pkg_name from source..."
+            if build_with_deps "$pkg_name" "$version" "$constraint"; then
+                log "SUCCESS" "Successfully built $pkg_name from source"
+                continue
+            else
+                log "WARNING" "Failed to build $pkg_name from source, will try pip fallback"
+                pip_fallback_needed+=("$pkg_name")
+            fi
+        else
+            # Priority 3: No source file available, use pip as last resort
+            log "WARNING" "No source file found for $pkg_name in $SOURCES_DIR"
+            log "INFO" "Will use pip install as last resort for $pkg_name"
+            pip_fallback_needed+=("$pkg_name")
         fi
     done
     
-    # Use pip as fallback for failed builds
-    if [ ${#failed_builds[@]} -gt 0 ]; then
+    # Use pip as last resort for packages without sources or failed builds
+    if [ ${#pip_fallback_needed[@]} -gt 0 ]; then
         log "INFO" "=========================================="
-        log "INFO" "Using pip as fallback for packages that couldn't be built"
-        log "INFO" "Packages for fallback: ${failed_builds[*]}"
+        log "INFO" "Using pip as last resort for packages"
+        log "INFO" "Packages: ${pip_fallback_needed[*]}"
         log "INFO" "=========================================="
-        fallback_pip_install "${failed_builds[@]}"
+        fallback_pip_install "${pip_fallback_needed[@]}"
     else
-        log "SUCCESS" "All packages built successfully!"
+        log "SUCCESS" "All packages processed successfully!"
     fi
     
     log "SUCCESS" "=========================================="
