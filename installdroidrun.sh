@@ -66,6 +66,223 @@ validate_tar_gz() {
     return 0
 }
 
+# Helper function to download and fix source for packages that need fixes
+# Returns path to fixed source file
+download_and_fix_source() {
+    local pkg_name=$1
+    local version_spec=$2
+    local fix_type=$3  # "pandas" or "scikit-learn"
+    
+    log_info "Downloading $pkg_name source ($version_spec)..."
+    WORK_DIR=$(mktemp -d)
+    cd "$WORK_DIR"
+    
+    # Download source using pip
+    if ! pip download "$version_spec" --dest . --no-cache-dir --no-binary :all: >/dev/null 2>&1; then
+        log_error "Failed to download $pkg_name source"
+        rm -rf "$WORK_DIR"
+        return 1
+    fi
+    
+    # Find downloaded file
+    local source_file=$(ls ${pkg_name}-*.tar.gz 2>/dev/null | head -1)
+    if [ -z "$source_file" ]; then
+        log_error "Downloaded source file not found for $pkg_name"
+        rm -rf "$WORK_DIR"
+        return 1
+    fi
+    
+    log_info "Extracting $pkg_name source..."
+    tar -xzf "$source_file"
+    local pkg_dir=$(ls -d ${pkg_name}-* | head -1)
+    
+    if [ "$fix_type" = "pandas" ]; then
+        # Fix pandas meson.build
+        if [ -f "$pkg_dir/meson.build" ]; then
+            local pkg_version=$(echo "$pkg_dir" | sed "s/${pkg_name}-//")
+            log_info "Fixing meson.build: replacing version detection with '$pkg_version'"
+            sed -i "s/version: run_command.*/version: '$pkg_version',/" "$pkg_dir/meson.build"
+            log_success "meson.build fixed"
+        fi
+    elif [ "$fix_type" = "scikit-learn" ]; then
+        # Fix scikit-learn version.py and meson.build
+        if [ -f "$pkg_dir/sklearn/_build_utils/version.py" ]; then
+            if ! head -1 "$pkg_dir/sklearn/_build_utils/version.py" | grep -q "^#!/"; then
+                log_info "Fixing sklearn/_build_utils/version.py: adding shebang"
+                sed -i '1i#!/usr/bin/env python3' "$pkg_dir/sklearn/_build_utils/version.py"
+                log_success "version.py fixed"
+            fi
+        fi
+        if [ -f "$pkg_dir/meson.build" ]; then
+            local pkg_version=$(echo "$pkg_dir" | sed "s/${pkg_name}-//")
+            log_info "Fixing meson.build: replacing version extraction with '$pkg_version'"
+            sed -i "s/version: run_command.*/version: '$pkg_version',/" "$pkg_dir/meson.build" 2>/dev/null || \
+            sed -i "s/version:.*/version: '$pkg_version',/" "$pkg_dir/meson.build"
+            log_success "meson.build fixed"
+        fi
+    fi
+    
+    # Repackage fixed source
+    log_info "Repackaging fixed source..."
+    tar -czf "$source_file" "$pkg_dir/"
+    echo "$WORK_DIR/$source_file"
+}
+
+# Generic function to build and install a package
+# Usage: build_package <pkg_name> <version_spec> [options]
+# Options: --no-build-isolation, --fix-source=<type>, --pre-check, --env-var=<key=value>, --post-install=<cmd>
+build_package() {
+    local pkg_name=$1
+    local version_spec=$2
+    shift 2
+    local build_opts=""
+    local fix_type=""
+    local pre_check=false
+    local env_vars=()
+    local post_install=""
+    local wheel_pattern="${pkg_name}*.whl"
+    
+    # Parse options
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --no-build-isolation)
+                build_opts="--no-build-isolation"
+                shift
+                ;;
+            --fix-source=*)
+                fix_type="${1#*=}"
+                shift
+                ;;
+            --pre-check)
+                pre_check=true
+                shift
+                ;;
+            --env-var=*)
+                env_vars+=("${1#*=}")
+                shift
+                ;;
+            --post-install=*)
+                post_install="${1#*=}"
+                shift
+                ;;
+            --wheel-pattern=*)
+                wheel_pattern="${1#*=}"
+                shift
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                return 1
+                ;;
+        esac
+    done
+    
+    log_info "Building $pkg_name..."
+    cd "$WHEELS_DIR"
+    
+    # Set environment variables if specified
+    for env_var in "${env_vars[@]}"; do
+        export "$env_var"
+    done
+    
+    # Pre-check for pre-built wheels (e.g., pyarrow)
+    if [ "$pre_check" = true ]; then
+        log_info "Checking for pre-built $pkg_name wheel..."
+        pip download "$version_spec" --dest . --no-cache-dir 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done || true
+        if pip install --find-links . --no-index ${wheel_pattern} 2>/dev/null; then
+            log_success "$pkg_name installed (pre-built wheel)"
+            return 0
+        fi
+        log_info "No pre-built wheel found, building from source..."
+    fi
+    
+    # Download and fix source if needed
+    local source_arg="$version_spec"
+    local temp_dir=""
+    if [ -n "$fix_type" ]; then
+        local fixed_source=$(download_and_fix_source "$pkg_name" "$version_spec" "$fix_type")
+        if [ -z "$fixed_source" ] || [ ! -f "$fixed_source" ]; then
+            log_error "Failed to download and fix $pkg_name source"
+            return 1
+        fi
+        source_arg="$fixed_source"
+        temp_dir="$(dirname "$fixed_source")"
+    fi
+    
+    # Build wheel
+    log_info "Building $pkg_name wheel (pip will download source automatically)..."
+    if pip wheel "$source_arg" --no-deps $build_opts --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+        log_success "$pkg_name wheel built successfully"
+    else
+        log_error "Failed to build $pkg_name wheel"
+        [ -n "$temp_dir" ] && rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    # Cleanup temp directory if used
+    [ -n "$temp_dir" ] && rm -rf "$temp_dir"
+    
+    # Install wheel
+    log_info "Installing $pkg_name wheel..."
+    pip install --find-links . --no-index ${wheel_pattern}
+    
+    # Post-install commands
+    if [ -n "$post_install" ]; then
+        eval "$post_install"
+    fi
+    
+    log_success "$pkg_name installed"
+    return 0
+}
+
+# Function to fix grpcio wheel after building
+fix_grpcio_wheel() {
+    local wheel_file=$(ls grpcio-*.whl | head -1)
+    if [ -z "$wheel_file" ]; then
+        log_error "grpcio wheel not found"
+        return 1
+    fi
+    
+    log_info "Fixing grpcio wheel: $wheel_file"
+    
+    # Extract wheel
+    unzip -q "$wheel_file" -d grpcio_extract
+    
+    # Find and patch the .so file
+    local so_file=$(find grpcio_extract -name "cygrpc*.so" | head -1)
+    if [ -z "$so_file" ]; then
+        log_error "cygrpc*.so not found in wheel"
+        rm -rf grpcio_extract
+        return 1
+    fi
+    
+    # Add abseil libraries to NEEDED list and set RPATH
+    patchelf --add-needed libabsl_flags_internal.so "$so_file"
+    patchelf --add-needed libabsl_flags.so "$so_file"
+    patchelf --add-needed libabsl_flags_commandlineflag.so "$so_file"
+    patchelf --add-needed libabsl_flags_reflection.so "$so_file"
+    patchelf --set-rpath "$PREFIX/lib" "$so_file"
+    
+    # Repackage the wheel
+    cd grpcio_extract
+    python3 << 'PYEOF'
+import zipfile
+import os
+zf = zipfile.ZipFile('../grpcio-fixed.whl', 'w', zipfile.ZIP_DEFLATED)
+for root, dirs, files in os.walk('.'):
+    for file in files:
+        filepath = os.path.join(root, file)
+        arcname = os.path.relpath(filepath, '.')
+        zf.write(filepath, arcname)
+zf.close()
+PYEOF
+    cd ..
+    
+    # Replace original wheel with fixed one
+    rm -rf grpcio_extract
+    rm "$wheel_file"
+    mv grpcio-fixed.whl "$wheel_file"
+    log_success "grpcio wheel fixed"
+}
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}droidrun Installation Script${NC}"
