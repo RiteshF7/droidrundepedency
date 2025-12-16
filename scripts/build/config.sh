@@ -150,10 +150,17 @@ declare -A PYTHON_TRANSITIVE_DEPS=(
     ["pyarrow"]="numpy"
 )
 
+# GitHub release configuration for source downloads
+# Default to the current repository
+GITHUB_REPO="${GITHUB_REPO:-RiteshF7/droidrundepedency}"
+GITHUB_RELEASE_TAG="${GITHUB_RELEASE_TAG:-latest}"
+SOURCE_ARCHIVE_NAME="${SOURCE_ARCHIVE_NAME:-sources.tar.gz}"
+
 # Export all variables
 export SCRIPT_DIR BUILD_SCRIPTS_DIR PROJECT_ROOT
 export ARCH PLATFORM_TAG
 export SOURCES_DIR WHEELS_DIR EXPORT_DIR BUILD_LOG WHEEL_MANIFEST
 export PYTHON_VERSION PYTHON_TAG
 export RED GREEN YELLOW BLUE NC
+export GITHUB_REPO GITHUB_RELEASE_TAG SOURCE_ARCHIVE_NAME
 
