@@ -158,22 +158,34 @@ if [ -d "$PREBUILT_WHEELS_DIR" ]; then
         find "$PREBUILT_WHEELS_DIR" -maxdepth 1 -name "*.whl" -exec cp {} "$WHEELS_DIR"/ \; 2>/dev/null || true
         
         COPIED_COUNT=$(find "$WHEELS_DIR" -maxdepth 1 -name "*.whl" 2>/dev/null | wc -l)
-        log_success "Copied $COPIED_COUNT pre-built wheels to $WHEELS_DIR"
-        
-        # Install pre-built wheels so they're available for dependent packages
-        log_info "Installing pre-built wheels for dependency resolution..."
-        pip install --find-links "$WHEELS_DIR" --no-index --force-reinstall "$WHEELS_DIR"/*.whl 2>/dev/null || {
-            # Install wheels one by one if batch install fails
+        if [ "$COPIED_COUNT" -gt 0 ]; then
+            log_success "Copied $COPIED_COUNT pre-built wheels to $WHEELS_DIR"
+            
+            # Install pre-built wheels so they're available for dependent packages
+            log_info "Installing pre-built wheels for dependency resolution..."
+            # Install wheels one by one to handle errors gracefully
+            INSTALLED=0
             for wheel in "$WHEELS_DIR"/*.whl; do
-                [ -f "$wheel" ] && pip install --find-links "$WHEELS_DIR" --no-index --force-reinstall "$wheel" 2>/dev/null || true
+                if [ -f "$wheel" ]; then
+                    if pip install --find-links "$WHEELS_DIR" --no-index --force-reinstall "$wheel" --quiet 2>/dev/null; then
+                        INSTALLED=$((INSTALLED + 1))
+                    fi
+                fi
             done
-        }
-        log_success "Pre-built wheels installed for dependency resolution"
+            if [ "$INSTALLED" -gt 0 ]; then
+                log_success "Installed $INSTALLED pre-built wheels for dependency resolution"
+            else
+                log_warning "Could not install pre-built wheels (may already be installed)"
+            fi
+        else
+            log_warning "No wheels were copied (check permissions)"
+        fi
     else
         log_info "No pre-built wheels found in $PREBUILT_WHEELS_DIR"
     fi
 else
     log_info "Pre-built wheels directory not found: $PREBUILT_WHEELS_DIR"
+    log_info "Will build all wheels from source"
 fi
 
 # Package-specific environment variables (will be set per-package in build_wheels.py)
