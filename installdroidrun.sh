@@ -38,22 +38,53 @@ pkg_installed() {
     pkg list-installed 2>/dev/null | grep -q "^$1 " || return 1
 }
 
-# Validate tar.gz file integrity
+# Validate tar.gz file integrity (global validation function)
 validate_tar_gz() {
     local file=$1
     if [ ! -f "$file" ]; then
         return 1
     fi
     
-    # Check if file is a valid gzip file using Python (more reliable)
-    if python3 -c "import gzip; f = open('$file', 'rb'); gzip.GzipFile(fileobj=f).read(1); f.close()" 2>/dev/null; then
-        # Check if it's a valid tar archive
-        if tar -tzf "$file" >/dev/null 2>&1; then
-            return 0
+    # Quick check: tar.gz files should start with gzip magic bytes (1f 8b)
+    if [[ "$file" == *.tar.gz ]]; then
+        local magic=$(head -c 2 "$file" | od -An -tx1 2>/dev/null | tr -d ' \n')
+        if [ "$magic" != "1f8b" ]; then
+            return 1
         fi
     fi
     
-    return 1
+    # Verify it's a valid gzip file using Python (more reliable)
+    if ! python3 -c "import gzip; f = open('$file', 'rb'); gzip.GzipFile(fileobj=f).read(1); f.close()" 2>/dev/null; then
+        return 1
+    fi
+    
+    # Check if it's a valid tar archive
+    if ! tar -tzf "$file" >/dev/null 2>&1; then
+        return 1
+    fi
+    
+    return 0
+}
+
+# Safe source file usage - validates before using
+use_source_file() {
+    local source_file=$1
+    local pkg_name=$2
+    local download_cmd=$3
+    
+    if [ -f "$source_file" ]; then
+        if validate_tar_gz "$source_file"; then
+            log_info "Using local source: $(basename "$source_file")"
+            return 0
+        else
+            log_error "$(basename "$source_file") is corrupted or invalid"
+            log_warning "Removing corrupted file: $(basename "$source_file")"
+            rm -f "$source_file"
+            return 1
+        fi
+    else
+        return 1
+    fi
 }
 
 # Validate tar.gz file integrity
@@ -448,19 +479,10 @@ log_success "Phase 1 complete: Build tools installed"
 log_info "Phase 2: Building numpy..."
 cd "$WHEELS_DIR"
 
-if [ -f "$NUMPY_SOURCE_FILE" ]; then
-    if validate_tar_gz "$NUMPY_SOURCE_FILE"; then
-        log_info "Using local source: numpy.tar.gz"
-        pip wheel "$NUMPY_SOURCE_FILE" --no-deps --wheel-dir .
-    else
-        log_error "numpy.tar.gz is corrupted or invalid (not a valid gzip/tar file)"
-        log_warning "Removing corrupted file and downloading fresh copy..."
-        rm -f "$NUMPY_SOURCE_FILE"
-        pip download numpy --dest . --no-cache-dir
-        pip wheel numpy --no-deps --wheel-dir .
-    fi
+if use_source_file "$NUMPY_SOURCE_FILE" "numpy" "pip download numpy --dest . --no-cache-dir"; then
+    pip wheel "$NUMPY_SOURCE_FILE" --no-deps --wheel-dir .
 else
-    log_warning "numpy source not found locally, downloading..."
+    log_warning "numpy source not found locally or corrupted, downloading..."
     pip download numpy --dest . --no-cache-dir
     pip wheel numpy --no-deps --wheel-dir .
 fi
@@ -474,11 +496,10 @@ log_info "Phase 3: Building scientific stack..."
 
 # Build scipy
 log_info "Building scipy..."
-if [ -f "$SCIPY_SOURCE_FILE" ]; then
-    log_info "Using local source: scipy.tar.gz"
+if use_source_file "$SCIPY_SOURCE_FILE" "scipy" "pip download scipy>=1.8.0,<1.17.0 --dest . --no-cache-dir"; then
     pip wheel "$SCIPY_SOURCE_FILE" --no-deps --wheel-dir .
 else
-    log_warning "scipy source not found locally, downloading..."
+    log_warning "scipy source not found locally or corrupted, downloading..."
     pip download "scipy>=1.8.0,<1.17.0" --dest . --no-cache-dir
     pip wheel scipy --no-deps --wheel-dir .
 fi
@@ -487,8 +508,7 @@ log_success "scipy installed"
 
 # Build pandas (with meson.build fix)
 log_info "Building pandas (applying meson.build fix)..."
-if [ -f "$PANDAS_SOURCE_FILE" ]; then
-    log_info "Using local source: pandas.tar.gz"
+if use_source_file "$PANDAS_SOURCE_FILE" "pandas" "pip download pandas<2.3.0 --dest . --no-cache-dir"; then
     # Fix meson.build version detection issue
     WORK_DIR=$(mktemp -d)
     cp "$PANDAS_SOURCE_FILE" "$WORK_DIR/"
@@ -555,11 +575,10 @@ log_success "Phase 3 complete: Scientific stack installed"
 log_info "Phase 4: Building jiter..."
 cd "$WHEELS_DIR"
 
-if [ -f "$JITER_SOURCE_FILE" ]; then
-    log_info "Using local source: jiter.tar.gz"
+if use_source_file "$JITER_SOURCE_FILE" "jiter" "pip download jiter==0.12.0 --dest . --no-cache-dir"; then
     pip wheel "$JITER_SOURCE_FILE" --no-deps --wheel-dir .
 else
-    log_warning "jiter source not found locally, downloading..."
+    log_warning "jiter source not found locally or corrupted, downloading..."
     pip download jiter==0.12.0 --dest . --no-cache-dir
     pip wheel jiter --no-deps --wheel-dir .
 fi
@@ -573,8 +592,7 @@ log_info "Phase 5: Building other compiled packages..."
 
 # Build pyarrow
 log_info "Building pyarrow..."
-if [ -f "$PYARROW_SOURCE_FILE" ]; then
-    log_info "Using local source: pyarrow.tar.gz"
+if use_source_file "$PYARROW_SOURCE_FILE" "pyarrow" "pip download pyarrow --dest . --no-cache-dir"; then
     export ARROW_HOME=$PREFIX
     pip wheel "$PYARROW_SOURCE_FILE" --no-deps --wheel-dir .
     pip install --find-links . --no-index pyarrow*.whl
@@ -595,11 +613,10 @@ fi
 
 # Build psutil
 log_info "Building psutil..."
-if [ -f "$PSUTIL_SOURCE_FILE" ]; then
-    log_info "Using local source: psutil.tar.gz"
+if use_source_file "$PSUTIL_SOURCE_FILE" "psutil" "pip download psutil --dest . --no-cache-dir"; then
     pip wheel "$PSUTIL_SOURCE_FILE" --no-deps --wheel-dir .
 else
-    log_warning "psutil source not found locally, downloading..."
+    log_warning "psutil source not found locally or corrupted, downloading..."
     pip download psutil --dest . --no-cache-dir
     pip wheel psutil --no-deps --wheel-dir .
 fi
@@ -617,12 +634,11 @@ export GRPC_PYTHON_BUILD_SYSTEM_RE2=1
 export GRPC_PYTHON_BUILD_SYSTEM_ABSL=1
 export GRPC_PYTHON_BUILD_WITH_CYTHON=1
 
-if [ -f "$GRPCIO_SOURCE_FILE" ]; then
-    log_info "Using local source: grpcio.tar.gz"
+if use_source_file "$GRPCIO_SOURCE_FILE" "grpcio" "pip download grpcio --dest . --no-cache-dir"; then
     # Build wheel from local source
     pip wheel "$GRPCIO_SOURCE_FILE" --no-deps --no-build-isolation --wheel-dir .
 else
-    log_warning "grpcio source not found locally, downloading..."
+    log_warning "grpcio source not found locally or corrupted, downloading..."
     pip download grpcio --dest . --no-cache-dir
     # Build wheel
     pip wheel grpcio --no-deps --no-build-isolation --wheel-dir .
@@ -694,11 +710,10 @@ export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH
 export LDFLAGS="-L$PREFIX/lib"
 export CPPFLAGS="-I$PREFIX/include"
 
-if [ -f "$PILLOW_SOURCE_FILE" ]; then
-    log_info "Using local source: pillow.tar.gz"
+if use_source_file "$PILLOW_SOURCE_FILE" "pillow" "pip download pillow --dest . --no-cache-dir"; then
     pip wheel "$PILLOW_SOURCE_FILE" --no-deps --wheel-dir .
 else
-    log_warning "pillow source not found locally, downloading..."
+    log_warning "pillow source not found locally or corrupted, downloading..."
     pip download pillow --dest . --no-cache-dir
     pip wheel pillow --no-deps --wheel-dir .
 fi
@@ -719,51 +734,46 @@ else
     log_info "Some packages need building from source..."
     
     # Build tokenizers
-    if [ -f "$TOKENIZERS_SOURCE_FILE" ]; then
-        log_info "Using local source for tokenizers: tokenizers.tar.gz"
+    if use_source_file "$TOKENIZERS_SOURCE_FILE" "tokenizers" "pip download tokenizers --dest . --no-cache-dir"; then
         pip wheel "$TOKENIZERS_SOURCE_FILE" --no-deps --wheel-dir . 2>/dev/null && log_success "tokenizers built" || log_warning "Skipping tokenizers (build failed)"
     else
-        log_warning "tokenizers source not found locally, downloading..."
+        log_warning "tokenizers source not found locally or corrupted, downloading..."
         pip download tokenizers --dest . --no-cache-dir
         pip wheel tokenizers --no-deps --wheel-dir . 2>/dev/null && log_success "tokenizers built" || log_warning "Skipping tokenizers (may have wheel or build failed)"
     fi
     
     # Build safetensors
-    if [ -f "$SAFETENSORS_SOURCE_FILE" ]; then
-        log_info "Using local source for safetensors: safetensors.tar.gz"
+    if use_source_file "$SAFETENSORS_SOURCE_FILE" "safetensors" "pip download safetensors --dest . --no-cache-dir"; then
         pip wheel "$SAFETENSORS_SOURCE_FILE" --no-deps --wheel-dir . 2>/dev/null && log_success "safetensors built" || log_warning "Skipping safetensors (build failed)"
     else
-        log_warning "safetensors source not found locally, downloading..."
+        log_warning "safetensors source not found locally or corrupted, downloading..."
         pip download safetensors --dest . --no-cache-dir
         pip wheel safetensors --no-deps --wheel-dir . 2>/dev/null && log_success "safetensors built" || log_warning "Skipping safetensors (may have wheel or build failed)"
     fi
     
     # Build cryptography
-    if [ -f "$CRYPTOGRAPHY_SOURCE_FILE" ]; then
-        log_info "Using local source for cryptography: cryptography.tar.gz"
+    if use_source_file "$CRYPTOGRAPHY_SOURCE_FILE" "cryptography" "pip download cryptography --dest . --no-cache-dir"; then
         pip wheel "$CRYPTOGRAPHY_SOURCE_FILE" --no-deps --wheel-dir . 2>/dev/null && log_success "cryptography built" || log_warning "Skipping cryptography (build failed)"
     else
-        log_warning "cryptography source not found locally, downloading..."
+        log_warning "cryptography source not found locally or corrupted, downloading..."
         pip download cryptography --dest . --no-cache-dir
         pip wheel cryptography --no-deps --wheel-dir . 2>/dev/null && log_success "cryptography built" || log_warning "Skipping cryptography (may have wheel or build failed)"
     fi
     
     # Build pydantic-core
-    if [ -f "$PYDANTIC_CORE_SOURCE_FILE" ]; then
-        log_info "Using local source for pydantic-core: pydantic-core.tar.gz"
+    if use_source_file "$PYDANTIC_CORE_SOURCE_FILE" "pydantic-core" "pip download pydantic-core --dest . --no-cache-dir"; then
         pip wheel "$PYDANTIC_CORE_SOURCE_FILE" --no-deps --wheel-dir . 2>/dev/null && log_success "pydantic-core built" || log_warning "Skipping pydantic-core (build failed)"
     else
-        log_warning "pydantic-core source not found locally, downloading..."
+        log_warning "pydantic-core source not found locally or corrupted, downloading..."
         pip download pydantic-core --dest . --no-cache-dir
         pip wheel pydantic-core --no-deps --wheel-dir . 2>/dev/null && log_success "pydantic-core built" || log_warning "Skipping pydantic-core (may have wheel or build failed)"
     fi
     
     # Build orjson
-    if [ -f "$ORJSON_SOURCE_FILE" ]; then
-        log_info "Using local source for orjson: orjson.tar.gz"
+    if use_source_file "$ORJSON_SOURCE_FILE" "orjson" "pip download orjson --dest . --no-cache-dir"; then
         pip wheel "$ORJSON_SOURCE_FILE" --no-deps --wheel-dir . 2>/dev/null && log_success "orjson built" || log_warning "Skipping orjson (build failed)"
     else
-        log_warning "orjson source not found locally, downloading..."
+        log_warning "orjson source not found locally or corrupted, downloading..."
         pip download orjson --dest . --no-cache-dir
         pip wheel orjson --no-deps --wheel-dir . 2>/dev/null && log_success "orjson built" || log_warning "Skipping orjson (may have wheel or build failed)"
     fi
