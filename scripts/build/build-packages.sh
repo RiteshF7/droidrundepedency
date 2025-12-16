@@ -18,7 +18,11 @@ main() {
     log "INFO" "=========================================="
     log "INFO" "Building packages from source"
     log "INFO" "Architecture: $ARCH ($PLATFORM_TAG)"
+    log "INFO" "Sources directory: $SOURCES_DIR"
     log "INFO" "=========================================="
+    
+    # Create sources directory if it doesn't exist
+    mkdir -p "$SOURCES_DIR"
     
     # Check if need_build.txt exists
     local need_build_file="$WHEELS_DIR/need_build.txt"

@@ -45,6 +45,63 @@ install_package_system_deps() {
     esac
 }
 
+# Download source file for a package
+download_source_file() {
+    local pkg_name="$1"
+    local pkg_version="${2:-}"
+    local pkg_constraint="${3:-}"
+    
+    log "INFO" "Downloading source for $pkg_name${pkg_version:+ $pkg_version}..."
+    
+    # Create sources directory if it doesn't exist
+    mkdir -p "$SOURCES_DIR"
+    
+    # Build package spec
+    local package_spec="$pkg_name"
+    if [ -n "$pkg_constraint" ]; then
+        package_spec="$pkg_name$pkg_constraint"
+    elif [ -n "$pkg_version" ]; then
+        package_spec="$pkg_name==$pkg_version"
+    fi
+    
+    # Download source distribution
+    local PIP_CMD=$(get_pip_cmd)
+    local download_dir="$SOURCES_DIR"
+    
+    log "INFO" "Downloading $package_spec to $download_dir..."
+    if [[ "$PIP_CMD" == *"python3 -m pip"* ]]; then
+        if ! python3 -m pip download "$package_spec" --dest "$download_dir" --no-binary :all: --no-cache-dir >> "$BUILD_LOG" 2>&1; then
+            # Try without --no-binary flag if that fails
+            log "WARNING" "Download with --no-binary failed, trying without..."
+            if ! python3 -m pip download "$package_spec" --dest "$download_dir" --no-cache-dir >> "$BUILD_LOG" 2>&1; then
+                log "ERROR" "Failed to download $package_spec"
+                return 1
+            fi
+        fi
+    else
+        if ! $PIP_CMD download "$package_spec" --dest "$download_dir" --no-binary :all: --no-cache-dir >> "$BUILD_LOG" 2>&1; then
+            # Try without --no-binary flag if that fails
+            log "WARNING" "Download with --no-binary failed, trying without..."
+            if ! $PIP_CMD download "$package_spec" --dest "$download_dir" --no-cache-dir >> "$BUILD_LOG" 2>&1; then
+                log "ERROR" "Failed to download $package_spec"
+                return 1
+            fi
+        fi
+    fi
+    
+    # Verify download - find the downloaded source file
+    local source_file=$(find_source_file "$pkg_name" "$pkg_version")
+    if [ -z "$source_file" ]; then
+        log "WARNING" "Downloaded file not found for $pkg_name, checking all files..."
+        # List what was downloaded
+        ls -lh "$download_dir"/*.{tar.gz,zip} 2>/dev/null | tail -5 >> "$BUILD_LOG" || true
+        return 1
+    fi
+    
+    log "SUCCESS" "Downloaded source file: $(basename "$source_file")"
+    return 0
+}
+
 # Apply fixes to source before building
 apply_fixes() {
     local pkg_name="$1"
@@ -92,19 +149,28 @@ build_wheel() {
         return 0
     fi
     
-    # Check if source folder exists
-    if [ ! -d "$SOURCES_DIR" ] || [ -z "$(ls -A "$SOURCES_DIR" 2>/dev/null)" ]; then
-        log "WARNING" "Source directory $SOURCES_DIR is empty or doesn't exist"
-        log "INFO" "Will try pip as fallback for $pkg_name"
-        return 1
-    fi
+    # Create sources directory if it doesn't exist
+    mkdir -p "$SOURCES_DIR"
     
     # Find source file
     local source_file=$(find_source_file "$pkg_name" "$pkg_version")
+    
+    # If source file not found, try to download it
     if [ -z "$source_file" ]; then
-        log "WARNING" "Source file not found for $pkg_name in $SOURCES_DIR"
-        log "INFO" "Will try pip as fallback for $pkg_name"
-        return 1
+        log "INFO" "Source file not found for $pkg_name, attempting to download..."
+        if ! download_source_file "$pkg_name" "$pkg_version" "$pkg_constraint"; then
+            log "WARNING" "Failed to download source for $pkg_name"
+            log "INFO" "Will try pip as fallback for $pkg_name"
+            return 1
+        fi
+        
+        # Try to find the downloaded source file
+        source_file=$(find_source_file "$pkg_name" "$pkg_version")
+        if [ -z "$source_file" ]; then
+            log "WARNING" "Source file still not found after download for $pkg_name"
+            log "INFO" "Will try pip as fallback for $pkg_name"
+            return 1
+        fi
     fi
     
     log "INFO" "Using source file: $(basename "$source_file")"
