@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Interactive Build Manager for droidrun dependencies
 Consolidates all build scripts into a single interactive CLI tool
+
+Usage:
+    python build-interactive.py          # Interactive mode
+    python build-interactive.py --auto   # Auto-run all steps without prompts
+    python build-interactive.py -a       # Short form for auto mode
 """
 
 import os
@@ -11,6 +17,12 @@ import shutil
 from pathlib import Path
 from typing import List, Optional, Dict
 import json
+
+# Fix Windows console encoding
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # Colors for terminal output
 class Colors:
