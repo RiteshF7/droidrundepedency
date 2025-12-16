@@ -136,13 +136,16 @@ def show_menu() -> str:
     print_colored("  2. Detect Available Wheels", Colors.CYAN)
     print_colored("  3. Build Packages from Source", Colors.CYAN)
     print_colored("  4. Export Wheels", Colors.CYAN)
-    print_colored("  5. Run All Steps (Full Build)", Colors.CYAN)
-    print_colored("  6. Check Status", Colors.CYAN)
-    print_colored("  7. View Logs", Colors.CYAN)
-    print_colored("  8. Exit", Colors.CYAN)
+    print_colored("  5. Run All Steps (Full Build) - Interactive", Colors.CYAN)
+    print_colored("  6. Run All Steps (Auto Mode) - No Prompts", Colors.CYAN)
+    print_colored("  7. Check Status", Colors.CYAN)
+    print_colored("  8. View Logs", Colors.CYAN)
+    print_colored("  9. Exit", Colors.CYAN)
+    print()
+    print_colored("  Tip: Run with --auto or -a flag for automatic execution", Colors.YELLOW)
     print()
     
-    return get_user_input("Enter your choice", default="8", choices=["1", "2", "3", "4", "5", "6", "7", "8"])
+    return get_user_input("Enter your choice", default="9", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9"])
 
 def get_build_status(scripts_dir: Path, config: Dict) -> Dict:
     """Get current build status"""
@@ -293,11 +296,64 @@ def run_full_build(scripts_dir: Path):
     print_success("All steps completed successfully!")
     return True
 
+def run_auto_build(scripts_dir: Path):
+    """Run all build steps automatically without user input"""
+    print_header("Auto Build Mode - Running All Steps Sequentially")
+    print_warning("This will run all steps automatically without prompts")
+    print()
+    
+    steps = [
+        ("install-system-deps.sh", "Step 1: Install System Dependencies + Download Sources", True),
+        ("detect-wheels.sh", "Step 2: Detect Available Wheels", True),
+        ("build-packages.sh", "Step 3: Build Packages from Source", False),  # Don't fail on build errors
+        ("export-wheels.sh", "Step 4: Export Wheels", True),
+    ]
+    
+    for i, (script_name, description, required) in enumerate(steps, 1):
+        script_path = scripts_dir / script_name
+        print_step(i, len(steps), description)
+        
+        if not script_path.exists():
+            print_error(f"Script not found: {script_name}")
+            if required:
+                print_error("Required step failed. Aborting.")
+                return False
+            continue
+        
+        success = run_script(script_path, description, check=required)
+        
+        if not success and required:
+            print_error("Required step failed. Aborting.")
+            return False
+        
+        # Small delay between steps for readability
+        import time
+        if i < len(steps):
+            time.sleep(1)
+    
+    print_header("Auto Build Complete!")
+    print_success("All steps completed!")
+    return True
+
 def main():
     """Main function"""
     # Get script directory
     script_dir = Path(__file__).parent.resolve()
     scripts_dir = script_dir  # build/ directory
+    
+    # Check for auto-run mode
+    if len(sys.argv) > 1 and sys.argv[1] in ["--auto", "-a", "auto"]:
+        # Auto-run mode - execute all steps without prompts
+        prerequisites = check_prerequisites(scripts_dir)
+        if not all(prerequisites.values()):
+            print_error("Some required scripts are missing. Please check the build/ directory.")
+            missing = [name for name, exists in prerequisites.items() if not exists]
+            print_error(f"Missing: {', '.join(missing)}")
+            return 1
+        
+        print_success("All prerequisites found!")
+        print()
+        return 0 if run_auto_build(scripts_dir) else 1
     
     # Check prerequisites
     prerequisites = check_prerequisites(scripts_dir)
@@ -338,17 +394,20 @@ def main():
             run_full_build(scripts_dir)
             
         elif choice == "6":
-            show_status(scripts_dir)
+            run_auto_build(scripts_dir)
             
         elif choice == "7":
-            view_logs(scripts_dir)
+            show_status(scripts_dir)
             
         elif choice == "8":
+            view_logs(scripts_dir)
+            
+        elif choice == "9":
             print_colored("\nExiting...", Colors.CYAN)
             break
         
         # Ask if user wants to continue
-        if choice != "8":
+        if choice != "9":
             print()
             continue_choice = get_user_input(
                 "Return to main menu?",
