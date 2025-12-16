@@ -38,6 +38,44 @@ pkg_installed() {
     pkg list-installed 2>/dev/null | grep -q "^$1 " || return 1
 }
 
+# Validate tar.gz file integrity
+validate_tar_gz() {
+    local file=$1
+    if [ ! -f "$file" ]; then
+        return 1
+    fi
+    
+    # Check if file is a valid gzip file using Python (more reliable)
+    if python3 -c "import gzip; f = open('$file', 'rb'); gzip.GzipFile(fileobj=f).read(1); f.close()" 2>/dev/null; then
+        # Check if it's a valid tar archive
+        if tar -tzf "$file" >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# Validate tar.gz file integrity
+validate_tar_gz() {
+    local file=$1
+    if [ ! -f "$file" ]; then
+        return 1
+    fi
+    
+    # Check if file is a valid gzip file
+    if ! gzip -t "$file" 2>/dev/null; then
+        return 1
+    fi
+    
+    # Check if file is a valid tar archive
+    if ! tar -tzf "$file" >/dev/null 2>&1; then
+        return 1
+    fi
+    
+    return 0
+}
+
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}droidrun Installation Script${NC}"
 echo -e "${BLUE}========================================${NC}"
