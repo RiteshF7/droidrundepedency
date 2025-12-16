@@ -67,31 +67,50 @@ adb shell "run-as com.termux sh -c 'mkdir -p $ANDROID_DEST'" || {
 
 # Copy wheels to Android device
 log_info "Copying wheels to Android device..."
+log_info "Using Termux file sharing directory..."
+
+# Try to use Termux's shared storage
+TERMUX_SHARED="/sdcard/Android/data/com.termux/files"
 COPIED=0
 FAILED=0
+
+# First, try to push to a temporary location that Termux can access
+TEMP_DIR="/sdcard/Download/droidrun_wheels"
+adb shell "mkdir -p $TEMP_DIR" 2>/dev/null || true
 
 for wheel in "$WHEELS_SOURCE"/*.whl; do
     if [ -f "$wheel" ]; then
         wheel_name=$(basename "$wheel")
         log_info "Copying $wheel_name..."
         
-        # Use adb push to copy file
-        if adb push "$wheel" "/sdcard/tmp_$wheel_name" >/dev/null 2>&1; then
-            # Move from /sdcard to Termux directory
-            if adb shell "run-as com.termux sh -c 'cp /sdcard/tmp_$wheel_name $ANDROID_DEST/$wheel_name && rm /sdcard/tmp_$wheel_name'" >/dev/null 2>&1; then
+        # Push to /sdcard/Download (accessible by Termux)
+        if adb push "$wheel" "$TEMP_DIR/$wheel_name" >/dev/null 2>&1; then
+            # Copy from Download to Termux directory using Termux's file access
+            if adb shell "run-as com.termux sh -c 'export PREFIX=/data/data/com.termux/files/usr && export HOME=/data/data/com.termux/files/home && export PATH=\$PREFIX/bin:\$PATH && mkdir -p $ANDROID_DEST && cp /sdcard/Download/droidrun_wheels/$wheel_name $ANDROID_DEST/$wheel_name 2>&1'" >/dev/null 2>&1; then
                 COPIED=$((COPIED + 1))
-            else
-                log_error "Failed to move $wheel_name to Termux directory"
-                FAILED=$((FAILED + 1))
                 # Cleanup temp file
-                adb shell "rm /sdcard/tmp_$wheel_name" 2>/dev/null || true
+                adb shell "rm $TEMP_DIR/$wheel_name" 2>/dev/null || true
+            else
+                # Alternative: Use termux-open-url or direct file access
+                # Try using Termux's storage access
+                if adb shell "run-as com.termux sh -c 'export PREFIX=/data/data/com.termux/files/usr && export HOME=/data/data/com.termux/files/home && export PATH=\$PREFIX/bin:\$PATH && if [ -d /sdcard/Download/droidrun_wheels ]; then cp /sdcard/Download/droidrun_wheels/$wheel_name $ANDROID_DEST/$wheel_name 2>&1; fi'" >/dev/null 2>&1; then
+                    COPIED=$((COPIED + 1))
+                    adb shell "rm $TEMP_DIR/$wheel_name" 2>/dev/null || true
+                else
+                    log_error "Failed to copy $wheel_name (Termux may need storage permission)"
+                    log_info "  Run in Termux: termux-setup-storage"
+                    FAILED=$((FAILED + 1))
+                fi
             fi
         else
-            log_error "Failed to copy $wheel_name"
+            log_error "Failed to push $wheel_name to device"
             FAILED=$((FAILED + 1))
         fi
     fi
 done
+
+# Cleanup temp directory
+adb shell "rmdir $TEMP_DIR" 2>/dev/null || true
 
 echo
 log_success "Sync complete!"
