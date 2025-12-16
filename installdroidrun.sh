@@ -153,16 +153,9 @@ fi
 log_info "PREFIX: $PREFIX"
 
 # ============================================
-# Setup source directory paths
+# Setup script directory
 # ============================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE_DIR="${SCRIPT_DIR}/depedencies/source"
-DEPENDENCIES_DIR="${SCRIPT_DIR}/depedencies"
-
-# Ensure directories exist
-mkdir -p "$SOURCE_DIR" "$DEPENDENCIES_DIR"
-
-log_info "Source directory: $SOURCE_DIR"
 echo
 
 # ============================================
@@ -278,17 +271,11 @@ log_success "Phase 1 complete: Build tools installed"
 log_info "Phase 2: Building numpy..."
 cd "$WHEELS_DIR"
 
-if use_source_file "numpy" "numpy"; then
-    local source_file=$(get_source_file "numpy")
-    log_info "Building wheel from source: $(basename "$source_file")"
-    if pip wheel "$source_file" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "numpy wheel built successfully"
-    else
-        log_error "Failed to build numpy wheel"
-        exit 1
-    fi
+log_info "Building numpy wheel (pip will download source automatically)..."
+if pip wheel numpy --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+    log_success "numpy wheel built successfully"
 else
-    log_error "Failed to obtain numpy source"
+    log_error "Failed to build numpy wheel"
     exit 1
 fi
 
@@ -303,17 +290,11 @@ log_info "Phase 3: Building scientific stack..."
 
 # Build scipy
 log_info "Building scipy..."
-if use_source_file "scipy" "scipy>=1.8.0,<1.17.0"; then
-    local source_file=$(get_source_file "scipy")
-    log_info "Building wheel from source: $(basename "$source_file")"
-    if pip wheel "$source_file" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "scipy wheel built successfully"
-    else
-        log_error "Failed to build scipy wheel"
-        exit 1
-    fi
+log_info "Building scipy wheel (pip will download source automatically)..."
+if pip wheel "scipy>=1.8.0,<1.17.0" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+    log_success "scipy wheel built successfully"
 else
-    log_error "Failed to obtain scipy source"
+    log_error "Failed to build scipy wheel"
     exit 1
 fi
 log_info "Installing scipy wheel..."
@@ -322,94 +303,49 @@ log_success "scipy installed"
 
 # Build pandas (with meson.build fix)
 log_info "Building pandas (applying meson.build fix)..."
-if use_source_file "pandas" "pandas<2.3.0"; then
-    local source_file=$(get_source_file "pandas")
-    log_info "Applying meson.build fix to pandas source..."
-    
-    # Fix meson.build version detection issue
-    WORK_DIR=$(mktemp -d)
-    cp "$source_file" "$WORK_DIR/"
-    cd "$WORK_DIR"
-    log_info "Extracting pandas source..."
-    tar -xzf pandas.tar.gz
-    PANDAS_DIR=$(ls -d pandas-* | head -1)
-    if [ -f "$PANDAS_DIR/meson.build" ]; then
-        PANDAS_VERSION=$(echo "$PANDAS_DIR" | sed 's/pandas-//')
-        log_info "Fixing meson.build: replacing version detection with '$PANDAS_VERSION'"
-        sed -i "s/version: run_command.*/version: '$PANDAS_VERSION',/" "$PANDAS_DIR/meson.build"
-        log_success "meson.build fixed"
-        tar -czf pandas.tar.gz "$PANDAS_DIR/"
-    fi
-    
-    log_info "Building wheel from fixed source..."
-    if pip wheel pandas.tar.gz --no-deps --wheel-dir "$WHEELS_DIR" 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "pandas wheel built successfully"
-    else
-        log_error "Failed to build pandas wheel"
-        rm -rf "$WORK_DIR"
-        exit 1
-    fi
-    cd "$WHEELS_DIR"
-    rm -rf "$WORK_DIR"
-    
-    log_info "Installing pandas wheel..."
-    pip install --find-links . --no-index pandas*.whl
-    log_success "pandas installed"
-else
-    log_error "Failed to obtain pandas source"
+FIXED_SOURCE=$(download_and_fix_source "pandas" "pandas<2.3.0" "pandas")
+if [ -z "$FIXED_SOURCE" ] || [ ! -f "$FIXED_SOURCE" ]; then
+    log_error "Failed to download and fix pandas source"
     exit 1
 fi
 
-# Build scikit-learn (with source fixes)
-log_info "Building scikit-learn..."
-if use_source_file "scikit-learn" "scikit-learn"; then
-    local source_file=$(get_source_file "scikit-learn")
-    log_info "Applying fixes to scikit-learn source..."
-    
-    # Fix scikit-learn source files
-    WORK_DIR=$(mktemp -d)
-    cp "$source_file" "$WORK_DIR/"
-    cd "$WORK_DIR"
-    log_info "Extracting scikit-learn source..."
-    tar -xzf scikit-learn.tar.gz
-    SCIKIT_DIR=$(ls -d scikit-learn-* | head -1)
-    
-    # Fix 1: Add shebang to version.py
-    if [ -f "$SCIKIT_DIR/sklearn/_build_utils/version.py" ]; then
-        if ! head -1 "$SCIKIT_DIR/sklearn/_build_utils/version.py" | grep -q "^#!/"; then
-            log_info "Fixing sklearn/_build_utils/version.py: adding shebang"
-            sed -i '1i#!/usr/bin/env python3' "$SCIKIT_DIR/sklearn/_build_utils/version.py"
-            log_success "version.py fixed"
-        fi
-    fi
-    
-    # Fix 2: Fix meson.build version extraction
-    if [ -f "$SCIKIT_DIR/meson.build" ]; then
-        SCIKIT_VERSION=$(echo "$SCIKIT_DIR" | sed 's/scikit-learn-//')
-        log_info "Fixing meson.build: replacing version extraction with '$SCIKIT_VERSION'"
-        sed -i "s/version: run_command.*/version: '$SCIKIT_VERSION',/" "$SCIKIT_DIR/meson.build" 2>/dev/null || \
-        sed -i "s/version:.*/version: '$SCIKIT_VERSION',/" "$SCIKIT_DIR/meson.build"
-        log_success "meson.build fixed"
-    fi
-    
-    # Repackage fixed tarball
-    log_info "Repackaging fixed source..."
-    tar -czf scikit-learn.tar.gz "$SCIKIT_DIR/"
-    
-    log_info "Building wheel from fixed source..."
-    if pip wheel scikit-learn.tar.gz --no-deps --no-build-isolation --wheel-dir "$WHEELS_DIR" 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "scikit-learn wheel built successfully"
-    else
-        log_error "Failed to build scikit-learn wheel"
-        rm -rf "$WORK_DIR"
-        exit 1
-    fi
-    cd "$WHEELS_DIR"
-    rm -rf "$WORK_DIR"
+cd "$WHEELS_DIR"
+log_info "Building wheel from fixed source..."
+if pip wheel "$FIXED_SOURCE" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+    log_success "pandas wheel built successfully"
 else
-    log_error "Failed to obtain scikit-learn source"
+    log_error "Failed to build pandas wheel"
+    rm -rf "$(dirname "$FIXED_SOURCE")"
     exit 1
 fi
+
+# Cleanup temp directory
+rm -rf "$(dirname "$FIXED_SOURCE")"
+
+log_info "Installing pandas wheel..."
+pip install --find-links . --no-index pandas*.whl
+log_success "pandas installed"
+
+# Build scikit-learn (with source fixes)
+log_info "Building scikit-learn..."
+FIXED_SOURCE=$(download_and_fix_source "scikit-learn" "scikit-learn" "scikit-learn")
+if [ -z "$FIXED_SOURCE" ] || [ ! -f "$FIXED_SOURCE" ]; then
+    log_error "Failed to download and fix scikit-learn source"
+    exit 1
+fi
+
+cd "$WHEELS_DIR"
+log_info "Building wheel from fixed source..."
+if pip wheel "$FIXED_SOURCE" --no-deps --no-build-isolation --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+    log_success "scikit-learn wheel built successfully"
+else
+    log_error "Failed to build scikit-learn wheel"
+    rm -rf "$(dirname "$FIXED_SOURCE")"
+    exit 1
+fi
+
+# Cleanup temp directory
+rm -rf "$(dirname "$FIXED_SOURCE")"
 
 # Install missing dependencies first (required before installing scikit-learn)
 pip install joblib>=1.3.0 threadpoolctl>=3.2.0 --quiet
@@ -426,17 +362,11 @@ log_success "Phase 3 complete: Scientific stack installed"
 log_info "Phase 4: Building jiter..."
 cd "$WHEELS_DIR"
 
-if use_source_file "jiter" "jiter==0.12.0"; then
-    local source_file=$(get_source_file "jiter")
-    log_info "Building wheel from source: $(basename "$source_file")"
-    if pip wheel "$source_file" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "jiter wheel built successfully"
-    else
-        log_error "Failed to build jiter wheel"
-        exit 1
-    fi
+log_info "Building jiter wheel (pip will download source automatically)..."
+if pip wheel "jiter==0.12.0" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+    log_success "jiter wheel built successfully"
 else
-    log_error "Failed to obtain jiter source"
+    log_error "Failed to build jiter wheel"
     exit 1
 fi
 log_info "Installing jiter wheel..."
@@ -456,38 +386,26 @@ if pip install --find-links . --no-index pyarrow*.whl 2>/dev/null; then
     log_success "pyarrow installed (pre-built wheel)"
 else
     log_info "No pre-built wheel found, building from source..."
-    if use_source_file "pyarrow" "pyarrow"; then
-        export ARROW_HOME=$PREFIX
-        local source_file=$(get_source_file "pyarrow")
-        log_info "Building wheel from source: $(basename "$source_file")"
-        if pip wheel "$source_file" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-            log_success "pyarrow wheel built successfully"
-        else
-            log_error "Failed to build pyarrow wheel"
-            exit 1
-        fi
-        log_info "Installing pyarrow wheel..."
-        pip install --find-links . --no-index pyarrow*.whl
-        log_success "pyarrow installed (built from source)"
+    export ARROW_HOME=$PREFIX
+    log_info "Building pyarrow wheel (pip will download source automatically)..."
+    if pip wheel pyarrow --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+        log_success "pyarrow wheel built successfully"
     else
-        log_error "Failed to obtain pyarrow source"
+        log_error "Failed to build pyarrow wheel"
         exit 1
     fi
+    log_info "Installing pyarrow wheel..."
+    pip install --find-links . --no-index pyarrow*.whl
+    log_success "pyarrow installed (built from source)"
 fi
 
 # Build psutil
 log_info "Building psutil..."
-if use_source_file "psutil" "psutil"; then
-    local source_file=$(get_source_file "psutil")
-    log_info "Building wheel from source: $(basename "$source_file")"
-    if pip wheel "$source_file" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "psutil wheel built successfully"
-    else
-        log_error "Failed to build psutil wheel"
-        exit 1
-    fi
+log_info "Building psutil wheel (pip will download source automatically)..."
+if pip wheel psutil --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+    log_success "psutil wheel built successfully"
 else
-    log_error "Failed to obtain psutil source"
+    log_error "Failed to build psutil wheel"
     exit 1
 fi
 log_info "Installing psutil wheel..."
@@ -505,17 +423,11 @@ export GRPC_PYTHON_BUILD_SYSTEM_RE2=1
 export GRPC_PYTHON_BUILD_SYSTEM_ABSL=1
 export GRPC_PYTHON_BUILD_WITH_CYTHON=1
 
-if use_source_file "grpcio" "grpcio"; then
-    local source_file=$(get_source_file "grpcio")
-    log_info "Building wheel from source: $(basename "$source_file")"
-    if pip wheel "$source_file" --no-deps --no-build-isolation --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "grpcio wheel built successfully"
-    else
-        log_error "Failed to build grpcio wheel"
-        exit 1
-    fi
+log_info "Building grpcio wheel (pip will download source automatically)..."
+if pip wheel grpcio --no-deps --no-build-isolation --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+    log_success "grpcio wheel built successfully"
 else
-    log_error "Failed to obtain grpcio source"
+    log_error "Failed to build grpcio wheel"
     exit 1
 fi
 
@@ -585,17 +497,11 @@ export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH
 export LDFLAGS="-L$PREFIX/lib"
 export CPPFLAGS="-I$PREFIX/include"
 
-if use_source_file "pillow" "pillow"; then
-    local source_file=$(get_source_file "pillow")
-    log_info "Building wheel from source: $(basename "$source_file")"
-    if pip wheel "$source_file" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "pillow wheel built successfully"
-    else
-        log_error "Failed to build pillow wheel"
-        exit 1
-    fi
+log_info "Building pillow wheel (pip will download source automatically)..."
+if pip wheel pillow --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+    log_success "pillow wheel built successfully"
 else
-    log_error "Failed to obtain pillow source"
+    log_error "Failed to build pillow wheel"
     exit 1
 fi
 log_info "Installing pillow wheel..."
@@ -617,67 +523,42 @@ else
     
     # Build tokenizers
     log_info "Building tokenizers..."
-    if use_source_file "tokenizers" "tokenizers"; then
-        local source_file=$(get_source_file "tokenizers")
-        if pip wheel "$source_file" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-            log_success "tokenizers built"
-        else
-            log_warning "Skipping tokenizers (build failed)"
-        fi
+    if pip wheel tokenizers --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+        log_success "tokenizers built"
     else
-        log_warning "Skipping tokenizers (source download failed)"
+        log_warning "Skipping tokenizers (build failed)"
     fi
     
     # Build safetensors
     log_info "Building safetensors..."
-    if use_source_file "safetensors" "safetensors"; then
-        local source_file=$(get_source_file "safetensors")
-        if pip wheel "$source_file" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-            log_success "safetensors built"
-        else
-            log_warning "Skipping safetensors (build failed)"
-        fi
+    if pip wheel safetensors --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+        log_success "safetensors built"
     else
-        log_warning "Skipping safetensors (source download failed)"
+        log_warning "Skipping safetensors (build failed)"
     fi
     
     # Build cryptography
     log_info "Building cryptography..."
-    if use_source_file "cryptography" "cryptography"; then
-        local source_file=$(get_source_file "cryptography")
-        if pip wheel "$source_file" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-            log_success "cryptography built"
-        else
-            log_warning "Skipping cryptography (build failed)"
-        fi
+    if pip wheel cryptography --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+        log_success "cryptography built"
     else
-        log_warning "Skipping cryptography (source download failed)"
+        log_warning "Skipping cryptography (build failed)"
     fi
     
     # Build pydantic-core
     log_info "Building pydantic-core..."
-    if use_source_file "pydantic-core" "pydantic-core"; then
-        local source_file=$(get_source_file "pydantic-core")
-        if pip wheel "$source_file" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-            log_success "pydantic-core built"
-        else
-            log_warning "Skipping pydantic-core (build failed)"
-        fi
+    if pip wheel pydantic-core --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+        log_success "pydantic-core built"
     else
-        log_warning "Skipping pydantic-core (source download failed)"
+        log_warning "Skipping pydantic-core (build failed)"
     fi
     
     # Build orjson
     log_info "Building orjson..."
-    if use_source_file "orjson" "orjson"; then
-        local source_file=$(get_source_file "orjson")
-        if pip wheel "$source_file" --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-            log_success "orjson built"
-        else
-            log_warning "Skipping orjson (build failed)"
-        fi
+    if pip wheel orjson --no-deps --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+        log_success "orjson built"
     else
-        log_warning "Skipping orjson (source download failed)"
+        log_warning "Skipping orjson (build failed)"
     fi
     
     # Install any wheels that were built
