@@ -59,6 +59,151 @@ fi
 log_info "PREFIX: $PREFIX"
 
 # ============================================
+# Step 0: Download and extract source.7z (Independent task)
+# ============================================
+log_info "Step 0: Setting up source packages..."
+
+# Setup source directory paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="${SCRIPT_DIR}/depedencies/source"
+DEPENDENCIES_DIR="${SCRIPT_DIR}/depedencies"
+SOURCE_7Z="${DEPENDENCIES_DIR}/source.7z"
+GITHUB_REPO="${GITHUB_REPO:-RiteshF7/droidrundepedency}"
+GITHUB_RELEASE_TAG="${GITHUB_RELEASE_TAG:-latest}"
+
+# Ensure directories exist
+mkdir -p "$SOURCE_DIR" "$DEPENDENCIES_DIR"
+
+# Check if source directory already has files
+SOURCE_COUNT=$(find "$SOURCE_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null | wc -l)
+
+if [ "$SOURCE_COUNT" -eq 0 ]; then
+    log_warning "No source packages found in $SOURCE_DIR"
+    
+    # Check if source.7z exists locally
+    if [ -f "$SOURCE_7Z" ]; then
+        log_info "Found source.7z locally, extracting..."
+    else
+        log_info "source.7z not found locally, downloading from GitHub releases..."
+        
+        # Check for download tools
+        if ! command_exists curl && ! command_exists wget; then
+            log_error "Neither curl nor wget is available. Cannot download source.7z"
+            log_error "Please install curl or wget: pkg install curl"
+            exit 1
+        fi
+        
+        # Get latest release tag if needed
+        if [ "$GITHUB_RELEASE_TAG" = "latest" ]; then
+            log_info "Fetching latest release tag from $GITHUB_REPO..."
+            if command_exists curl; then
+                RELEASE_TAG=$(curl -sL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
+            elif command_exists wget; then
+                RELEASE_TAG=$(wget -qO- "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
+            fi
+            
+            if [ -z "$RELEASE_TAG" ]; then
+                log_error "Failed to get latest release tag"
+                exit 1
+            fi
+            log_success "Latest release tag: $RELEASE_TAG"
+        else
+            RELEASE_TAG="$GITHUB_RELEASE_TAG"
+        fi
+        
+        # Download source.7z
+        DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/source.7z"
+        log_info "Downloading from: $DOWNLOAD_URL"
+        log_info "Saving to: $SOURCE_7Z"
+        
+        if command_exists curl; then
+            if curl -fL --progress-bar -o "$SOURCE_7Z" "$DOWNLOAD_URL"; then
+                SIZE=$(du -h "$SOURCE_7Z" | cut -f1)
+                log_success "Downloaded source.7z ($SIZE)"
+            else
+                log_error "Failed to download source.7z"
+                rm -f "$SOURCE_7Z"
+                exit 1
+            fi
+        elif command_exists wget; then
+            if wget --progress=bar:force -O "$SOURCE_7Z" "$DOWNLOAD_URL" 2>&1; then
+                SIZE=$(du -h "$SOURCE_7Z" | cut -f1)
+                log_success "Downloaded source.7z ($SIZE)"
+            else
+                log_error "Failed to download source.7z"
+                rm -f "$SOURCE_7Z"
+                exit 1
+            fi
+        fi
+    fi
+    
+    # Extract source.7z
+    if [ -f "$SOURCE_7Z" ]; then
+        log_info "Extracting source.7z to $SOURCE_DIR..."
+        
+        # Check for 7z extraction tool
+        if ! command_exists 7z && ! command_exists 7za; then
+            log_error "7z or 7za is not available"
+            log_error "Install with: pkg install p7zip"
+            exit 1
+        fi
+        
+        # Extract to a temporary directory first to handle subdirectory structure
+        TEMP_EXTRACT_DIR=$(mktemp -d)
+        trap "rm -rf '$TEMP_EXTRACT_DIR'" EXIT
+        
+        if command_exists 7z; then
+            if ! 7z x "$SOURCE_7Z" -o"$TEMP_EXTRACT_DIR" -y >/dev/null 2>&1; then
+                log_error "Failed to extract source.7z with 7z"
+                exit 1
+            fi
+        elif command_exists 7za; then
+            if ! 7za x "$SOURCE_7Z" -o"$TEMP_EXTRACT_DIR" -y >/dev/null 2>&1; then
+                log_error "Failed to extract source.7z with 7za"
+                exit 1
+            fi
+        fi
+        
+        # Move extracted files to SOURCE_DIR
+        EXTRACTED_FILES=$(find "$TEMP_EXTRACT_DIR" -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null)
+        
+        if [ -z "$EXTRACTED_FILES" ]; then
+            # Check if files are in a subdirectory
+            SUBDIR=$(find "$TEMP_EXTRACT_DIR" -mindepth 1 -maxdepth 1 -type d | head -1)
+            if [ -n "$SUBDIR" ]; then
+                log_info "Files extracted to subdirectory, moving to $SOURCE_DIR..."
+                find "$SUBDIR" -type f -exec mv {} "$SOURCE_DIR"/ \; 2>/dev/null || true
+            else
+                log_warning "No source packages found in extracted archive"
+            fi
+        else
+            # Files are directly in temp directory
+            log_info "Moving extracted files to $SOURCE_DIR..."
+            find "$TEMP_EXTRACT_DIR" -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" -exec mv {} "$SOURCE_DIR"/ \; 2>/dev/null || true
+        fi
+        
+        # Cleanup temp directory
+        rm -rf "$TEMP_EXTRACT_DIR"
+        trap - EXIT
+        
+        # Re-count source packages after extraction
+        SOURCE_COUNT=$(find "$SOURCE_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null | wc -l)
+        
+        if [ "$SOURCE_COUNT" -gt 0 ]; then
+            log_success "Extracted $SOURCE_COUNT source packages to $SOURCE_DIR"
+        else
+            log_error "No source packages found after extraction"
+            log_error "Please check if source.7z contains valid source packages"
+            exit 1
+        fi
+    fi
+else
+    log_success "Found $SOURCE_COUNT source packages in $SOURCE_DIR (using local sources)"
+fi
+
+echo
+
+# ============================================
 # Check and install system dependencies
 # ============================================
 log_info "Checking system dependencies..."
@@ -122,20 +267,7 @@ mkdir -p "$TMPDIR"
 WHEELS_DIR="${HOME}/wheels"
 mkdir -p "$WHEELS_DIR"
 
-# Setup source directory (local source packages)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE_DIR="${SCRIPT_DIR}/depedencies/source"
-DEPENDENCIES_DIR="${SCRIPT_DIR}/depedencies"
-SOURCE_7Z="${DEPENDENCIES_DIR}/source.7z"
-GITHUB_REPO="${GITHUB_REPO:-RiteshF7/droidrundepedency}"
-GITHUB_RELEASE_TAG="${GITHUB_RELEASE_TAG:-latest}"
-
 log_success "Build environment configured"
-
-# ============================================
-# Setup local source directory
-# ============================================
-log_info "Setting up source directory..."
 
 # Function to find source file locally
 find_source_file() {
@@ -160,135 +292,6 @@ find_source_file() {
     
     return 1
 }
-
-# Check if source directory exists and has files
-SOURCE_COUNT=$(find "$SOURCE_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null | wc -l)
-
-if [ "$SOURCE_COUNT" -eq 0 ]; then
-    log_warning "No source packages found in $SOURCE_DIR"
-    
-    # Check if source.7z exists locally
-    if [ -f "$SOURCE_7Z" ]; then
-        log_info "Found source.7z locally, extracting..."
-    else
-        log_info "source.7z not found locally, downloading from GitHub releases..."
-        
-        # Get latest release tag if needed
-        if [ "$GITHUB_RELEASE_TAG" = "latest" ]; then
-            log_info "Fetching latest release tag from $GITHUB_REPO..."
-            if command_exists curl; then
-                RELEASE_TAG=$(curl -sL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
-            elif command_exists wget; then
-                RELEASE_TAG=$(wget -qO- "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
-            else
-                log_error "Neither curl nor wget is available. Cannot download source.7z"
-                exit 1
-            fi
-            
-            if [ -z "$RELEASE_TAG" ]; then
-                log_error "Failed to get latest release tag"
-                exit 1
-            fi
-            log_success "Latest release tag: $RELEASE_TAG"
-        else
-            RELEASE_TAG="$GITHUB_RELEASE_TAG"
-        fi
-        
-        # Download source.7z
-        DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/source.7z"
-        log_info "Downloading from: $DOWNLOAD_URL"
-        log_info "Saving to: $SOURCE_7Z"
-        
-        # Create depedencies directory if it doesn't exist
-        mkdir -p "$DEPENDENCIES_DIR"
-        
-        if command_exists curl; then
-            if curl -fL --progress-bar -o "$SOURCE_7Z" "$DOWNLOAD_URL"; then
-                SIZE=$(du -h "$SOURCE_7Z" | cut -f1)
-                log_success "Downloaded source.7z ($SIZE)"
-            else
-                log_error "Failed to download source.7z"
-                rm -f "$SOURCE_7Z"
-                exit 1
-            fi
-        elif command_exists wget; then
-            if wget --progress=bar:force -O "$SOURCE_7Z" "$DOWNLOAD_URL" 2>&1; then
-                SIZE=$(du -h "$SOURCE_7Z" | cut -f1)
-                log_success "Downloaded source.7z ($SIZE)"
-            else
-                log_error "Failed to download source.7z"
-                rm -f "$SOURCE_7Z"
-                exit 1
-            fi
-        fi
-    fi
-    
-    # Extract source.7z
-    if [ -f "$SOURCE_7Z" ]; then
-        log_info "Extracting source.7z to $SOURCE_DIR..."
-        
-        # Ensure source directory exists
-        mkdir -p "$SOURCE_DIR"
-        
-        # Check for 7z extraction tool
-        if ! command_exists 7z && ! command_exists 7za; then
-            log_error "7z or 7za is not available"
-            log_error "Install with: pkg install p7zip"
-            exit 1
-        fi
-        
-        # Extract to a temporary directory first to handle subdirectory structure
-        TEMP_EXTRACT_DIR=$(mktemp -d)
-        trap "rm -rf '$TEMP_EXTRACT_DIR'" EXIT
-        
-        if command_exists 7z; then
-            if ! 7z x "$SOURCE_7Z" -o"$TEMP_EXTRACT_DIR" -y >/dev/null 2>&1; then
-                log_error "Failed to extract source.7z with 7z"
-                exit 1
-            fi
-        elif command_exists 7za; then
-            if ! 7za x "$SOURCE_7Z" -o"$TEMP_EXTRACT_DIR" -y >/dev/null 2>&1; then
-                log_error "Failed to extract source.7z with 7za"
-                exit 1
-            fi
-        fi
-        
-        # Move extracted files to SOURCE_DIR
-        EXTRACTED_FILES=$(find "$TEMP_EXTRACT_DIR" -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null)
-        
-        if [ -z "$EXTRACTED_FILES" ]; then
-            # Check if files are in a subdirectory
-            SUBDIR=$(find "$TEMP_EXTRACT_DIR" -mindepth 1 -maxdepth 1 -type d | head -1)
-            if [ -n "$SUBDIR" ]; then
-                log_info "Files extracted to subdirectory, moving to $SOURCE_DIR..."
-                find "$SUBDIR" -type f -exec mv {} "$SOURCE_DIR"/ \; 2>/dev/null || true
-            else
-                log_warning "No source packages found in extracted archive"
-            fi
-        else
-            # Files are directly in temp directory
-            log_info "Moving extracted files to $SOURCE_DIR..."
-            find "$TEMP_EXTRACT_DIR" -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" -exec mv {} "$SOURCE_DIR"/ \; 2>/dev/null || true
-        fi
-        
-        # Cleanup temp directory
-        rm -rf "$TEMP_EXTRACT_DIR"
-        trap - EXIT
-        
-        # Re-count source packages after extraction
-        SOURCE_COUNT=$(find "$SOURCE_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null | wc -l)
-        
-        if [ "$SOURCE_COUNT" -gt 0 ]; then
-            log_success "Extracted $SOURCE_COUNT source packages to $SOURCE_DIR"
-        else
-            log_error "No source packages found after extraction"
-            log_error "Please check if source.7z contains valid source packages"
-            exit 1
-        fi
-    fi
-else
-    log_success "Found $SOURCE_COUNT source packages in $SOURCE_DIR (using local sources)"
-fi
 
 # ============================================
 # Create gfortran symlink for scipy compatibility
