@@ -71,9 +71,20 @@ SOURCE_7Z="${DEPENDENCIES_DIR}/sourceversion1.7z"
 GITHUB_REPO="${GITHUB_REPO:-RiteshF7/droidrundepedency}"
 GITHUB_RELEASE_TAG="${GITHUB_RELEASE_TAG:-hellow}"
 
-    pkg install p7zip -y
 # Ensure directories exist
 mkdir -p "$SOURCE_DIR" "$DEPENDENCIES_DIR"
+
+# Install p7zip if not already installed (only if network is available)
+if ! command_exists 7z && ! command_exists 7za; then
+    log_info "Installing p7zip (required for extracting archives)..."
+    if pkg install p7zip -y 2>/dev/null; then
+        log_success "p7zip installed"
+    else
+        log_warning "Failed to install p7zip (network may be unavailable)"
+        log_warning "Please install manually: pkg install p7zip"
+        log_warning "Or ensure 7z/7za is available in PATH"
+    fi
+fi
 
 # Check if source directory already has files
 SOURCE_COUNT=$(find "$SOURCE_DIR" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.zip" \) ! -name "*sources.tar.gz" ! -name "*home_sources.tar.gz" ! -name "*test_*" 2>/dev/null | wc -l)
