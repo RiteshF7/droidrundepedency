@@ -105,12 +105,25 @@ if [ "$SOURCE_COUNT" -eq 0 ]; then
         log_info "Saving to: $SOURCE_7Z"
         
         if command_exists curl; then
-            if curl -fL --progress-bar -o "$SOURCE_7Z" "$DOWNLOAD_URL"; then
+            HTTP_CODE=$(curl -sL -w "%{http_code}" -o "$SOURCE_7Z" "$DOWNLOAD_URL" || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
                 SIZE=$(du -h "$SOURCE_7Z" | cut -f1)
                 log_success "Downloaded sourceversion1.7z ($SIZE)"
             else
-                log_error "Failed to download sourceversion1.7z"
                 rm -f "$SOURCE_7Z"
+                if [ "$HTTP_CODE" = "404" ]; then
+                    log_error "Release not found (404): $DOWNLOAD_URL"
+                    log_error "The GitHub release 'sourceversion1' does not exist yet."
+                    log_info "To fix this:"
+                    log_info "1. Create a release at: https://github.com/${GITHUB_REPO}/releases/new"
+                    log_info "2. Tag: sourceversion1"
+                    log_info "3. Upload: sourceversion1.7z"
+                    log_info ""
+                    log_info "Alternatively, place sourceversion1.7z in: $DEPENDENCIES_DIR/"
+                else
+                    log_error "Failed to download sourceversion1.7z (HTTP $HTTP_CODE)"
+                    log_error "URL: $DOWNLOAD_URL"
+                fi
                 exit 1
             fi
         elif command_exists wget; then
@@ -118,8 +131,11 @@ if [ "$SOURCE_COUNT" -eq 0 ]; then
                 SIZE=$(du -h "$SOURCE_7Z" | cut -f1)
                 log_success "Downloaded sourceversion1.7z ($SIZE)"
             else
-                log_error "Failed to download sourceversion1.7z"
                 rm -f "$SOURCE_7Z"
+                log_error "Failed to download sourceversion1.7z"
+                log_error "The GitHub release 'sourceversion1' may not exist yet."
+                log_info "Create a release at: https://github.com/${GITHUB_REPO}/releases/new"
+                log_info "Or place sourceversion1.7z in: $DEPENDENCIES_DIR/"
                 exit 1
             fi
         fi
