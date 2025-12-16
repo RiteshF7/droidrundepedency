@@ -244,6 +244,107 @@ def install_python_build_tools() -> bool:
         print_error(f"Error installing Python build tools: {e}")
         return False
 
+def check_droidrun_dependencies() -> Dict[str, bool]:
+    """Check if droidrun core dependencies are installed"""
+    # Core dependencies from DEPENDENCIES.md
+    core_deps = {
+        "async-adbutils": "",
+        "llama-index": "0.14.4",
+        "arize-phoenix": ">=12.3.0",
+        "llama-index-readers-file": "<0.6,>=0.5.0",
+        "llama-index-workflows": "==2.8.3",
+        "llama-index-callbacks-arize-phoenix": ">=0.6.1",
+        "httpx": ">=0.27.0",
+        "pydantic": ">=2.11.10",
+        "rich": ">=14.1.0",
+        "posthog": ">=6.7.6",
+        "aiofiles": ">=25.1.0",
+        "droidrun": ""  # Main package
+    }
+    
+    status = {}
+    print_info("Checking droidrun core dependencies...")
+    
+    try:
+        result = subprocess.run(
+            ["python3", "-m", "pip", "list"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        installed_packages = result.stdout.lower() if result.returncode == 0 else ""
+        
+        for pkg, constraint in core_deps.items():
+            # Check if package is installed (simple name check)
+            pkg_lower = pkg.lower().replace("-", "-").replace("_", "-")
+            is_installed = pkg_lower in installed_packages or pkg.replace("-", "_").lower() in installed_packages
+            status[pkg] = is_installed
+            if is_installed:
+                print_success(f"{pkg}{' ' + constraint if constraint else ''} - installed")
+            else:
+                print_warning(f"{pkg}{' ' + constraint if constraint else ''} - NOT installed")
+    except Exception as e:
+        print_error(f"Error checking droidrun dependencies: {e}")
+        for pkg in core_deps:
+            status[pkg] = False
+    
+    return status
+
+def install_droidrun(providers: Optional[List[str]] = None) -> bool:
+    """Install droidrun with optional LLM provider extras"""
+    print_header("Installing droidrun")
+    
+    try:
+        # Get wheels directory for --find-links
+        wheels_dir = os.environ.get("WHEELS_DIR", os.path.expanduser("~/wheels"))
+        wheels_path = Path(wheels_dir)
+        
+        if not wheels_path.exists():
+            print_warning(f"Wheels directory not found: {wheels_dir}")
+            print_info("Creating wheels directory...")
+            wheels_path.mkdir(parents=True, exist_ok=True)
+        
+        # Build install command
+        if providers:
+            # Install with specific providers
+            providers_str = ",".join(providers)
+            install_cmd = ["python3", "-m", "pip", "install", f"droidrun[{providers_str}]", "--find-links", str(wheels_path)]
+            print_info(f"Installing droidrun with providers: {', '.join(providers)}")
+        else:
+            # Install base droidrun
+            install_cmd = ["python3", "-m", "pip", "install", "droidrun", "--find-links", str(wheels_path)]
+            print_info("Installing droidrun (base package)")
+        
+        print_info(f"Using wheels from: {wheels_path}")
+        print_info("This may take several minutes...")
+        
+        result = subprocess.run(
+            install_cmd,
+            capture_output=False,
+            text=True,
+            timeout=1800  # 30 minutes timeout
+        )
+        
+        if result.returncode == 0:
+            print_success("droidrun installed successfully!")
+            return True
+        else:
+            print_error("Failed to install droidrun")
+            return False
+    except subprocess.TimeoutExpired:
+        print_error("Installation timed out")
+        return False
+    except Exception as e:
+        print_error(f"Error installing droidrun: {e}")
+        return False
+
+def install_llm_providers() -> bool:
+    """Install droidrun with all LLM provider extras"""
+    print_header("Installing droidrun with All LLM Providers")
+    
+    providers = ["google", "anthropic", "openai", "deepseek", "ollama", "openrouter"]
+    return install_droidrun(providers)
+
 def check_all_dependencies(scripts_dir: Path):
     """Check all dependencies (system and Python)"""
     print_header("Dependency Check")
@@ -257,6 +358,12 @@ def check_all_dependencies(scripts_dir: Path):
     # Check Python build tools
     py_tools = check_python_build_tools()
     missing_py = [pkg for pkg, installed in py_tools.items() if not installed]
+    
+    print()
+    
+    # Check droidrun dependencies
+    droidrun_deps = check_droidrun_dependencies()
+    missing_droidrun = [pkg for pkg, installed in droidrun_deps.items() if not installed]
     
     print()
     
@@ -274,7 +381,13 @@ def check_all_dependencies(scripts_dir: Path):
     else:
         print_success("All Python build tools are installed")
     
-    if not missing_sys and not missing_py:
+    if missing_droidrun:
+        print_warning(f"Missing droidrun dependencies ({len(missing_droidrun)}): {', '.join(missing_droidrun)}")
+        print_info("Run 'Install droidrun' to install them")
+    else:
+        print_success("All droidrun dependencies are installed")
+    
+    if not missing_sys and not missing_py and not missing_droidrun:
         print_success("All dependencies are ready!")
     
     print()
@@ -295,12 +408,15 @@ def show_menu() -> str:
     print_colored("  9. List All Built Wheels", Colors.CYAN)
     print_colored("  10. Check All Dependencies", Colors.CYAN)
     print_colored("  11. Install Python Build Tools (Phase 1)", Colors.CYAN)
-    print_colored("  12. Exit", Colors.CYAN)
+    print_colored("  12. Check droidrun Dependencies", Colors.CYAN)
+    print_colored("  13. Install droidrun (Base)", Colors.CYAN)
+    print_colored("  14. Install droidrun (All LLM Providers)", Colors.CYAN)
+    print_colored("  15. Exit", Colors.CYAN)
     print()
     print_colored("  Tip: Run with --auto or -a flag for automatic execution", Colors.YELLOW)
     print()
     
-    return get_user_input("Enter your choice", default="12", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"])
+    return get_user_input("Enter your choice", default="15", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"])
 
 def get_build_status(scripts_dir: Path, config: Dict) -> Dict:
     """Get current build status"""
@@ -656,13 +772,28 @@ def main():
                 print_success("Python build tools installation complete!")
             else:
                 print_error("Failed to install some Python build tools")
-            
+        
         elif choice == "12":
+            check_droidrun_dependencies()
+        
+        elif choice == "13":
+            if install_droidrun():
+                print_success("droidrun base package installed!")
+            else:
+                print_error("Failed to install droidrun")
+        
+        elif choice == "14":
+            if install_llm_providers():
+                print_success("droidrun with all LLM providers installed!")
+            else:
+                print_error("Failed to install droidrun with LLM providers")
+            
+        elif choice == "15":
             print_colored("\nExiting...", Colors.CYAN)
             break
         
         # Ask if user wants to continue
-        if choice != "12":
+        if choice != "15":
             print()
             continue_choice = get_user_input(
                 "Return to main menu?",
