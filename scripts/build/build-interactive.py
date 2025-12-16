@@ -38,19 +38,19 @@ def print_step(step_num: int, total: int, description: str):
 
 def print_success(text: str):
     """Print success message"""
-    print_colored(f"✓ {text}", Colors.GREEN)
+    print_colored(f"[OK] {text}", Colors.GREEN)
 
 def print_error(text: str):
     """Print error message"""
-    print_colored(f"✗ {text}", Colors.RED)
+    print_colored(f"[ERROR] {text}", Colors.RED)
 
 def print_warning(text: str):
     """Print warning message"""
-    print_colored(f"⚠ {text}", Colors.YELLOW)
+    print_colored(f"[WARNING] {text}", Colors.YELLOW)
 
 def print_info(text: str):
     """Print info message"""
-    print_colored(f"ℹ {text}", Colors.BLUE)
+    print_colored(f"[INFO] {text}", Colors.BLUE)
 
 def get_user_input(prompt: str, default: Optional[str] = None, choices: Optional[List[str]] = None) -> str:
     """Get user input with optional default and choices"""
