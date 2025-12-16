@@ -205,6 +205,27 @@ done
 log_success "Build tools installed"
 
 # ============================================
+# 6b. Install Python package dependencies (prerequisites)
+# ============================================
+log_info "Installing Python package prerequisites..."
+
+# Install scikit-learn dependencies (required before building scikit-learn)
+# These are runtime dependencies that scikit-learn needs during build
+SCIKIT_LEARN_DEPS=(
+    "joblib>=1.3.0"
+    "threadpoolctl>=3.2.0"
+)
+
+for dep in "${SCIKIT_LEARN_DEPS[@]}"; do
+    log_info "Installing $dep (required for scikit-learn)..."
+    pip install "$dep" --quiet || {
+        log_warning "Failed to install $dep, continuing..."
+    }
+done
+
+log_success "Python package prerequisites installed"
+
+# ============================================
 # 7. Download and extract source.7z if needed
 # ============================================
 DEPENDENCIES_DIR="${SCRIPT_DIR}/depedencies"

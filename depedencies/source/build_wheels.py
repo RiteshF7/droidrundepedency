@@ -594,20 +594,9 @@ class WheelBuilder:
         if package_name.lower() == 'pandas':
             self.apply_pandas_fix(package_dir)
         elif package_name.lower() in ['scikit-learn', 'scikit_learn']:
-            # Install scikit-learn dependencies first (from DEPENDENCIES.md)
-            print(f"  Installing scikit-learn dependencies (joblib, threadpoolctl)...")
-            try:
-                subprocess.run(
-                    [sys.executable, "-m", "pip", "install", 
-                     "joblib>=1.3.0", "threadpoolctl>=3.2.0"],
-                    check=True,
-                    capture_output=True,
-                    timeout=300
-                )
-                print(f"  ✓ Dependencies installed")
-            except Exception as e:
-                print(f"  ⚠ Failed to install dependencies: {e}")
-            
+            # Note: scikit-learn dependencies (joblib, threadpoolctl) should be installed
+            # via build.sh before running this script. This is just a verification.
+            # Apply scikit-learn fixes
             self.apply_scikit_learn_fix(package_dir)
         
         # Build wheel
@@ -715,34 +704,60 @@ class WheelBuilder:
             if extract_dir.exists():
                 shutil.rmtree(extract_dir, ignore_errors=True)
     
-    def install_build_tools(self):
-        """Install required build tools first (Phase 1 from DEPENDENCIES.md)."""
+    def verify_prerequisites(self):
+        """Verify that prerequisites are installed (should be installed by build.sh)."""
         print("\n" + "="*60)
-        print("Installing build tools (Phase 1)...")
+        print("Verifying prerequisites...")
         print("="*60)
-        print("Note: Ensure system dependencies are installed:")
-        print("  pkg install -y python python-pip autoconf automake libtool make binutils")
-        print("  pkg install -y clang cmake ninja rust flang blas-openblas")
-        print("  pkg install -y libjpeg-turbo libpng libtiff libwebp freetype")
-        print("  pkg install -y libarrow-cpp openssl libc++ zlib protobuf libprotobuf")
-        print("  pkg install -y abseil-cpp c-ares libre2 patchelf")
+        print("Note: All prerequisites should be installed by build.sh:")
+        print("  - System packages (pkg install)")
+        print("  - Build tools (pip install: Cython, meson-python, maturin)")
+        print("  - Python dependencies (pip install: joblib, threadpoolctl)")
         print("="*60)
         
-        tools = ["pip", "wheel", "setuptools", "Cython", 
-                 "meson-python<0.19.0,>=0.16.0", "maturin<2,>=1.9.4"]
+        # Verify critical build tools
+        critical_tools = ["Cython", "meson-python", "maturin"]
+        missing_tools = []
         
-        for tool in tools:
+        for tool in critical_tools:
             try:
-                print(f"  Installing {tool}...")
-                subprocess.run(
-                    [sys.executable, "-m", "pip", "install", "--upgrade", tool],
-                    check=True,
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "show", tool],
                     capture_output=True,
-                    timeout=600
+                    timeout=10
                 )
-                print(f"  ✓ {tool} installed")
-            except Exception as e:
-                print(f"  ✗ Failed to install {tool}: {e}")
+                if result.returncode != 0:
+                    missing_tools.append(tool)
+            except:
+                missing_tools.append(tool)
+        
+        if missing_tools:
+            print(f"  ⚠ WARNING: Missing build tools: {', '.join(missing_tools)}")
+            print(f"  These should be installed by build.sh. Continuing anyway...")
+        else:
+            print(f"  ✓ All critical build tools are installed")
+        
+        # Verify scikit-learn dependencies
+        scikit_deps = ["joblib", "threadpoolctl"]
+        missing_deps = []
+        
+        for dep in scikit_deps:
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "show", dep],
+                    capture_output=True,
+                    timeout=10
+                )
+                if result.returncode != 0:
+                    missing_deps.append(dep)
+            except:
+                missing_deps.append(dep)
+        
+        if missing_deps:
+            print(f"  ⚠ WARNING: Missing scikit-learn dependencies: {', '.join(missing_deps)}")
+            print(f"  These should be installed by build.sh. scikit-learn build may fail.")
+        else:
+            print(f"  ✓ scikit-learn dependencies are installed")
     
     def build_all(self):
         """Build all packages in dependency order."""
@@ -750,8 +765,8 @@ class WheelBuilder:
         print("Wheel Builder - Building from Source")
         print("="*60)
         
-        # Install build tools
-        self.install_build_tools()
+        # Verify prerequisites (should be installed by build.sh)
+        self.verify_prerequisites()
         
         # Scan source files
         print("\nScanning source files...")
