@@ -155,22 +155,12 @@ build_wheel() {
     # Find source file
     local source_file=$(find_source_file "$pkg_name" "$pkg_version")
     
-    # If source file not found, try to download it
+    # If source file not found, error out (sources should be downloaded upfront)
     if [ -z "$source_file" ]; then
-        log "INFO" "Source file not found for $pkg_name, attempting to download..."
-        if ! download_source_file "$pkg_name" "$pkg_version" "$pkg_constraint"; then
-            log "WARNING" "Failed to download source for $pkg_name"
-            log "INFO" "Will try pip as fallback for $pkg_name"
-            return 1
-        fi
-        
-        # Try to find the downloaded source file
-        source_file=$(find_source_file "$pkg_name" "$pkg_version")
-        if [ -z "$source_file" ]; then
-            log "WARNING" "Source file still not found after download for $pkg_name"
-            log "INFO" "Will try pip as fallback for $pkg_name"
-            return 1
-        fi
+        log "ERROR" "Source file not found for $pkg_name in $SOURCES_DIR"
+        log "ERROR" "Please run ./install-system-deps.sh first to download all sources"
+        log "INFO" "Will try pip as fallback for $pkg_name"
+        return 1
     fi
     
     log "INFO" "Using source file: $(basename "$source_file")"
