@@ -98,7 +98,8 @@ if [ "$SOURCE_COUNT" -eq 0 ]; then
         RELEASE_TAG="${GITHUB_RELEASE_TAG:-sourceversion1}"
         log_info "Using release tag: $RELEASE_TAG"
         
-        # Download sourceversion1.7z
+        # Download sourceversion1.7z from GitHub releases
+        # URL format: https://github.com/OWNER/REPO/releases/download/TAG/FILENAME
         DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/sourceversion1.7z"
         log_info "Downloading from: $DOWNLOAD_URL"
         log_info "Saving to: $SOURCE_7Z"
