@@ -500,12 +500,46 @@ class WheelBuilder:
     def extract_source(self, source_file: Path, extract_dir: Path) -> bool:
         """Extract source file to directory."""
         try:
+            # Check if file exists and is readable
+            if not source_file.exists():
+                print(f"  ✗ Source file does not exist: {source_file}")
+                return False
+            
+            # Check file size (corrupted files are often 0 bytes or very small)
+            file_size = source_file.stat().st_size
+            if file_size == 0:
+                print(f"  ✗ Source file is empty: {source_file}")
+                return False
+            if file_size < 1000:  # Very small files are likely corrupted
+                print(f"  ✗ Source file is suspiciously small ({file_size} bytes): {source_file}")
+                return False
+            
             if source_file.suffix == '.gz' or source_file.name.endswith('.tar.gz'):
-                with tarfile.open(source_file, 'r:gz') as tar:
-                    tar.extractall(extract_dir)
+                # Try multiple extraction methods for corrupted archives
+                try:
+                    with tarfile.open(source_file, 'r:gz') as tar:
+                        tar.extractall(extract_dir)
+                except tarfile.TarError as e:
+                    # Try with error recovery
+                    print(f"  ⚠ Tar extraction failed, trying error recovery: {e}")
+                    try:
+                        with tarfile.open(source_file, 'r:gz', errorlevel=1) as tar:
+                            tar.extractall(extract_dir)
+                    except Exception as e2:
+                        print(f"  ✗ Failed to extract {source_file}: {e2}")
+                        return False
             elif source_file.suffix == '.zip':
-                with zipfile.ZipFile(source_file, 'r') as zip_ref:
-                    zip_ref.extractall(extract_dir)
+                try:
+                    with zipfile.ZipFile(source_file, 'r') as zip_ref:
+                        # Test zip file integrity
+                        bad_file = zip_ref.testzip()
+                        if bad_file:
+                            print(f"  ✗ Corrupted file in zip: {bad_file}")
+                            return False
+                        zip_ref.extractall(extract_dir)
+                except zipfile.BadZipFile as e:
+                    print(f"  ✗ Corrupted zip file: {e}")
+                    return False
             else:
                 print(f"  ✗ Unknown file format: {source_file}")
                 return False
@@ -513,6 +547,8 @@ class WheelBuilder:
             return True
         except Exception as e:
             print(f"  ✗ Failed to extract {source_file}: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def build_wheel(self, package_name: str, package_info: dict) -> bool:
@@ -636,14 +672,29 @@ class WheelBuilder:
                 
                 self.built_packages.add(package_name.lower())
                 
-                # Install the wheel for dependent packages
+                # Install the wheel for dependent packages (CRITICAL for dependency resolution)
                 try:
                     install_cmd = [sys.executable, "-m", "pip", "install", 
                                  "--find-links", str(self.wheels_dir), 
-                                 "--no-index", str(wheel_file)]
-                    subprocess.run(install_cmd, capture_output=True, timeout=300)
+                                 "--no-index", "--force-reinstall", str(wheel_file)]
+                    result = subprocess.run(install_cmd, capture_output=True, text=True, timeout=300)
+                    if result.returncode == 0:
+                        print(f"  ✓ Installed {package_name} for dependent packages")
+                    else:
+                        print(f"  ⚠ Failed to install wheel: {result.stderr[:200]}")
+                        # Try without --no-index as fallback
+                        install_cmd_fallback = [sys.executable, "-m", "pip", "install", 
+                                               "--find-links", str(self.wheels_dir), str(wheel_file)]
+                        subprocess.run(install_cmd_fallback, capture_output=True, timeout=300)
                 except Exception as e:
-                    print(f"  ⚠ Failed to install wheel (non-critical): {e}")
+                    print(f"  ⚠ Failed to install wheel: {e}")
+                    # Try fallback installation
+                    try:
+                        install_cmd_fallback = [sys.executable, "-m", "pip", "install", 
+                                               "--find-links", str(self.wheels_dir), str(wheel_file)]
+                        subprocess.run(install_cmd_fallback, capture_output=True, timeout=300)
+                    except:
+                        pass
                 
                 return True
             else:
