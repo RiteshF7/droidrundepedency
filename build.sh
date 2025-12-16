@@ -186,6 +186,10 @@ if [ -d "$PREBUILT_WHEELS_DIR" ]; then
 else
     log_info "Pre-built wheels directory not found: $PREBUILT_WHEELS_DIR"
     log_info "Will build all wheels from source"
+    log_info ""
+    log_info "To use pre-built wheels, sync them first:"
+    log_info "  bash sync_wheels.sh"
+    log_info "  (or manually copy wheels to: $PREBUILT_WHEELS_DIR)"
 fi
 
 # Package-specific environment variables (will be set per-package in build_wheels.py)
