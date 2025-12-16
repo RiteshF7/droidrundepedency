@@ -6,6 +6,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/config.sh"
 source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/build-wheels.sh"
 
 # Track installed packages
 declare -A INSTALLED_PKGS
@@ -86,8 +87,76 @@ install_all_system_deps() {
     log "SUCCESS" "System dependencies installation complete"
 }
 
+# Download all source files for Python packages
+download_all_sources() {
+    log "INFO" "=========================================="
+    log "INFO" "Downloading source files for all packages"
+    log "INFO" "Sources directory: $SOURCES_DIR"
+    log "INFO" "=========================================="
+    
+    # Create sources directory if it doesn't exist
+    mkdir -p "$SOURCES_DIR"
+    
+    # Setup build environment (needed for pip)
+    setup_build_environment
+    
+    local downloaded_count=0
+    local skipped_count=0
+    local failed_count=0
+    
+    # Download sources for all Python packages
+    for pkg_name in "${!PYTHON_PACKAGES[@]}"; do
+        local constraint="${PYTHON_PACKAGES[$pkg_name]}"
+        local version=""
+        
+        # Extract version from constraint if it's ==
+        if [[ "$constraint" == ==* ]]; then
+            version="${constraint#==}"
+        fi
+        
+        # Check if source file already exists
+        local source_file=$(find_source_file "$pkg_name" "$version")
+        if [ -n "$source_file" ]; then
+            log "INFO" "Source file already exists for $pkg_name: $(basename "$source_file")"
+            skipped_count=$((skipped_count + 1))
+            continue
+        fi
+        
+        # Download source file
+        log "INFO" "Downloading source for $pkg_name${version:+ $version}..."
+        if download_source_file "$pkg_name" "$version" "$constraint"; then
+            downloaded_count=$((downloaded_count + 1))
+        else
+            log "WARNING" "Failed to download source for $pkg_name"
+            failed_count=$((failed_count + 1))
+        fi
+    done
+    
+    log "SUCCESS" "=========================================="
+    log "SUCCESS" "Source download complete!"
+    log "INFO" "Downloaded: $downloaded_count"
+    log "INFO" "Skipped (already exists): $skipped_count"
+    log "INFO" "Failed: $failed_count"
+    log "SUCCESS" "=========================================="
+}
+
+# Main function that installs system deps and downloads sources
+install_all_and_download_sources() {
+    # Step 1: Install system dependencies
+    install_all_system_deps
+    
+    # Step 2: Download all source files
+    download_all_sources
+}
+
 # Run if executed directly
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
-    install_all_system_deps
+    # Check if --no-download flag is provided to skip source download
+    if [ "$1" = "--no-download" ] || [ "$1" = "-n" ]; then
+        install_all_system_deps
+    else
+        # By default, install system deps and download sources
+        install_all_and_download_sources
+    fi
 fi
 
