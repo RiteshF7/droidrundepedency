@@ -153,24 +153,18 @@ except:
     
     cd "$WHEELS_DIR" || exit 1
     
-    # Step 1: Download source distribution
-    log "INFO" "Downloading $package_spec..."
-    if pip download "$package_spec" --dest . --no-cache-dir 2>&1 | tee -a "$LOG_FILE"; then
-        log "INFO" "Download completed"
-    else
-        log "ERROR" "Failed to download $package_spec"
-        FAILED_COUNT=$((FAILED_COUNT + 1))
-        FAILED_PACKAGES+=("$package_name (download failed)")
-        return 1
+    # Step 1: Find source file from SOURCES_DIR (sources should be downloaded upfront)
+    log "INFO" "Looking for source file for $package_name in $SOURCES_DIR..."
+    local source_file=""
+    
+    # Try to find source file in SOURCES_DIR
+    if [ -d "$SOURCES_DIR" ]; then
+        source_file=$(find "$SOURCES_DIR" -maxdepth 1 -type f \( -name "${package_name}-*.tar.gz" -o -name "${package_name}-*.zip" \) 2>/dev/null | head -1)
     fi
     
-    # Step 2: Build wheel from source
-    local source_file=""
-    # Find the downloaded source file (most recent)
-    source_file=$(ls -t ${package_name}-*.tar.gz 2>/dev/null | head -1)
-    
     if [ -z "$source_file" ] || [ ! -f "$source_file" ]; then
-        log "WARNING" "No source file found for $package_name, checking for pre-built wheel..."
+        log "WARNING" "No source file found for $package_name in $SOURCES_DIR"
+        log "INFO" "Please run ./install-system-deps.sh first to download all sources"
         # Check if there's already a wheel
         local existing_wheel=$(ls ${package_name}-*.whl 2>/dev/null | head -1)
         if [ -n "$existing_wheel" ]; then
@@ -182,6 +176,8 @@ except:
             FAILED_PACKAGES+=("$package_name (no source/wheel)")
             return 1
         fi
+    else
+        log "INFO" "Found source file: $(basename "$source_file")"
     fi
     
     if [ "$build_required" = true ]; then
@@ -406,17 +402,21 @@ except:
         pip uninstall -y pandas 2>/dev/null || true
     fi
     
-    # Download with constraint
+    # Find source file from SOURCES_DIR
     cd "$WHEELS_DIR" || exit 1
-    log "INFO" "Downloading pandas<2.3.0..."
-    if pip download "pandas<2.3.0" --dest . --no-cache-dir 2>&1 | tee -a "$LOG_FILE"; then
-        # Find the downloaded pandas file (should be 2.2.x)
-        local pandas_file=$(ls -t pandas-2.2.*.tar.gz 2>/dev/null | head -1)
+    log "INFO" "Looking for pandas source file in $SOURCES_DIR..."
+    local pandas_file=""
+    
+    if [ -d "$SOURCES_DIR" ]; then
+        # Try to find pandas 2.2.x first
+        pandas_file=$(find "$SOURCES_DIR" -maxdepth 1 -type f -name "pandas-2.2.*.tar.gz" 2>/dev/null | head -1)
         if [ -z "$pandas_file" ]; then
-            pandas_file=$(ls -t pandas-*.tar.gz 2>/dev/null | head -1)
+            pandas_file=$(find "$SOURCES_DIR" -maxdepth 1 -type f -name "pandas-*.tar.gz" 2>/dev/null | head -1)
         fi
-        
-        if [ -n "$pandas_file" ] && [ -f "$pandas_file" ]; then
+    fi
+    
+    if [ -n "$pandas_file" ] && [ -f "$pandas_file" ]; then
+        log "INFO" "Found pandas source file: $(basename "$pandas_file")"
             log "INFO" "Building wheel from $pandas_file..."
             local build_start=$(date +%s)
             if pip wheel --no-deps --wheel-dir . "$pandas_file" 2>&1 | tee -a "$LOG_FILE"; then
@@ -453,16 +453,11 @@ except:
                 FAILED_PACKAGES+=("pandas (build failed)")
                 exit 1
             fi
-        else
-            log "ERROR" "No pandas source file found after download"
-            FAILED_COUNT=$((FAILED_COUNT + 1))
-            FAILED_PACKAGES+=("pandas (download failed)")
-            exit 1
-        fi
     else
-        log "ERROR" "Failed to download pandas"
+        log "ERROR" "No pandas source file found in $SOURCES_DIR"
+        log "ERROR" "Please run ./install-system-deps.sh first to download all sources"
         FAILED_COUNT=$((FAILED_COUNT + 1))
-        FAILED_PACKAGES+=("pandas (download failed)")
+        FAILED_PACKAGES+=("pandas (no source file)")
         exit 1
     fi
     
@@ -477,12 +472,15 @@ except:
     else
         cd "$WHEELS_DIR" || exit 1
         
-        log "INFO" "Downloading scikit-learn..."
-        if pip download "scikit-learn" --dest . --no-cache-dir 2>&1 | tee -a "$LOG_FILE"; then
-            log "INFO" "Download completed"
-            
-            local source_file=$(ls -t scikit-learn-*.tar.gz 2>/dev/null | head -1)
-            if [ -n "$source_file" ] && [ -f "$source_file" ]; then
+        log "INFO" "Looking for scikit-learn source file in $SOURCES_DIR..."
+        local source_file=""
+        
+        if [ -d "$SOURCES_DIR" ]; then
+            source_file=$(find "$SOURCES_DIR" -maxdepth 1 -type f -name "scikit-learn-*.tar.gz" 2>/dev/null | head -1)
+        fi
+        
+        if [ -n "$source_file" ] && [ -f "$source_file" ]; then
+            log "INFO" "Found scikit-learn source file: $(basename "$source_file")"
                 log "INFO" "Extracting source to fix meson build issue..."
                 local extract_dir="$WHEELS_DIR/scikit-learn-extract-$$"
                 mkdir -p "$extract_dir" || {
@@ -577,13 +575,14 @@ except:
                 cd "$HOME" || exit 1
                 return 1
             fi
-        else
-            log "ERROR" "Failed to download scikit-learn"
-            FAILED_COUNT=$((FAILED_COUNT + 1))
-            FAILED_PACKAGES+=("scikit-learn (download failed)")
-            cd "$HOME" || exit 1
-            return 1
-        fi
+    else
+        log "ERROR" "No scikit-learn source file found in $SOURCES_DIR"
+        log "ERROR" "Please run ./install-system-deps.sh first to download all sources"
+        FAILED_COUNT=$((FAILED_COUNT + 1))
+        FAILED_PACKAGES+=("scikit-learn (no source file)")
+        cd "$HOME" || exit 1
+        return 1
+    fi
     fi
     
     echo ""
