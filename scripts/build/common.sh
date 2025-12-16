@@ -134,24 +134,42 @@ find_source_file() {
     local pkg_name="$1"
     local pkg_version="${2:-}"
     
+    # Normalize package name variations
+    local alt_name1=$(echo "$pkg_name" | tr '-' '_')  # scikit-learn -> scikit_learn
+    local alt_name2=$(echo "$pkg_name" | tr '_' '-')  # scikit_learn -> scikit-learn
+    
     # Try exact match first
     if [ -n "$pkg_version" ]; then
-        for pattern in "${pkg_name}-${pkg_version}.tar.gz" "${pkg_name}-${pkg_version}.zip" \
-                      "${pkg_name}-${pkg_version}-fixed.tar.gz" "${pkg_name}_${pkg_version}.tar.gz"; do
-            if [ -f "$SOURCES_DIR/$pattern" ]; then
-                echo "$SOURCES_DIR/$pattern"
-                return 0
-            fi
+        for name in "$pkg_name" "$alt_name1" "$alt_name2"; do
+            for pattern in "${name}-${pkg_version}.tar.gz" "${name}-${pkg_version}.zip" \
+                          "${name}-${pkg_version}-fixed.tar.gz" "${name}_${pkg_version}.tar.gz"; do
+                if [ -f "$SOURCES_DIR/$pattern" ]; then
+                    echo "$SOURCES_DIR/$pattern"
+                    return 0
+                fi
+            done
         done
     fi
     
-    # Try any version
-    for pattern in "${pkg_name}-"*.tar.gz "${pkg_name}-"*.zip "${pkg_name}_"*.tar.gz; do
-        if ls "$SOURCES_DIR/$pattern" 2>/dev/null | head -1 | grep -q .; then
-            ls "$SOURCES_DIR/$pattern" 2>/dev/null | head -1
+    # Try any version with all name variations
+    for name in "$pkg_name" "$alt_name1" "$alt_name2"; do
+        for pattern in "${name}-"*.tar.gz "${name}-"*.zip "${name}_"*.tar.gz; do
+            local found=$(ls "$SOURCES_DIR/$pattern" 2>/dev/null | head -1)
+            if [ -n "$found" ] && [ -f "$found" ]; then
+                echo "$found"
+                return 0
+            fi
+        done
+    done
+    
+    # Last resort: case-insensitive search
+    if [ -d "$SOURCES_DIR" ]; then
+        local found=$(find "$SOURCES_DIR" -maxdepth 1 -type f -iname "*${pkg_name}*" \( -name "*.tar.gz" -o -name "*.zip" \) 2>/dev/null | head -1)
+        if [ -n "$found" ] && [ -f "$found" ]; then
+            echo "$found"
             return 0
         fi
-    done
+    fi
     
     return 1
 }
