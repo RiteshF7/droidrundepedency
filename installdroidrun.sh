@@ -791,10 +791,19 @@ else
         dep_name=$(echo "$dep" | sed 's/[<>=].*//')
         if ! python_pkg_installed "$dep_name" "$dep"; then
             log_info "Installing $dep..."
-            if ! python3 -m pip install "$dep" --quiet 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done; then
-                log_warning "Failed to install $dep, but continuing..."
-            else
+            local pip_output
+            pip_output=$(python3 -m pip install "$dep" 2>&1)
+            local pip_exit=$?
+            
+            # Display output (filtering out noise)
+            echo "$pip_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done || true
+            
+            if [ $pip_exit -eq 0 ]; then
                 log_success "$dep installed"
+            else
+                log_warning "Failed to install $dep (exit code: $pip_exit), but continuing..."
+                # Show error details
+                echo "$pip_output" | grep -i "error\|failed\|exception" | head -5 | while read line; do log_warning "    $line"; done || true
             fi
         else
             log_info "$dep_name already installed"
