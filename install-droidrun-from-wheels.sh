@@ -184,12 +184,14 @@ download_wheels() {
 }
 
 # Helper function to install a package from wheels directory
-# Usage: install_from_wheels <wheels_dir> <package_spec> [fallback_to_pypi]
+# Usage: install_from_wheels <wheels_dir> <package_spec> [fallback_to_pypi] [use_no_index]
 # Returns 0 on success, 1 on failure
+# use_no_index: 1 = use --no-index (only local wheels), 0 = allow PyPI fallback for dependencies (default: 1)
 install_from_wheels() {
 	local wheels_dir="$1"
 	local package_spec="$2"
 	local fallback_to_pypi="${3:-1}"  # Default to 1 (allow fallback)
+	local use_no_index="${4:-1}"  # Default to 1 (use --no-index)
 	
 	# Convert to absolute path
 	wheels_dir=$(cd "$wheels_dir" 2>/dev/null && pwd || echo "$wheels_dir")
@@ -198,6 +200,12 @@ install_from_wheels() {
 	local package_name=$(echo "$package_spec" | sed -E 's/[<>=!].*//' | tr '[:upper:]' '[:lower:]')
 	# Normalize package name: replace underscores with dashes for matching (wheel files use dashes)
 	local package_search=$(echo "$package_name" | tr '_' '-')
+	
+	# Check if package is already installed
+	if pip show "$package_name" >/dev/null 2>&1; then
+		log "    Package $package_name is already installed"
+		return 0
+	fi
 	
 	# Try to find matching wheel file
 	# Search for both original name and normalized name (e.g., meson_python vs meson-python)
@@ -212,17 +220,38 @@ install_from_wheels() {
 		wheel_file=$(find "$wheels_dir" -maxdepth 1 -iname "${package_search}*.whl" 2>/dev/null | head -1)
 	fi
 	
-	if [ -n "$wheel_file" ] && [ -f "$wheel_file" ]; then
-		# Install directly from wheel file
-		log "    Found wheel: $(basename "$wheel_file")"
-		if pip install --no-deps "$wheel_file" 2>/dev/null; then
-			return 0
-		fi
+	# Build pip command with appropriate flags
+	local pip_flags="--find-links $wheels_dir"
+	if [ "$use_no_index" = "1" ]; then
+		pip_flags="--no-index $pip_flags"
 	fi
 	
-	# Try with --find-links using absolute path
-	if pip install --no-index --find-links "$wheels_dir" "$package_spec" 2>/dev/null; then
+	# Try with --find-links first (preferred method - allows pip to resolve dependencies from local wheels)
+	# This will find the wheel file and also check local wheels for dependencies
+	local install_output
+	install_output=$(pip install $pip_flags "$package_spec" 2>&1)
+	local install_status=$?
+	# Check if installation succeeded (exit code 0) or if package is already satisfied
+	if [ $install_status -eq 0 ] || echo "$install_output" | grep -q "Requirement already satisfied\|Successfully installed"; then
 		return 0
+	fi
+	
+	# If that failed but we found a wheel file, try installing it directly
+	# This might work if the package has no dependencies or dependencies are already installed
+	if [ -n "$wheel_file" ] && [ -f "$wheel_file" ]; then
+		log "    Found wheel: $(basename "$wheel_file")"
+		# Try installing the wheel file directly (pip will check --find-links for dependencies)
+		install_output=$(pip install $pip_flags "$wheel_file" 2>&1)
+		install_status=$?
+		if [ $install_status -eq 0 ] || echo "$install_output" | grep -q "Requirement already satisfied\|Successfully installed"; then
+			return 0
+		fi
+		# Last resort: install with --no-deps (assumes all dependencies are already installed)
+		install_output=$(pip install --no-deps "$wheel_file" 2>&1)
+		install_status=$?
+		if [ $install_status -eq 0 ] || echo "$install_output" | grep -q "Requirement already satisfied\|Successfully installed"; then
+			return 0
+		fi
 	fi
 	
 	# Fallback to PyPI if allowed
@@ -304,7 +333,8 @@ install_droidrun_from_wheels() {
 	log "Phase 1: Installing build tools (Cython, meson-python, maturin)..."
 	
 	log "  Installing Cython (required for numpy, scipy, pandas, scikit-learn)..."
-	if ! install_from_wheels "$wheels_dir" Cython; then
+	# Allow PyPI fallback for dependencies (use_no_index=0) since these are build tools
+	if ! install_from_wheels "$wheels_dir" Cython 1 0; then
 		# If not in wheels, try installing from PyPI (pure Python, should work)
 		log_warn "Cython not found in wheels, installing from PyPI..."
 		if ! pip install Cython; then
@@ -314,7 +344,8 @@ install_droidrun_from_wheels() {
 	fi
 	
 	log "  Installing meson-python (required for pandas, scikit-learn)..."
-	if ! install_from_wheels "$wheels_dir" "meson-python<0.19.0,>=0.16.0"; then
+	# Allow PyPI fallback for dependencies (use_no_index=0)
+	if ! install_from_wheels "$wheels_dir" "meson-python<0.19.0,>=0.16.0" 1 0; then
 		log_warn "meson-python not found in wheels, installing from PyPI..."
 		if ! pip install "meson-python<0.19.0,>=0.16.0"; then
 			log_error "Failed to install meson-python"
@@ -323,7 +354,8 @@ install_droidrun_from_wheels() {
 	fi
 	
 	log "  Installing maturin (required for jiter)..."
-	if ! install_from_wheels "$wheels_dir" "maturin<2,>=1.9.4"; then
+	# Allow PyPI fallback for dependencies (use_no_index=0) so pip can resolve transitive deps from PyPI if not in local wheels
+	if ! install_from_wheels "$wheels_dir" "maturin<2,>=1.9.4" 1 0; then
 		log_warn "maturin not found in wheels, installing from PyPI..."
 		if ! pip install "maturin<2,>=1.9.4"; then
 			log_error "Failed to install maturin"
