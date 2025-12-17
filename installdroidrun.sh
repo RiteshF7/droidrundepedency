@@ -46,8 +46,27 @@ python_pkg_installed() {
     local pkg_name=$1
     local version_spec=$2
     
+    # #region agent log
+    DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+    mkdir -p "$(dirname "$DEBUG_LOG")" 2>/dev/null || true
+    echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A\",\"location\":\"installdroidrun.sh:45\",\"message\":\"python_pkg_installed entry\",\"data\":{\"pkg_name\":\"$pkg_name\",\"version_spec\":\"$version_spec\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+    # #endregion
+    
     # Use pip show to check if package is installed
-    if ! pip show "$pkg_name" &>/dev/null; then
+    local pip_show_output
+    pip_show_output=$(pip show "$pkg_name" 2>&1)
+    local pip_show_exit=$?
+    
+    # #region agent log
+    DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+    echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A\",\"location\":\"installdroidrun.sh:52\",\"message\":\"pip show result\",\"data\":{\"pkg_name\":\"$pkg_name\",\"exit_code\":$pip_show_exit,\"output\":\"$(echo "$pip_show_output" | head -3 | tr '\n' ';')\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+    # #endregion
+    
+    if [ $pip_show_exit -ne 0 ]; then
+        # #region agent log
+        DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+        echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A\",\"location\":\"installdroidrun.sh:56\",\"message\":\"pip show failed, returning 1\",\"data\":{\"pkg_name\":\"$pkg_name\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+        # #endregion
         return 1
     fi
     
@@ -57,23 +76,45 @@ python_pkg_installed() {
         # This uses pip's own requirement resolver which is most reliable
         local pip_output
         pip_output=$(pip install --dry-run --no-deps "$version_spec" 2>&1)
+        local pip_dry_run_exit=$?
+        
+        # #region agent log
+        DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+        echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"B\",\"location\":\"installdroidrun.sh:66\",\"message\":\"pip install --dry-run result\",\"data\":{\"version_spec\":\"$version_spec\",\"exit_code\":$pip_dry_run_exit,\"output\":\"$(echo "$pip_output" | tr '\n' ';' | head -c 500)\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+        # #endregion
         
         # If pip says "Requirement already satisfied", the version requirement is met
         if echo "$pip_output" | grep -q "Requirement already satisfied"; then
+            # #region agent log
+            DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+            echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"B\",\"location\":\"installdroidrun.sh:71\",\"message\":\"grep found 'Requirement already satisfied', returning 0\",\"data\":{\"version_spec\":\"$version_spec\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+            # #endregion
             return 0
         fi
         
         # If pip would install/upgrade, the requirement is not satisfied
         if echo "$pip_output" | grep -qE "(Would install|Would upgrade)"; then
+            # #region agent log
+            DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+            echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"B\",\"location\":\"installdroidrun.sh:78\",\"message\":\"grep found 'Would install/upgrade', returning 1\",\"data\":{\"version_spec\":\"$version_spec\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+            # #endregion
             return 1
         fi
         
         # If output is unclear, assume requirement is satisfied (better to skip than rebuild unnecessarily)
         # This handles edge cases where pip output format might differ
+        # #region agent log
+        DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+        echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"B\",\"location\":\"installdroidrun.sh:85\",\"message\":\"unclear output, assuming satisfied, returning 0\",\"data\":{\"version_spec\":\"$version_spec\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+        # #endregion
         return 0
     fi
     
     # If no version requirement or just package name, package is installed
+    # #region agent log
+    DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+    echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A\",\"location\":\"installdroidrun.sh:91\",\"message\":\"no version requirement, returning 0\",\"data\":{\"pkg_name\":\"$pkg_name\",\"version_spec\":\"$version_spec\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+    # #endregion
     return 0
 }
 
@@ -283,10 +324,25 @@ build_package() {
     done
     
     # Check if package is already installed and satisfies version requirement
+    # #region agent log
+    DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+    echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C\",\"location\":\"installdroidrun.sh:285\",\"message\":\"build_package checking if installed\",\"data\":{\"pkg_name\":\"$pkg_name\",\"version_spec\":\"$version_spec\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+    # #endregion
+    
     if python_pkg_installed "$pkg_name" "$version_spec"; then
+        local check_result=0
+        # #region agent log
+        DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+        echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C\",\"location\":\"installdroidrun.sh:290\",\"message\":\"python_pkg_installed returned 0, skipping build\",\"data\":{\"pkg_name\":\"$pkg_name\",\"version_spec\":\"$version_spec\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+        # #endregion
         log_success "$pkg_name is already installed and satisfies version requirement ($version_spec), skipping build"
         return 0
     else
+        local check_result=1
+        # #region agent log
+        DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+        echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C\",\"location\":\"installdroidrun.sh:297\",\"message\":\"python_pkg_installed returned 1, will build\",\"data\":{\"pkg_name\":\"$pkg_name\",\"version_spec\":\"$version_spec\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+        # #endregion
         log_info "$pkg_name not installed or version requirement ($version_spec) not satisfied, will build"
     fi
     
@@ -313,10 +369,18 @@ build_package() {
     local source_arg="$version_spec"
     local temp_dir=""
     if [ -n "$fix_type" ]; then
+        # #region agent log
+        DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+        echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"E\",\"location\":\"installdroidrun.sh:315\",\"message\":\"calling download_and_fix_source\",\"data\":{\"pkg_name\":\"$pkg_name\",\"version_spec\":\"$version_spec\",\"fix_type\":\"$fix_type\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+        # #endregion
         # Use a temp file to capture the return value while letting logs flow through
         local result_file=$(mktemp)
         # Run function, capture stdout to file, but let stderr (logs) flow through
         if download_and_fix_source "$pkg_name" "$version_spec" "$fix_type" > "$result_file" 2>&1; then
+            # #region agent log
+            DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+            echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"E\",\"location\":\"installdroidrun.sh:322\",\"message\":\"download_and_fix_source succeeded\",\"data\":{\"pkg_name\":\"$pkg_name\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+            # #endregion
             local fixed_source=$(cat "$result_file" 2>/dev/null | tail -1)
             rm -f "$result_file"
             if [ -n "$fixed_source" ] && [ -f "$fixed_source" ]; then
@@ -327,6 +391,11 @@ build_package() {
                 return 1
             fi
         else
+            # #region agent log
+            DEBUG_LOG="${SCRIPT_DIR:-$HOME}/.cursor/debug.log"
+            local error_content=$(cat "$result_file" 2>/dev/null | head -10 | tr '\n' ';' | head -c 300)
+            echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"E\",\"location\":\"installdroidrun.sh:393\",\"message\":\"download_and_fix_source failed\",\"data\":{\"pkg_name\":\"$pkg_name\",\"error_preview\":\"$error_content\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
+            # #endregion
             log_error "Failed to download and fix $pkg_name source"
             rm -f "$result_file"
             return 1
