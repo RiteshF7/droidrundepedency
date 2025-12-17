@@ -450,10 +450,12 @@ build_package() {
         fi
     fi
     
-    # Build wheel
+    # Build wheel - ensure we're in WHEELS_DIR and use absolute path
     log_info "Building $pkg_name wheel (pip will download source automatically)..."
+    cd "$WHEELS_DIR"
+    local wheels_dir_abs=$(cd "$WHEELS_DIR" && pwd)
     local pip_wheel_output
-    pip_wheel_output=$(python3 -m pip wheel "$source_arg" --no-deps $build_opts --wheel-dir . 2>&1) || {
+    pip_wheel_output=$(python3 -m pip wheel "$source_arg" --no-deps $build_opts --wheel-dir "$wheels_dir_abs" 2>&1) || {
         log_error "Failed to build $pkg_name wheel"
         echo "$pip_wheel_output" | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_error "  $line"; done
         [ -n "$temp_dir" ] && rm -rf "$temp_dir"
@@ -462,25 +464,41 @@ build_package() {
     # Display output (filtering out noise)
     echo "$pip_wheel_output" | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done || true
     
-    # Verify wheel was created
-    if ! ls -1 ${wheel_pattern} >/dev/null 2>&1; then
+    # Find the wheel file - check WHEELS_DIR first, then extract from pip output if needed
+    local wheel_file=""
+    wheel_file=$(ls -1 "$wheels_dir_abs"/${wheel_pattern} 2>/dev/null | head -1)
+    
+    # If not found in WHEELS_DIR, try to extract from pip output (it might show where it was stored)
+    if [ -z "$wheel_file" ] || [ ! -f "$wheel_file" ]; then
+        # Try to extract wheel path from pip output
+        local stored_path=$(echo "$pip_wheel_output" | grep -o "Stored in directory: [^ ]*" | cut -d' ' -f4- | head -1)
+        if [ -n "$stored_path" ]; then
+            wheel_file=$(find "$stored_path" -name "${wheel_pattern}" 2>/dev/null | head -1)
+            # If found in cache, copy it to WHEELS_DIR
+            if [ -n "$wheel_file" ] && [ -f "$wheel_file" ]; then
+                log_info "Found wheel in cache, copying to WHEELS_DIR..."
+                cp "$wheel_file" "$wheels_dir_abs/" 2>/dev/null || true
+                wheel_file="$wheels_dir_abs/$(basename "$wheel_file")"
+            fi
+        fi
+    fi
+    
+    # Final check - if still not found, try pattern match in WHEELS_DIR
+    if [ -z "$wheel_file" ] || [ ! -f "$wheel_file" ]; then
+        wheel_file=$(find "$wheels_dir_abs" -maxdepth 1 -name "${wheel_pattern}" 2>/dev/null | head -1)
+    fi
+    
+    if [ -z "$wheel_file" ] || [ ! -f "$wheel_file" ]; then
         log_error "Wheel file not found after build: ${wheel_pattern}"
+        log_error "Searched in: $wheels_dir_abs"
         [ -n "$temp_dir" ] && rm -rf "$temp_dir"
         return 1
     fi
+    
+    # Ensure absolute path
+    wheel_file=$(cd "$(dirname "$wheel_file")" && pwd)/$(basename "$wheel_file")
     
     log_success "$pkg_name wheel built successfully"
-    
-    # Find the actual wheel file with absolute path before cleanup
-    local wheel_file=$(ls -1 ${wheel_pattern} 2>/dev/null | head -1)
-    if [ -z "$wheel_file" ]; then
-        log_error "Wheel file not found: ${wheel_pattern}"
-        [ -n "$temp_dir" ] && rm -rf "$temp_dir"
-        return 1
-    fi
-    # Convert to absolute path
-    wheel_file=$(cd "$(dirname "$wheel_file")" && pwd)/$(basename "$wheel_file")
-    local wheels_dir_abs=$(cd "$WHEELS_DIR" && pwd)
     
     # Cleanup temp directory if used (do this before changing directory)
     [ -n "$temp_dir" ] && rm -rf "$temp_dir"
