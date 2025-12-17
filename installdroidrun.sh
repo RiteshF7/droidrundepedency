@@ -78,34 +78,86 @@ download_and_fix_source() {
     
     log_info "Downloading $pkg_name source ($version_spec)..."
     WORK_DIR=$(mktemp -d)
+    log_info "Working directory: $WORK_DIR"
     cd "$WORK_DIR"
     
-    # Download source using pip
-    if ! pip download "$version_spec" --dest . --no-cache-dir --no-binary :all: >/dev/null 2>&1; then
-        log_error "Failed to download $pkg_name source"
+    # Download source using pip (with verbose output)
+    log_info "Running: pip download \"$version_spec\" --dest . --no-cache-dir --no-binary :all:"
+    local download_output=$(pip download "$version_spec" --dest . --no-cache-dir --no-binary :all: 2>&1)
+    local download_exit_code=$?
+    
+    if [ $download_exit_code -ne 0 ]; then
+        log_error "Failed to download $pkg_name source (exit code: $download_exit_code)"
+        log_error "pip download output:"
+        echo "$download_output" | while read line; do
+            log_error "  $line"
+        done
+        log_info "Contents of working directory:"
+        ls -la "$WORK_DIR" | while read line; do
+            log_info "  $line"
+        done || true
         rm -rf "$WORK_DIR"
         return 1
     fi
     
+    log_info "pip download completed successfully"
+    log_info "Contents of working directory after download:"
+    ls -la "$WORK_DIR" | while read line; do
+        log_info "  $line"
+    done || true
+    
     # Find downloaded file
+    log_info "Searching for source file: ${pkg_name}-*.tar.gz"
     local source_file=$(ls ${pkg_name}-*.tar.gz 2>/dev/null | head -1)
     if [ -z "$source_file" ]; then
         log_error "Downloaded source file not found for $pkg_name"
+        log_error "Expected pattern: ${pkg_name}-*.tar.gz"
+        log_error "Files in directory:"
+        ls -la "$WORK_DIR" | while read line; do
+            log_error "  $line"
+        done || true
         rm -rf "$WORK_DIR"
         return 1
     fi
     
+    log_success "Found source file: $source_file"
+    
     log_info "Extracting $pkg_name source..."
-    tar -xzf "$source_file"
-    local pkg_dir=$(ls -d ${pkg_name}-* | head -1)
+    if ! tar -xzf "$source_file" 2>&1 | while read line; do log_info "  $line"; done; then
+        log_error "Failed to extract $source_file"
+        rm -rf "$WORK_DIR"
+        return 1
+    fi
+    
+    local pkg_dir=$(ls -d ${pkg_name}-* 2>/dev/null | head -1)
+    if [ -z "$pkg_dir" ]; then
+        log_error "Extracted package directory not found for $pkg_name"
+        log_error "Expected pattern: ${pkg_name}-*"
+        log_error "Contents after extraction:"
+        ls -la "$WORK_DIR" | while read line; do
+            log_error "  $line"
+        done || true
+        rm -rf "$WORK_DIR"
+        return 1
+    fi
+    
+    log_success "Extracted to directory: $pkg_dir"
     
     if [ "$fix_type" = "pandas" ]; then
         # Fix pandas meson.build
+        log_info "Checking for meson.build in $pkg_dir..."
         if [ -f "$pkg_dir/meson.build" ]; then
             local pkg_version=$(echo "$pkg_dir" | sed "s/${pkg_name}-//")
             log_info "Fixing meson.build: replacing version detection with '$pkg_version'"
-            sed -i "s/version: run_command.*/version: '$pkg_version',/" "$pkg_dir/meson.build"
-            log_success "meson.build fixed"
+            if sed -i "s/version: run_command.*/version: '$pkg_version',/" "$pkg_dir/meson.build" 2>&1; then
+                log_success "meson.build fixed"
+            else
+                log_error "Failed to fix meson.build"
+                rm -rf "$WORK_DIR"
+                return 1
+            fi
+        else
+            log_warning "meson.build not found in $pkg_dir (may not be needed)"
         fi
     elif [ "$fix_type" = "scikit-learn" ]; then
         # Fix scikit-learn version.py and meson.build
@@ -127,7 +179,20 @@ download_and_fix_source() {
     
     # Repackage fixed source
     log_info "Repackaging fixed source..."
-    tar -czf "$source_file" "$pkg_dir/"
+    log_info "Creating archive: $source_file from $pkg_dir/"
+    if ! tar -czf "$source_file" "$pkg_dir/" 2>&1 | while read line; do log_info "  $line"; done; then
+        log_error "Failed to repackage $pkg_name source"
+        rm -rf "$WORK_DIR"
+        return 1
+    fi
+    
+    if [ ! -f "$source_file" ]; then
+        log_error "Repackaged file not created: $source_file"
+        rm -rf "$WORK_DIR"
+        return 1
+    fi
+    
+    log_success "Repackaged source file created: $WORK_DIR/$source_file"
     echo "$WORK_DIR/$source_file"
 }
 
