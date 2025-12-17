@@ -391,16 +391,24 @@ build_package() {
         local_wheel=$(find "$WHEELS_DIR" -name "${wheel_pattern}" 2>/dev/null | head -1)
         if [ -n "$local_wheel" ] && [ -f "$local_wheel" ]; then
             log_info "Found pre-built wheel: $(basename "$local_wheel")"
-            if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$local_wheel" 2>/dev/null; then
+            local_wheel_abs=$(cd "$(dirname "$local_wheel")" && pwd)/$(basename "$local_wheel")
+            local wheels_dir_abs=$(cd "$WHEELS_DIR" && pwd)
+            if cd "$HOME" && python3 -m pip install --find-links "$wheels_dir_abs" --no-index "$local_wheel_abs" 2>/dev/null; then
                 log_success "$pkg_name installed (pre-built wheel)"
                 return 0
             fi
         fi
         # Try downloading from PyPI
+        cd "$WHEELS_DIR"
         python3 -m pip download "$version_spec" --dest . --no-cache-dir 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done || true
-        if python3 -m pip install --find-links . --no-index ${wheel_pattern} 2>/dev/null; then
-            log_success "$pkg_name installed (pre-built wheel)"
-            return 0
+        downloaded_wheel=$(ls -1 ${wheel_pattern} 2>/dev/null | head -1)
+        if [ -n "$downloaded_wheel" ] && [ -f "$downloaded_wheel" ]; then
+            downloaded_wheel_abs=$(cd "$(dirname "$downloaded_wheel")" && pwd)/$(basename "$downloaded_wheel")
+            wheels_dir_abs=$(cd "$WHEELS_DIR" && pwd)
+            if cd "$HOME" && python3 -m pip install --find-links "$wheels_dir_abs" --no-index "$downloaded_wheel_abs" 2>/dev/null; then
+                log_success "$pkg_name installed (pre-built wheel)"
+                return 0
+            fi
         fi
         log_info "No pre-built wheel found, building from source..."
     fi
@@ -463,13 +471,24 @@ build_package() {
     
     log_success "$pkg_name wheel built successfully"
     
-    # Cleanup temp directory if used
+    # Find the actual wheel file with absolute path before cleanup
+    local wheel_file=$(ls -1 ${wheel_pattern} 2>/dev/null | head -1)
+    if [ -z "$wheel_file" ]; then
+        log_error "Wheel file not found: ${wheel_pattern}"
+        [ -n "$temp_dir" ] && rm -rf "$temp_dir"
+        return 1
+    fi
+    # Convert to absolute path
+    wheel_file=$(cd "$(dirname "$wheel_file")" && pwd)/$(basename "$wheel_file")
+    local wheels_dir_abs=$(cd "$WHEELS_DIR" && pwd)
+    
+    # Cleanup temp directory if used (do this before changing directory)
     [ -n "$temp_dir" ] && rm -rf "$temp_dir"
     
-    # Install wheel
+    # Install wheel - change to HOME directory to avoid "directory not found" errors
     log_info "Installing $pkg_name wheel..."
     local pip_install_output
-    pip_install_output=$(python3 -m pip install --find-links . --no-index ${wheel_pattern} 2>&1) || {
+    pip_install_output=$(cd "$HOME" && python3 -m pip install --find-links "$wheels_dir_abs" --no-index "$wheel_file" 2>&1) || {
         log_error "Failed to install $pkg_name wheel"
         echo "$pip_install_output" | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_error "  $line"; done
         return 1
@@ -870,24 +889,35 @@ else
     # Display output (filtering out noise)
     echo "$grpcio_wheel_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done || true
     
-    # Verify wheel was created
-    if ! ls -1 grpcio*.whl >/dev/null 2>&1; then
+    # Verify wheel was created and get absolute path
+    local grpcio_wheel=$(ls -1 grpcio*.whl 2>/dev/null | head -1)
+    if [ -z "$grpcio_wheel" ] || [ ! -f "$grpcio_wheel" ]; then
         log_error "grpcio wheel file not found after build"
         exit 1
     fi
     
     log_success "grpcio wheel built successfully"
 
-    # Fix grpcio wheel
+    # Fix grpcio wheel (needs to be in WHEELS_DIR)
+    cd "$WHEELS_DIR"
     if ! fix_grpcio_wheel; then
         log_error "Failed to fix grpcio wheel"
         exit 1
     fi
 
-    # Install the fixed wheel
+    # Get absolute paths before changing directory
+    grpcio_wheel=$(ls -1 grpcio*.whl 2>/dev/null | head -1)
+    if [ -z "$grpcio_wheel" ] || [ ! -f "$grpcio_wheel" ]; then
+        log_error "grpcio wheel file not found after fix"
+        exit 1
+    fi
+    local grpcio_wheel_abs=$(cd "$(dirname "$grpcio_wheel")" && pwd)/$(basename "$grpcio_wheel")
+    local wheels_dir_abs=$(cd "$WHEELS_DIR" && pwd)
+
+    # Install the fixed wheel - change to HOME directory to avoid "directory not found" errors
     log_info "Installing grpcio wheel..."
     local grpcio_install_output
-    grpcio_install_output=$(python3 -m pip install --find-links . --no-index grpcio*.whl 2>&1) || {
+    grpcio_install_output=$(cd "$HOME" && python3 -m pip install --find-links "$wheels_dir_abs" --no-index "$grpcio_wheel_abs" 2>&1) || {
         log_error "Failed to install grpcio wheel"
         echo "$grpcio_install_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_error "  $line"; done
         exit 1
@@ -1024,11 +1054,18 @@ else
         
         # Install any wheels that were built
         if [ ${#built_packages[@]} -gt 0 ]; then
-            wheel_patterns=""
+            cd "$WHEELS_DIR"
+            wheel_files=()
             for pkg in "${built_packages[@]}"; do
-                wheel_patterns="${wheel_patterns} ${pkg}*.whl"
+                found_wheel=$(ls -1 ${pkg}*.whl 2>/dev/null | head -1)
+                if [ -n "$found_wheel" ] && [ -f "$found_wheel" ]; then
+                    wheel_files+=("$(cd "$(dirname "$found_wheel")" && pwd)/$(basename "$found_wheel")")
+                fi
             done
-            python3 -m pip install --find-links . --no-index $wheel_patterns 2>/dev/null || true
+            if [ ${#wheel_files[@]} -gt 0 ]; then
+                local wheels_dir_abs=$(cd "$WHEELS_DIR" && pwd)
+                cd "$HOME" && python3 -m pip install --find-links "$wheels_dir_abs" --no-index "${wheel_files[@]}" 2>/dev/null || true
+            fi
         fi
         
         log_success "Phase 6 complete: Optional packages processed"
