@@ -414,20 +414,38 @@ build_package() {
     
     # Build wheel
     log_info "Building $pkg_name wheel (pip will download source automatically)..."
-    if pip wheel "$source_arg" --no-deps $build_opts --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "$pkg_name wheel built successfully"
-    else
+    local pip_wheel_output
+    pip_wheel_output=$(pip wheel "$source_arg" --no-deps $build_opts --wheel-dir . 2>&1) || {
         log_error "Failed to build $pkg_name wheel"
+        echo "$pip_wheel_output" | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_error "  $line"; done
+        [ -n "$temp_dir" ] && rm -rf "$temp_dir"
+        return 1
+    }
+    # Display output (filtering out noise)
+    echo "$pip_wheel_output" | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done || true
+    
+    # Verify wheel was created
+    if ! ls -1 ${wheel_pattern} >/dev/null 2>&1; then
+        log_error "Wheel file not found after build: ${wheel_pattern}"
         [ -n "$temp_dir" ] && rm -rf "$temp_dir"
         return 1
     fi
+    
+    log_success "$pkg_name wheel built successfully"
     
     # Cleanup temp directory if used
     [ -n "$temp_dir" ] && rm -rf "$temp_dir"
     
     # Install wheel
     log_info "Installing $pkg_name wheel..."
-    pip install --find-links . --no-index ${wheel_pattern}
+    local pip_install_output
+    pip_install_output=$(pip install --find-links . --no-index ${wheel_pattern} 2>&1) || {
+        log_error "Failed to install $pkg_name wheel"
+        echo "$pip_install_output" | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_error "  $line"; done
+        return 1
+    }
+    # Display output (filtering out warnings and noise)
+    echo "$pip_install_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done || true
     
     # Post-install commands
     if [ -n "$post_install" ]; then
@@ -666,11 +684,13 @@ log_info "Phase 3: Building scientific stack..."
 
 # Build scipy
 if ! build_package "scipy" "scipy>=1.8.0,<1.17.0"; then
+    log_error "Failed to build scipy - this is required, exiting"
     exit 1
 fi
 
 # Build pandas (with meson.build fix)
 if ! build_package "pandas" "pandas<2.3.0" --fix-source=pandas; then
+    log_error "Failed to build pandas - this is required, exiting"
     exit 1
 fi
 
@@ -678,13 +698,39 @@ fi
 # Install dependencies first if needed
 if ! python_pkg_installed "joblib" "joblib>=1.3.0" || ! python_pkg_installed "threadpoolctl" "threadpoolctl>=3.2.0"; then
     log_info "Installing scikit-learn dependencies..."
-    pip install "joblib>=1.3.0" "threadpoolctl>=3.2.0" --quiet
+    if ! pip install "joblib>=1.3.0" "threadpoolctl>=3.2.0" --quiet 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done; then
+        log_warning "Failed to install scikit-learn dependencies, but continuing..."
+    fi
 else
     log_info "scikit-learn dependencies already installed"
 fi
 
-if ! build_package "scikit-learn" "scikit-learn" --fix-source=scikit-learn --no-build-isolation --wheel-pattern="scikit_learn*.whl"; then
-    exit 1
+# Try to build scikit-learn with retries
+SCIKIT_LEARN_BUILT=false
+for attempt in 1 2; do
+    if [ $attempt -gt 1 ]; then
+        log_info "Retrying scikit-learn build (attempt $attempt)..."
+        # Clean up any partial builds
+        rm -f scikit_learn*.whl 2>/dev/null || true
+    fi
+    
+    if build_package "scikit-learn" "scikit-learn" --fix-source=scikit-learn --no-build-isolation --wheel-pattern="scikit_learn*.whl"; then
+        SCIKIT_LEARN_BUILT=true
+        break
+    else
+        log_warning "scikit-learn build failed (attempt $attempt)"
+        if [ $attempt -lt 2 ]; then
+            log_info "Waiting 5 seconds before retry..."
+            sleep 5
+        fi
+    fi
+done
+
+if [ "$SCIKIT_LEARN_BUILT" = false ]; then
+    log_warning "scikit-learn build failed after retries - continuing without it"
+    log_warning "Some droidrun features may not work without scikit-learn"
+else
+    log_success "scikit-learn installed successfully"
 fi
 
 log_success "Phase 3 complete: Scientific stack installed"
@@ -693,24 +739,48 @@ log_success "Phase 3 complete: Scientific stack installed"
 # Phase 4: Rust Packages (jiter)
 # ============================================
 log_info "Phase 4: Building jiter..."
-if ! build_package "jiter" "jiter==0.12.0"; then
-    exit 1
+JITER_BUILT=false
+for attempt in 1 2; do
+    if [ $attempt -gt 1 ]; then
+        log_info "Retrying jiter build (attempt $attempt)..."
+        rm -f jiter*.whl 2>/dev/null || true
+    fi
+    
+    if build_package "jiter" "jiter==0.12.0"; then
+        JITER_BUILT=true
+        break
+    else
+        log_warning "jiter build failed (attempt $attempt)"
+        if [ $attempt -lt 2 ]; then
+            log_info "Waiting 5 seconds before retry..."
+            sleep 5
+        fi
+    fi
+done
+
+if [ "$JITER_BUILT" = false ]; then
+    log_warning "jiter build failed after retries - continuing without it"
+    log_warning "Some droidrun features may not work without jiter"
+else
+    log_success "jiter installed successfully"
 fi
-log_success "Phase 4 complete: jiter installed"
+log_success "Phase 4 complete: jiter processed"
 
 # ============================================
 # Phase 5: Other Compiled Packages
 # ============================================
 log_info "Phase 5: Building other compiled packages..."
 
-# Build pyarrow
+# Build pyarrow (optional - continue on failure)
 if ! build_package "pyarrow" "pyarrow" --pre-check --env-var="ARROW_HOME=$PREFIX"; then
-    exit 1
+    log_warning "pyarrow build failed - continuing without it"
+    log_warning "Some droidrun features may not work without pyarrow"
 fi
 
-# Build psutil
+# Build psutil (optional - continue on failure)
 if ! build_package "psutil" "psutil"; then
-    exit 1
+    log_warning "psutil build failed - continuing without it"
+    log_warning "Some droidrun features may not work without psutil"
 fi
 
 # Build grpcio (with wheel patching)
@@ -728,21 +798,39 @@ else
 
     cd "$WHEELS_DIR"
     log_info "Building grpcio wheel (pip will download source automatically)..."
-    if pip wheel grpcio --no-deps --no-build-isolation --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-        log_success "grpcio wheel built successfully"
-    else
+    local grpcio_wheel_output
+    grpcio_wheel_output=$(pip wheel grpcio --no-deps --no-build-isolation --wheel-dir . 2>&1) || {
         log_error "Failed to build grpcio wheel"
+        echo "$grpcio_wheel_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_error "  $line"; done
+        exit 1
+    }
+    # Display output (filtering out noise)
+    echo "$grpcio_wheel_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done || true
+    
+    # Verify wheel was created
+    if ! ls -1 grpcio*.whl >/dev/null 2>&1; then
+        log_error "grpcio wheel file not found after build"
         exit 1
     fi
+    
+    log_success "grpcio wheel built successfully"
 
     # Fix grpcio wheel
     if ! fix_grpcio_wheel; then
+        log_error "Failed to fix grpcio wheel"
         exit 1
     fi
 
     # Install the fixed wheel
     log_info "Installing grpcio wheel..."
-    pip install --find-links . --no-index grpcio*.whl
+    local grpcio_install_output
+    grpcio_install_output=$(pip install --find-links . --no-index grpcio*.whl 2>&1) || {
+        log_error "Failed to install grpcio wheel"
+        echo "$grpcio_install_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_error "  $line"; done
+        exit 1
+    }
+    # Display output (filtering out warnings)
+    echo "$grpcio_install_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done || true
 fi
 
 # Set LD_LIBRARY_PATH for runtime (REQUIRED for grpcio to work)
@@ -754,12 +842,13 @@ fi
 
 log_success "grpcio installed (wheel fixed)"
 
-# Build Pillow
+# Build Pillow (optional - continue on failure)
 if ! build_package "pillow" "pillow" --env-var="PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}" --env-var="LDFLAGS=-L$PREFIX/lib" --env-var="CPPFLAGS=-I$PREFIX/include"; then
-    exit 1
+    log_warning "pillow build failed - continuing without it"
+    log_warning "Some droidrun features may not work without pillow"
 fi
 
-log_success "Phase 5 complete: Other compiled packages installed"
+log_success "Phase 5 complete: Other compiled packages processed"
 
 # ============================================
 # Phase 6: Additional Compiled (optional)
