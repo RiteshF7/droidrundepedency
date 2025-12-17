@@ -76,6 +76,8 @@ download_and_fix_source() {
     local version_spec=$2
     local fix_type=$3  # "pandas" or "scikit-learn"
     
+    log_info "=== download_and_fix_source called ==="
+    log_info "Parameters: pkg_name=$pkg_name, version_spec=$version_spec, fix_type=$fix_type"
     log_info "Downloading $pkg_name source ($version_spec)..."
     WORK_DIR=$(mktemp -d)
     log_info "Working directory: $WORK_DIR"
