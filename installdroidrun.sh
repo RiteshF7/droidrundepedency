@@ -661,8 +661,26 @@ for tool in "wheel" "setuptools" "Cython" "meson-python" "maturin"; do
 done
 
 if [ "$build_tools_needed" = true ]; then
-    pip install --upgrade wheel setuptools --quiet
-    pip install Cython "meson-python<0.19.0,>=0.16.0" "maturin<2,>=1.9.4" --quiet
+    # Install wheel and setuptools only if needed
+    if ! python_pkg_installed "wheel" "wheel" || ! python_pkg_installed "setuptools" "setuptools"; then
+        pip install --upgrade wheel setuptools --quiet
+    fi
+    
+    # Install Cython only if needed
+    if ! python_pkg_installed "Cython" "Cython"; then
+        pip install Cython --quiet
+    fi
+    
+    # Install meson-python only if needed
+    if ! python_pkg_installed "meson-python" "meson-python<0.19.0,>=0.16.0"; then
+        pip install "meson-python<0.19.0,>=0.16.0" --quiet
+    fi
+    
+    # Install maturin only if needed
+    if ! python_pkg_installed "maturin" "maturin<2,>=1.9.4"; then
+        pip install "maturin<2,>=1.9.4" --quiet
+    fi
+    
     log_success "Phase 1 complete: Build tools installed"
 else
     log_success "Phase 1 complete: Build tools already installed"
@@ -698,8 +716,23 @@ fi
 # Install dependencies first if needed
 if ! python_pkg_installed "joblib" "joblib>=1.3.0" || ! python_pkg_installed "threadpoolctl" "threadpoolctl>=3.2.0"; then
     log_info "Installing scikit-learn dependencies..."
-    if ! pip install "joblib>=1.3.0" "threadpoolctl>=3.2.0" --quiet 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done; then
-        log_warning "Failed to install scikit-learn dependencies, but continuing..."
+    
+    # Install joblib only if needed
+    if ! python_pkg_installed "joblib" "joblib>=1.3.0"; then
+        if ! pip install "joblib>=1.3.0" --quiet 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done; then
+            log_warning "Failed to install joblib, but continuing..."
+        fi
+    else
+        log_info "joblib already installed"
+    fi
+    
+    # Install threadpoolctl only if needed
+    if ! python_pkg_installed "threadpoolctl" "threadpoolctl>=3.2.0"; then
+        if ! pip install "threadpoolctl>=3.2.0" --quiet 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done; then
+            log_warning "Failed to install threadpoolctl, but continuing..."
+        fi
+    else
+        log_info "threadpoolctl already installed"
     fi
 else
     log_info "scikit-learn dependencies already installed"
@@ -905,8 +938,21 @@ else
         fi
     done
     
+    # Filter out packages that are already installed
+    packages_to_install=()
+    for pkg in "${missing_packages[@]}"; do
+        if python_pkg_installed "$pkg" "$pkg"; then
+            log_info "$pkg is already installed, skipping"
+        else
+            packages_to_install+=("$pkg")
+        fi
+    done
+    
+    # If all packages are already installed, skip installation
+    if [ ${#packages_to_install[@]} -eq 0 ]; then
+        log_success "Phase 6 complete: All optional packages already installed"
     # Try installing with pre-built wheels first
-    if pip install "${missing_packages[@]}" --find-links "$WHEELS_DIR" 2>/dev/null; then
+    elif pip install "${packages_to_install[@]}" --find-links "$WHEELS_DIR" 2>/dev/null; then
         log_success "Phase 6 complete: Optional packages installed (pre-built wheels)"
     else
         log_info "Some packages need building from source..."
@@ -914,7 +960,7 @@ else
         built_packages=()
         
         # Build each missing package (continue on failure)
-        for pkg in "${missing_packages[@]}"; do
+        for pkg in "${packages_to_install[@]}"; do
             # Special handling for tokenizers - prefer pre-built wheel due to Android pthread limitations
             if [ "$pkg" = "tokenizers" ]; then
                 # First try to install from pre-built wheel
@@ -990,12 +1036,17 @@ else
 fi
 
 # Install droidrun - handle tokenizers dependency gracefully
-log_info "Installing droidrun with all LLM providers..."
-INSTALL_LOG=$(mktemp)
-if pip install 'droidrun[google,anthropic,openai,deepseek,ollama,openrouter]' --find-links "$WHEELS_DIR" 2>&1 | tee "$INSTALL_LOG"; then
-    log_success "droidrun installed successfully"
-    rm -f "$INSTALL_LOG" 2>/dev/null || true
+# Check if droidrun is already installed
+if python_pkg_installed "droidrun" "droidrun"; then
+    log_success "droidrun is already installed, skipping installation"
+    log_success "Phase 7 complete: droidrun already installed"
 else
+    log_info "Installing droidrun with all LLM providers..."
+    INSTALL_LOG=$(mktemp)
+    if pip install 'droidrun[google,anthropic,openai,deepseek,ollama,openrouter]' --find-links "$WHEELS_DIR" 2>&1 | tee "$INSTALL_LOG"; then
+        log_success "droidrun installed successfully"
+        rm -f "$INSTALL_LOG" 2>/dev/null || true
+    else
     # Check if failure was due to tokenizers
     if grep -qi "tokenizers" "$INSTALL_LOG" 2>/dev/null || grep -qi "failed.*wheel.*tokenizers" "$INSTALL_LOG" 2>/dev/null; then
         log_warning "droidrun installation failed due to tokenizers issue"
@@ -1038,9 +1089,8 @@ else
         exit 1
     fi
     rm -f "$INSTALL_LOG" 2>/dev/null || true
+    log_success "Phase 7 complete: droidrun installed"
 fi
-
-log_success "Phase 7 complete: droidrun installed"
 
 # ============================================
 # Final Summary
