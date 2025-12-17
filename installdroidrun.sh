@@ -52,9 +52,39 @@ python_pkg_installed() {
     echo "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A\",\"location\":\"installdroidrun.sh:45\",\"message\":\"python_pkg_installed entry\",\"data\":{\"pkg_name\":\"$pkg_name\",\"version_spec\":\"$version_spec\"},\"timestamp\":$(date +%s000)}" >> "$DEBUG_LOG" 2>/dev/null || true
     # #endregion
     
-    # Use pip show to check if package is installed
+    # First try: Use python3 -m pip to check (ensures we use system pip)
+    # Normalize package name for import check (replace dashes with underscores)
+    local import_name=$(echo "$pkg_name" | tr '-' '_')
+    
+    # Try importing the package directly (fastest check)
+    if python3 -c "import $import_name" 2>/dev/null; then
+        # Package is importable, now check version if needed
+        if [ -n "$version_spec" ] && [[ "$version_spec" != "$pkg_name" ]] && [[ "$version_spec" =~ [[:punct:]] ]] && (echo "$version_spec" | grep -qE '[<>=]'); then
+            # Need to check version - use pip show to get version and compare
+            local pip_show_output
+            pip_show_output=$(python3 -m pip show "$pkg_name" 2>&1)
+            if [ $? -eq 0 ]; then
+                # Use pip install --dry-run to check if requirement is satisfied
+                local pip_output
+                pip_output=$(python3 -m pip install --dry-run --no-deps "$version_spec" 2>&1)
+                if echo "$pip_output" | grep -q "Requirement already satisfied"; then
+                    return 0
+                fi
+                if echo "$pip_output" | grep -qE "(Would install|Would upgrade)"; then
+                    return 1
+                fi
+                # If unclear, assume satisfied
+                return 0
+            fi
+        else
+            # No version requirement, package is installed
+            return 0
+        fi
+    fi
+    
+    # Fallback: Use pip show to check if package is installed (more reliable for some packages)
     local pip_show_output
-    pip_show_output=$(pip show "$pkg_name" 2>&1)
+    pip_show_output=$(python3 -m pip show "$pkg_name" 2>&1)
     local pip_show_exit=$?
     
     # #region agent log
@@ -75,7 +105,7 @@ python_pkg_installed() {
         # Use pip install with --dry-run to check if requirement is satisfied
         # This uses pip's own requirement resolver which is most reliable
         local pip_output
-        pip_output=$(pip install --dry-run --no-deps "$version_spec" 2>&1)
+        pip_output=$(python3 -m pip install --dry-run --no-deps "$version_spec" 2>&1)
         local pip_dry_run_exit=$?
         
         # #region agent log
@@ -161,8 +191,8 @@ download_and_fix_source() {
     cd "$WORK_DIR"
     
     # Download source using pip (with verbose output)
-    log_info "Running: pip download \"$version_spec\" --dest . --no-cache-dir --no-binary :all:"
-    local download_output=$(pip download "$version_spec" --dest . --no-cache-dir --no-binary :all: 2>&1)
+    log_info "Running: python3 -m pip download \"$version_spec\" --dest . --no-cache-dir --no-binary :all:"
+    local download_output=$(python3 -m pip download "$version_spec" --dest . --no-cache-dir --no-binary :all: 2>&1)
     local download_exit_code=$?
     
     if [ $download_exit_code -ne 0 ]; then
@@ -361,14 +391,14 @@ build_package() {
         local_wheel=$(find "$WHEELS_DIR" -name "${wheel_pattern}" 2>/dev/null | head -1)
         if [ -n "$local_wheel" ] && [ -f "$local_wheel" ]; then
             log_info "Found pre-built wheel: $(basename "$local_wheel")"
-            if pip install --find-links "$WHEELS_DIR" --no-index "$local_wheel" 2>/dev/null; then
+            if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$local_wheel" 2>/dev/null; then
                 log_success "$pkg_name installed (pre-built wheel)"
                 return 0
             fi
         fi
         # Try downloading from PyPI
-        pip download "$version_spec" --dest . --no-cache-dir 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done || true
-        if pip install --find-links . --no-index ${wheel_pattern} 2>/dev/null; then
+        python3 -m pip download "$version_spec" --dest . --no-cache-dir 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done || true
+        if python3 -m pip install --find-links . --no-index ${wheel_pattern} 2>/dev/null; then
             log_success "$pkg_name installed (pre-built wheel)"
             return 0
         fi
@@ -415,7 +445,7 @@ build_package() {
     # Build wheel
     log_info "Building $pkg_name wheel (pip will download source automatically)..."
     local pip_wheel_output
-    pip_wheel_output=$(pip wheel "$source_arg" --no-deps $build_opts --wheel-dir . 2>&1) || {
+    pip_wheel_output=$(python3 -m pip wheel "$source_arg" --no-deps $build_opts --wheel-dir . 2>&1) || {
         log_error "Failed to build $pkg_name wheel"
         echo "$pip_wheel_output" | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_error "  $line"; done
         [ -n "$temp_dir" ] && rm -rf "$temp_dir"
@@ -439,7 +469,7 @@ build_package() {
     # Install wheel
     log_info "Installing $pkg_name wheel..."
     local pip_install_output
-    pip_install_output=$(pip install --find-links . --no-index ${wheel_pattern} 2>&1) || {
+    pip_install_output=$(python3 -m pip install --find-links . --no-index ${wheel_pattern} 2>&1) || {
         log_error "Failed to install $pkg_name wheel"
         echo "$pip_install_output" | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_error "  $line"; done
         return 1
@@ -663,22 +693,22 @@ done
 if [ "$build_tools_needed" = true ]; then
     # Install wheel and setuptools only if needed
     if ! python_pkg_installed "wheel" "wheel" || ! python_pkg_installed "setuptools" "setuptools"; then
-        pip install --upgrade wheel setuptools --quiet
+        python3 -m pip install --upgrade wheel setuptools --quiet
     fi
     
     # Install Cython only if needed
     if ! python_pkg_installed "Cython" "Cython"; then
-        pip install Cython --quiet
+        python3 -m pip install Cython --quiet
     fi
     
     # Install meson-python only if needed
     if ! python_pkg_installed "meson-python" "meson-python<0.19.0,>=0.16.0"; then
-        pip install "meson-python<0.19.0,>=0.16.0" --quiet
+        python3 -m pip install "meson-python<0.19.0,>=0.16.0" --quiet
     fi
     
     # Install maturin only if needed
     if ! python_pkg_installed "maturin" "maturin<2,>=1.9.4"; then
-        pip install "maturin<2,>=1.9.4" --quiet
+        python3 -m pip install "maturin<2,>=1.9.4" --quiet
     fi
     
     log_success "Phase 1 complete: Build tools installed"
@@ -719,7 +749,7 @@ if ! python_pkg_installed "joblib" "joblib>=1.3.0" || ! python_pkg_installed "th
     
     # Install joblib only if needed
     if ! python_pkg_installed "joblib" "joblib>=1.3.0"; then
-        if ! pip install "joblib>=1.3.0" --quiet 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done; then
+        if ! python3 -m pip install "joblib>=1.3.0" --quiet 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done; then
             log_warning "Failed to install joblib, but continuing..."
         fi
     else
@@ -728,7 +758,7 @@ if ! python_pkg_installed "joblib" "joblib>=1.3.0" || ! python_pkg_installed "th
     
     # Install threadpoolctl only if needed
     if ! python_pkg_installed "threadpoolctl" "threadpoolctl>=3.2.0"; then
-        if ! pip install "threadpoolctl>=3.2.0" --quiet 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done; then
+        if ! python3 -m pip install "threadpoolctl>=3.2.0" --quiet 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done; then
             log_warning "Failed to install threadpoolctl, but continuing..."
         fi
     else
@@ -832,7 +862,7 @@ else
     cd "$WHEELS_DIR"
     log_info "Building grpcio wheel (pip will download source automatically)..."
     local grpcio_wheel_output
-    grpcio_wheel_output=$(pip wheel grpcio --no-deps --no-build-isolation --wheel-dir . 2>&1) || {
+    grpcio_wheel_output=$(python3 -m pip wheel grpcio --no-deps --no-build-isolation --wheel-dir . 2>&1) || {
         log_error "Failed to build grpcio wheel"
         echo "$grpcio_wheel_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_error "  $line"; done
         exit 1
@@ -857,7 +887,7 @@ else
     # Install the fixed wheel
     log_info "Installing grpcio wheel..."
     local grpcio_install_output
-    grpcio_install_output=$(pip install --find-links . --no-index grpcio*.whl 2>&1) || {
+    grpcio_install_output=$(python3 -m pip install --find-links . --no-index grpcio*.whl 2>&1) || {
         log_error "Failed to install grpcio wheel"
         echo "$grpcio_install_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_error "  $line"; done
         exit 1
@@ -952,7 +982,7 @@ else
     if [ ${#packages_to_install[@]} -eq 0 ]; then
         log_success "Phase 6 complete: All optional packages already installed"
     # Try installing with pre-built wheels first
-    elif pip install "${packages_to_install[@]}" --find-links "$WHEELS_DIR" 2>/dev/null; then
+    elif python3 -m pip install "${packages_to_install[@]}" --find-links "$WHEELS_DIR" 2>/dev/null; then
         log_success "Phase 6 complete: Optional packages installed (pre-built wheels)"
     else
         log_info "Some packages need building from source..."
@@ -967,7 +997,7 @@ else
                 tokenizers_wheel=$(find "$WHEELS_DIR" -name "tokenizers*.whl" 2>/dev/null | head -1)
                 if [ -n "$tokenizers_wheel" ] && [ -f "$tokenizers_wheel" ]; then
                     log_info "Installing $pkg from pre-built wheel: $(basename "$tokenizers_wheel")"
-                    if pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>/dev/null; then
+                    if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>/dev/null; then
                         log_success "$pkg installed from pre-built wheel"
                         built_packages+=("$pkg")
                         continue
@@ -998,7 +1028,7 @@ else
             for pkg in "${built_packages[@]}"; do
                 wheel_patterns="${wheel_patterns} ${pkg}*.whl"
             done
-            pip install --find-links . --no-index $wheel_patterns 2>/dev/null || true
+            python3 -m pip install --find-links . --no-index $wheel_patterns 2>/dev/null || true
         fi
         
         log_success "Phase 6 complete: Optional packages processed"
@@ -1021,7 +1051,7 @@ if ! python_pkg_installed "tokenizers" "tokenizers"; then
     tokenizers_wheel=$(find "$WHEELS_DIR" -name "tokenizers*.whl" 2>/dev/null | head -1)
     if [ -n "$tokenizers_wheel" ] && [ -f "$tokenizers_wheel" ]; then
         log_info "Installing tokenizers from pre-built wheel: $(basename "$tokenizers_wheel")"
-        if pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>/dev/null; then
+        if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>/dev/null; then
             log_success "tokenizers installed from pre-built wheel"
             TOKENIZERS_INSTALLED=true
         else
@@ -1043,35 +1073,35 @@ if python_pkg_installed "droidrun" "droidrun"; then
 else
     log_info "Installing droidrun with all LLM providers..."
     INSTALL_LOG=$(mktemp)
-    if pip install 'droidrun[google,anthropic,openai,deepseek,ollama,openrouter]' --find-links "$WHEELS_DIR" 2>&1 | tee "$INSTALL_LOG"; then
+    if python3 -m pip install 'droidrun[google,anthropic,openai,deepseek,ollama,openrouter]' --find-links "$WHEELS_DIR" 2>&1 | tee "$INSTALL_LOG"; then
         log_success "droidrun installed successfully"
         rm -f "$INSTALL_LOG" 2>/dev/null || true
     else
-    # Check if failure was due to tokenizers
-    if grep -qi "tokenizers" "$INSTALL_LOG" 2>/dev/null || grep -qi "failed.*wheel.*tokenizers" "$INSTALL_LOG" 2>/dev/null; then
-        log_warning "droidrun installation failed due to tokenizers issue"
-        
-        if [ "$TOKENIZERS_INSTALLED" = false ]; then
-            log_info "Attempting to install droidrun without tokenizers dependency..."
-            # Install droidrun core first, then try to add providers
-            if pip install 'droidrun' --find-links "$WHEELS_DIR" --no-deps 2>/dev/null; then
-                log_success "droidrun core installed"
-                # Try installing providers one by one, skipping those that require tokenizers
-                log_info "Installing LLM providers (skipping tokenizers-dependent ones)..."
-                pip install 'droidrun[google]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install google provider"
-                pip install 'droidrun[anthropic]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install anthropic provider"
-                pip install 'droidrun[openai]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install openai provider"
-                pip install 'droidrun[ollama]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install ollama provider"
-                pip install 'droidrun[openrouter]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install openrouter provider"
-                # deepseek might require tokenizers, skip it
-                log_warning "deepseek provider skipped (requires tokenizers)"
-                log_success "droidrun installed with most providers (tokenizers-dependent features disabled)"
-            else
-                # Last resort: install droidrun without any extras
-                log_info "Attempting minimal droidrun installation..."
-                if pip install droidrun --find-links "$WHEELS_DIR" 2>/dev/null; then
-                    log_success "droidrun installed (minimal installation)"
-                    log_warning "Some LLM providers may not be available due to missing tokenizers"
+        # Check if failure was due to tokenizers
+        if grep -qi "tokenizers" "$INSTALL_LOG" 2>/dev/null || grep -qi "failed.*wheel.*tokenizers" "$INSTALL_LOG" 2>/dev/null; then
+            log_warning "droidrun installation failed due to tokenizers issue"
+            
+            if [ "$TOKENIZERS_INSTALLED" = false ]; then
+                log_info "Attempting to install droidrun without tokenizers dependency..."
+                # Install droidrun core first, then try to add providers
+                if python3 -m pip install 'droidrun' --find-links "$WHEELS_DIR" --no-deps 2>/dev/null; then
+                    log_success "droidrun core installed"
+                    # Try installing providers one by one, skipping those that require tokenizers
+                    log_info "Installing LLM providers (skipping tokenizers-dependent ones)..."
+                    python3 -m pip install 'droidrun[google]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install google provider"
+                    python3 -m pip install 'droidrun[anthropic]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install anthropic provider"
+                    python3 -m pip install 'droidrun[openai]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install openai provider"
+                    python3 -m pip install 'droidrun[ollama]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install ollama provider"
+                    python3 -m pip install 'droidrun[openrouter]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install openrouter provider"
+                    # deepseek might require tokenizers, skip it
+                    log_warning "deepseek provider skipped (requires tokenizers)"
+                    log_success "droidrun installed with most providers (tokenizers-dependent features disabled)"
+                else
+                    # Last resort: install droidrun without any extras
+                    log_info "Attempting minimal droidrun installation..."
+                    if python3 -m pip install droidrun --find-links "$WHEELS_DIR" 2>/dev/null; then
+                        log_success "droidrun installed (minimal installation)"
+                        log_warning "Some LLM providers may not be available due to missing tokenizers"
                 else
                     log_error "Failed to install droidrun even without extras"
                     log_error "Installation log saved to: $INSTALL_LOG"
