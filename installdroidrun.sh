@@ -736,7 +736,7 @@ else
 fi
 
 # Set LD_LIBRARY_PATH for runtime (REQUIRED for grpcio to work)
-export LD_LIBRARY_PATH=$PREFIX/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$PREFIX/lib:${LD_LIBRARY_PATH:-}
 # Add to ~/.bashrc for permanent fix
 if ! grep -q "LD_LIBRARY_PATH.*PREFIX/lib" ~/.bashrc 2>/dev/null; then
     echo "export LD_LIBRARY_PATH=\$PREFIX/lib:\$LD_LIBRARY_PATH" >> ~/.bashrc
