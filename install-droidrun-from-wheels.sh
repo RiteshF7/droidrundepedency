@@ -207,7 +207,7 @@ install_from_wheels() {
 		return 0
 	fi
 	
-	# Try to find matching wheel file
+	# Try to find matching wheel file FIRST - prioritize local wheels
 	# Search for both original name and normalized name (e.g., meson_python vs meson-python)
 	local wheel_file
 	wheel_file=$(ls -1 "${wheels_dir}/${package_search}"*.whl 2>/dev/null | head -1)
@@ -226,7 +226,37 @@ install_from_wheels() {
 		pip_flags="--no-index $pip_flags"
 	fi
 	
-	# Try with --find-links first (preferred method - allows pip to resolve dependencies from local wheels)
+	# PRIORITY 1: If wheel file exists, install it directly FIRST (before trying PyPI)
+	# This ensures we use local wheels and avoid PyPI build failures
+	if [ -n "$wheel_file" ] && [ -f "$wheel_file" ]; then
+		log "    Found wheel: $(basename "$wheel_file")"
+		# Try installing the wheel file directly with --no-deps first (fastest, assumes deps are installed)
+		# Use --no-index to prevent pip from trying PyPI at all
+		local install_output
+		install_output=$(pip install --no-index --no-deps "$wheel_file" 2>&1)
+		local install_status=$?
+		if [ $install_status -eq 0 ] || echo "$install_output" | grep -q "Requirement already satisfied\|Successfully installed"; then
+			return 0
+		fi
+		# If --no-deps fails, try with --find-links and --no-index (only local wheels for dependencies)
+		install_output=$(pip install --no-index --find-links "$wheels_dir" "$wheel_file" 2>&1)
+		install_status=$?
+		if [ $install_status -eq 0 ] || echo "$install_output" | grep -q "Requirement already satisfied\|Successfully installed"; then
+			return 0
+		fi
+		# If still failing and use_no_index=0, try with PyPI fallback for dependencies
+		if [ "$use_no_index" = "0" ]; then
+			install_output=$(pip install --find-links "$wheels_dir" "$wheel_file" 2>&1)
+			install_status=$?
+			if [ $install_status -eq 0 ] || echo "$install_output" | grep -q "Requirement already satisfied\|Successfully installed"; then
+				return 0
+			fi
+		fi
+		# If all fail, the wheel might be corrupted or have missing dependencies
+		log_warn "    Failed to install from wheel file, will try other methods"
+	fi
+	
+	# PRIORITY 2: Try with --find-links using package spec (allows pip to find wheel and resolve deps)
 	# This will find the wheel file and also check local wheels for dependencies
 	local install_output
 	install_output=$(pip install $pip_flags "$package_spec" 2>&1)
@@ -234,24 +264,6 @@ install_from_wheels() {
 	# Check if installation succeeded (exit code 0) or if package is already satisfied
 	if [ $install_status -eq 0 ] || echo "$install_output" | grep -q "Requirement already satisfied\|Successfully installed"; then
 		return 0
-	fi
-	
-	# If that failed but we found a wheel file, try installing it directly
-	# This might work if the package has no dependencies or dependencies are already installed
-	if [ -n "$wheel_file" ] && [ -f "$wheel_file" ]; then
-		log "    Found wheel: $(basename "$wheel_file")"
-		# Try installing the wheel file directly (pip will check --find-links for dependencies)
-		install_output=$(pip install $pip_flags "$wheel_file" 2>&1)
-		install_status=$?
-		if [ $install_status -eq 0 ] || echo "$install_output" | grep -q "Requirement already satisfied\|Successfully installed"; then
-			return 0
-		fi
-		# Last resort: install with --no-deps (assumes all dependencies are already installed)
-		install_output=$(pip install --no-deps "$wheel_file" 2>&1)
-		install_status=$?
-		if [ $install_status -eq 0 ] || echo "$install_output" | grep -q "Requirement already satisfied\|Successfully installed"; then
-			return 0
-		fi
 	fi
 	
 	# Fallback to PyPI if allowed
