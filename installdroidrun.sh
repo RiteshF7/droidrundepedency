@@ -71,7 +71,7 @@ python_pkg_installed() {
     fi
     
     # If version spec is provided and contains version requirements, check if installed version satisfies it
-    if [ -n "$version_spec" ] && [[ "$version_spec" != "$pkg_name" ]] && [[ "$version_spec" =~ [<>=] ]]; then
+    if [ -n "$version_spec" ] && [[ "$version_spec" != "$pkg_name" ]] && [[ "$version_spec" =~ [[:punct:]] ]] && (echo "$version_spec" | grep -qE '[<>=]'); then
         # Use pip install with --dry-run to check if requirement is satisfied
         # This uses pip's own requirement resolver which is most reliable
         local pip_output
