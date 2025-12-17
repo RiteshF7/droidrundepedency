@@ -63,24 +63,59 @@ python_pkg_installed() {
     if [ -n "$version_spec" ] && [[ "$version_spec" != "$pkg_name" ]] && [[ "$version_spec" =~ [<>=] ]]; then
         # Extract version requirement from version_spec (e.g., 'pandas<2.3.0' -> '<2.3.0')
         local version_req="$version_spec"
-        # Remove package name prefix if present
         version_req="${version_req#$pkg_name}"
         version_req="${version_req# }"
         
-        # Use Python's packaging module to check version compatibility
-        if ! python3 -c "
+        # Check version using Python - try multiple methods for compatibility
+        if ! python3 << PYEOF 2>/dev/null; then
 import sys
 try:
     import $import_name
     installed_version = $import_name.__version__
-    from packaging.specifiers import SpecifierSet
-    from packaging.version import Version
-    spec = SpecifierSet('$version_req')
-    if Version(installed_version) not in spec:
-        sys.exit(1)
+    
+    # Try packaging module first (most reliable)
+    try:
+        from packaging.specifiers import SpecifierSet
+        from packaging.version import Version
+        spec = SpecifierSet('$version_req')
+        if Version(installed_version) not in spec:
+            sys.exit(1)
+    except ImportError:
+        # Fallback to pkg_resources if packaging not available
+        try:
+            import pkg_resources
+            # Create requirement and check if version satisfies it
+            req_str = '$pkg_name' + '$version_req'
+            req = pkg_resources.Requirement.parse(req_str)
+            
+            # Try to get installed distribution
+            try:
+                dist = pkg_resources.get_distribution('$pkg_name')
+                # Check if distribution satisfies requirement
+                if dist not in req:
+                    sys.exit(1)
+            except pkg_resources.DistributionNotFound:
+                # Distribution not found via pkg_resources, check version manually
+                # Use requirement's specifier if available
+                if hasattr(req, 'specifier'):
+                    if hasattr(req.specifier, 'contains'):
+                        if not req.specifier.contains(installed_version):
+                            sys.exit(1)
+                    else:
+                        # Older pkg_resources - check by creating mock requirement
+                        # This is less reliable but better than nothing
+                        test_req = pkg_resources.Requirement.parse('$pkg_name==' + installed_version)
+                        # If versions don't match exactly, we need to check compatibility
+                        # For now, if we can't verify, assume it's OK to avoid unnecessary rebuilds
+                        pass
+        except Exception:
+            # If all version checking methods fail, we can't verify compatibility
+            # Exit with error to trigger rebuild (safer than assuming it's OK)
+            sys.exit(1)
 except Exception:
+    # If import fails or version check fails, need to install/upgrade
     sys.exit(1)
-" 2>/dev/null; then
+PYEOF
             return 1
         fi
     fi
@@ -295,8 +330,10 @@ build_package() {
     
     # Check if package is already installed and satisfies version requirement
     if python_pkg_installed "$pkg_name" "$version_spec"; then
-        log_success "$pkg_name is already installed and satisfies version requirement, skipping build"
+        log_success "$pkg_name is already installed and satisfies version requirement ($version_spec), skipping build"
         return 0
+    else
+        log_info "$pkg_name not installed or version requirement ($version_spec) not satisfied, will build"
     fi
     
     log_info "Building $pkg_name..."
@@ -573,10 +610,14 @@ for tool in "wheel" "setuptools" "Cython" "meson-python" "maturin"; do
 done
 
 if [ "$build_tools_needed" = true ]; then
-    pip install --upgrade wheel setuptools --quiet
+    pip install --upgrade wheel setuptools packaging --quiet
     pip install Cython "meson-python<0.19.0,>=0.16.0" "maturin<2,>=1.9.4" --quiet
     log_success "Phase 1 complete: Build tools installed"
 else
+    # Ensure packaging module is available for version checks
+    if ! python3 -c "import packaging" 2>/dev/null; then
+        pip install packaging --quiet
+    fi
     log_success "Phase 1 complete: Build tools already installed"
 fi
 
