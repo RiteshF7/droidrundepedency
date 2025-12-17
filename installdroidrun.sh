@@ -11,6 +11,9 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Package name (can be changed for different Termux variants)
+PACKAGE_NAME="com.termux"
+
 # Logging functions
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -293,7 +296,7 @@ echo
 # Setup PREFIX and check Termux environment
 # ============================================
 if [ -z "${PREFIX:-}" ]; then
-    export PREFIX="/data/data/com.termux/files/usr"
+    export PREFIX="/data/data/${PACKAGE_NAME}/files/usr"
 fi
 
 if [ ! -d "$PREFIX" ]; then
@@ -351,12 +354,34 @@ fi
 # ============================================
 log_info "Setting up build environment..."
 
-export PREFIX=${PREFIX:-/data/data/com.termux/files/usr}
+export PREFIX=${PREFIX:-/data/data/${PACKAGE_NAME}/files/usr}
 
-# Build parallelization (limit to 2 jobs to avoid memory issues)
-export NINJAFLAGS="-j2"
-export MAKEFLAGS="-j2"
-export MAX_JOBS=2
+# Set build parallelization based on available system memory
+get_total_mem_mb() {
+    if [ -r /proc/meminfo ]; then
+        awk '/MemTotal/ { printf "%.0f", $2/1024 }' /proc/meminfo
+    else
+        # Fallback: unknown memory
+        echo 0
+    fi
+}
+
+MEM_MB=$(get_total_mem_mb)
+
+if [ "$MEM_MB" -ge 3500 ]; then
+    # 3.5 GB+ RAM: up to 4 jobs
+    JOBS=4
+elif [ "$MEM_MB" -ge 2000 ]; then
+    # 2-3.5 GB RAM: up to 2 jobs
+    JOBS=2
+else
+    # <2GB RAM: single job to avoid OOM
+    JOBS=1
+fi
+
+export NINJAFLAGS="-j$JOBS"
+export MAKEFLAGS="-j$JOBS"
+export MAX_JOBS=$JOBS
 
 # CMAKE configuration (required for patchelf and other CMake-based builds)
 export CMAKE_PREFIX_PATH=$PREFIX
