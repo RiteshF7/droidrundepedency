@@ -783,28 +783,38 @@ else
     log_info "Installing missing optional packages: ${missing_packages[*]}"
     
     # First, try to find and install pre-built wheels from dependencies folder
-    DEPENDENCIES_WHEELS_DIR="${SCRIPT_DIR}/depedencies/wheels"
-    if [ -d "$DEPENDENCIES_WHEELS_DIR" ]; then
-        # Try to find architecture-specific wheel directory
-        ARCH_DIR=""
-        if [ -d "${DEPENDENCIES_WHEELS_DIR}/_x86_64_wheels" ]; then
-            ARCH_DIR="${DEPENDENCIES_WHEELS_DIR}/_x86_64_wheels"
-        elif [ -d "${DEPENDENCIES_WHEELS_DIR}/arch64_wheels" ]; then
-            ARCH_DIR="${DEPENDENCIES_WHEELS_DIR}/arch64_wheels"
+    # Check multiple possible locations for dependencies folder
+    DEPENDENCIES_WHEELS_DIRS=(
+        "${SCRIPT_DIR}/depedencies/wheels"
+        "${HOME}/droidrundepedency/depedencies/wheels"
+        "${HOME}/depedencies/wheels"
+    )
+    
+    for DEPENDENCIES_WHEELS_DIR in "${DEPENDENCIES_WHEELS_DIRS[@]}"; do
+        if [ -d "$DEPENDENCIES_WHEELS_DIR" ]; then
+            log_info "Found dependencies folder: $DEPENDENCIES_WHEELS_DIR"
+            # Try to find architecture-specific wheel directory
+            ARCH_DIR=""
+            if [ -d "${DEPENDENCIES_WHEELS_DIR}/_x86_64_wheels" ]; then
+                ARCH_DIR="${DEPENDENCIES_WHEELS_DIR}/_x86_64_wheels"
+            elif [ -d "${DEPENDENCIES_WHEELS_DIR}/arch64_wheels" ]; then
+                ARCH_DIR="${DEPENDENCIES_WHEELS_DIR}/arch64_wheels"
+            fi
+            
+            if [ -n "$ARCH_DIR" ]; then
+                log_info "Checking for pre-built wheels in $ARCH_DIR..."
+                # Copy matching wheels to WHEELS_DIR
+                for pkg in "${missing_packages[@]}"; do
+                    wheel_file=$(find "$ARCH_DIR" -name "${pkg}*.whl" 2>/dev/null | head -1)
+                    if [ -n "$wheel_file" ] && [ -f "$wheel_file" ]; then
+                        log_info "Found pre-built wheel for $pkg: $(basename "$wheel_file")"
+                        cp "$wheel_file" "$WHEELS_DIR/" 2>/dev/null || true
+                    fi
+                done
+            fi
+            break  # Found and processed, no need to check other locations
         fi
-        
-        if [ -n "$ARCH_DIR" ]; then
-            log_info "Checking for pre-built wheels in $ARCH_DIR..."
-            # Copy matching wheels to WHEELS_DIR
-            for pkg in "${missing_packages[@]}"; do
-                wheel_file=$(find "$ARCH_DIR" -name "${pkg}*.whl" 2>/dev/null | head -1)
-                if [ -n "$wheel_file" ] && [ -f "$wheel_file" ]; then
-                    log_info "Found pre-built wheel for $pkg: $(basename "$wheel_file")"
-                    cp "$wheel_file" "$WHEELS_DIR/" 2>/dev/null || true
-                fi
-            done
-        fi
-    fi
+    done
     
     # Try installing with pre-built wheels first
     if pip install "${missing_packages[@]}" --find-links "$WHEELS_DIR" 2>/dev/null; then
@@ -869,35 +879,77 @@ cd "$HOME"
 
 # Install base droidrun with all providers
 log_info "Installing droidrun with all LLM providers..."
+
 # Try to install tokenizers from pre-built wheel first if available
+TOKENIZERS_INSTALLED=false
 if ! python_pkg_installed "tokenizers" "tokenizers"; then
     tokenizers_wheel=$(find "$WHEELS_DIR" -name "tokenizers*.whl" 2>/dev/null | head -1)
     if [ -n "$tokenizers_wheel" ] && [ -f "$tokenizers_wheel" ]; then
-        log_info "Installing tokenizers from pre-built wheel..."
-        pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>/dev/null || log_warning "Failed to install tokenizers wheel, will try during droidrun install"
+        log_info "Installing tokenizers from pre-built wheel: $(basename "$tokenizers_wheel")"
+        if pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>/dev/null; then
+            log_success "tokenizers installed from pre-built wheel"
+            TOKENIZERS_INSTALLED=true
+        else
+            log_warning "Failed to install tokenizers from pre-built wheel"
+        fi
+    else
+        log_info "No pre-built tokenizers wheel found in $WHEELS_DIR"
     fi
+else
+    log_success "tokenizers already installed"
+    TOKENIZERS_INSTALLED=true
 fi
 
-# Install droidrun - continue even if tokenizers fails (it's optional)
-if pip install 'droidrun[google,anthropic,openai,deepseek,ollama,openrouter]' --find-links "$WHEELS_DIR" 2>&1 | tee /tmp/droidrun_install.log; then
+# Install droidrun - handle tokenizers dependency gracefully
+log_info "Installing droidrun with all LLM providers..."
+INSTALL_LOG=$(mktemp)
+if pip install 'droidrun[google,anthropic,openai,deepseek,ollama,openrouter]' --find-links "$WHEELS_DIR" 2>&1 | tee "$INSTALL_LOG"; then
     log_success "droidrun installed successfully"
+    rm -f "$INSTALL_LOG" 2>/dev/null || true
 else
     # Check if failure was due to tokenizers
-    if grep -q "tokenizers" /tmp/droidrun_install.log 2>/dev/null; then
-        log_warning "droidrun installation encountered tokenizers issue, trying without tokenizers..."
-        # Try installing tokenizers separately with pre-built wheel
-        tokenizers_wheel=$(find "$WHEELS_DIR" -name "tokenizers*.whl" 2>/dev/null | head -1)
-        if [ -n "$tokenizers_wheel" ] && [ -f "$tokenizers_wheel" ]; then
-            pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>/dev/null || true
+    if grep -qi "tokenizers" "$INSTALL_LOG" 2>/dev/null || grep -qi "failed.*wheel.*tokenizers" "$INSTALL_LOG" 2>/dev/null; then
+        log_warning "droidrun installation failed due to tokenizers issue"
+        
+        if [ "$TOKENIZERS_INSTALLED" = false ]; then
+            log_info "Attempting to install droidrun without tokenizers dependency..."
+            # Install droidrun core first, then try to add providers
+            if pip install 'droidrun' --find-links "$WHEELS_DIR" --no-deps 2>/dev/null; then
+                log_success "droidrun core installed"
+                # Try installing providers one by one, skipping those that require tokenizers
+                log_info "Installing LLM providers (skipping tokenizers-dependent ones)..."
+                pip install 'droidrun[google]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install google provider"
+                pip install 'droidrun[anthropic]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install anthropic provider"
+                pip install 'droidrun[openai]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install openai provider"
+                pip install 'droidrun[ollama]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install ollama provider"
+                pip install 'droidrun[openrouter]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install openrouter provider"
+                # deepseek might require tokenizers, skip it
+                log_warning "deepseek provider skipped (requires tokenizers)"
+                log_success "droidrun installed with most providers (tokenizers-dependent features disabled)"
+            else
+                # Last resort: install droidrun without any extras
+                log_info "Attempting minimal droidrun installation..."
+                if pip install droidrun --find-links "$WHEELS_DIR" 2>/dev/null; then
+                    log_success "droidrun installed (minimal installation)"
+                    log_warning "Some LLM providers may not be available due to missing tokenizers"
+                else
+                    log_error "Failed to install droidrun even without extras"
+                    log_error "Installation log saved to: $INSTALL_LOG"
+                    exit 1
+                fi
+            fi
+        else
+            log_error "tokenizers is installed but droidrun installation still failed"
+            log_error "Installation log saved to: $INSTALL_LOG"
+            exit 1
         fi
-        # Retry droidrun installation
-        pip install 'droidrun[google,anthropic,openai,deepseek,ollama,openrouter]' --find-links "$WHEELS_DIR" || log_warning "droidrun installation completed with warnings (tokenizers may be missing)"
     else
-        log_error "droidrun installation failed"
+        log_error "droidrun installation failed for unknown reason"
+        log_error "Installation log saved to: $INSTALL_LOG"
         exit 1
     fi
+    rm -f "$INSTALL_LOG" 2>/dev/null || true
 fi
-rm -f /tmp/droidrun_install.log 2>/dev/null || true
 
 log_success "Phase 7 complete: droidrun installed"
 
