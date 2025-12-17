@@ -269,13 +269,24 @@ build_package() {
     local source_arg="$version_spec"
     local temp_dir=""
     if [ -n "$fix_type" ]; then
-        local fixed_source=$(download_and_fix_source "$pkg_name" "$version_spec" "$fix_type")
-        if [ -z "$fixed_source" ] || [ ! -f "$fixed_source" ]; then
+        # Use a temp file to capture the return value while letting logs flow through
+        local result_file=$(mktemp)
+        # Run function, capture stdout to file, but let stderr (logs) flow through
+        if download_and_fix_source "$pkg_name" "$version_spec" "$fix_type" > "$result_file" 2>&1; then
+            local fixed_source=$(cat "$result_file" 2>/dev/null | tail -1)
+            rm -f "$result_file"
+            if [ -n "$fixed_source" ] && [ -f "$fixed_source" ]; then
+                source_arg="$fixed_source"
+                temp_dir="$(dirname "$fixed_source")"
+            else
+                log_error "Failed to download and fix $pkg_name source - no valid file returned"
+                return 1
+            fi
+        else
             log_error "Failed to download and fix $pkg_name source"
+            rm -f "$result_file"
             return 1
         fi
-        source_arg="$fixed_source"
-        temp_dir="$(dirname "$fixed_source")"
     fi
     
     # Build wheel
