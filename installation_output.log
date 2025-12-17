@@ -1,0 +1,240 @@
+No local changes to save
+Updating 07b28e2..7f63b2f
+Fast-forward
+ installdroidrun.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[0;34m========================================[0m
+[0;34mdroidrun Installation Script[0m
+[0;34m========================================[0m
+
+[0;34m[INFO][0m PREFIX: /data/data/com.termux/files/usr
+
+[0;34m[INFO][0m Checking system dependencies...
+[1;33m[⚠][0m Missing system packages: python python-pip autoconf automake libtool make binutils clang cmake ninja rust flang blas-openblas libjpeg-turbo libpng libtiff libwebp freetype libarrow-cpp openssl libc++ zlib protobuf libprotobuf abseil-cpp c-ares libre2 patchelf
+[0;34m[INFO][0m Installing missing packages...
+No mirror or mirror group selected. You might want to select one by running 'termux-change-repo'
+Checking availability of current mirror:
+[*] https://mirrors.ravidwivedi.in/termux/termux-main: ok
+
+WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+
+Hit:1 https://mirrors.ravidwivedi.in/termux/termux-main stable InRelease
+Reading package lists...
+Building dependency tree...
+Reading state information...
+20 packages can be upgraded. Run 'apt list --upgradable' to see them.
+No mirror or mirror group selected. You might want to select one by running 'termux-change-repo'
+Checking availability of current mirror:
+[*] https://mirrors.ravidwivedi.in/termux/termux-main: ok
+
+WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+
+Hit:1 https://mirrors.ravidwivedi.in/termux/termux-main stable InRelease
+Reading package lists...
+Building dependency tree...
+Reading state information...
+20 packages can be upgraded. Run 'apt list --upgradable' to see them.
+
+WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+
+Waiting for cache lock: Could not get lock /data/data/com.termux/files/usr/var/lib/dpkg/lock-frontend. It is held by process 13906 (apt)...
+Waiting for cache lock: Could not get lock /data/data/com.termux/files/usr/var/lib/dpkg/lock-frontend. It is held by process 13906 (apt)...
+Waiting for cache lock: Could not get lock /data/data/com.termux/files/usr/var/lib/dpkg/lock-frontend. It is held by process 13906 (apt)...
+Waiting for cache lock: Could not get lock /data/data/com.termux/files/usr/var/lib/dpkg/lock-frontend. It is held by process 13906 (apt)...
+Waiting for cache lock: Could not get lock /data/data/com.termux/files/usr/var/lib/dpkg/lock-frontend. It is held by process 13906 (apt)...
+Waiting for cache lock: Could not get lock /data/data/com.termux/files/usr/var/lib/dpkg/lock-frontend. It is held by process 13906 (apt)...
+Waiting for cache lock: Could not get lock /data/data/com.termux/files/usr/var/lib/dpkg/lock-frontend. It is held by process 13906 (apt)...
+Waiting for cache lock: Could not get lock /data/data/com.termux/files/usr/var/lib/dpkg/lock-frontend. It is held by process 13906 (apt)...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+python is already the newest version (3.12.12).
+python-pip is already the newest version (25.3).
+autoconf is already the newest version (2.72).
+automake is already the newest version (1.18.1).
+libtool is already the newest version (2.5.4-2).
+make is already the newest version (4.4.1-1).
+binutils is already the newest version (2.45.1).
+clang is already the newest version (21.1.7).
+cmake is already the newest version (4.2.1).
+ninja is already the newest version (1.13.2).
+rust is already the newest version (1.91.1-2).
+flang is already the newest version (21.1.7).
+blas-openblas is already the newest version (0.3.30-2).
+libjpeg-turbo is already the newest version (3.1.3).
+libpng is already the newest version (1.6.53).
+libtiff is already the newest version (4.7.1).
+libwebp is already the newest version (1.6.0-rc1-0).
+freetype is already the newest version (2.14.1).
+libarrow-cpp is already the newest version (22.0.0-2).
+openssl is already the newest version (1:3.6.0).
+libc++ is already the newest version (29).
+zlib is already the newest version (1.3.1-1).
+protobuf is already the newest version (2:33.1-1).
+libprotobuf is already the newest version (2:33.1-1).
+abseil-cpp is already the newest version (20250814.1).
+c-ares is already the newest version (1.34.6).
+libre2 is already the newest version (2025-11-05-1).
+patchelf is already the newest version (0.18.0-1).
+0 upgraded, 0 newly installed, 0 to remove and 20 not upgraded.
+[0;32m[✓][0m System packages installed
+[0;34m[INFO][0m Setting up build environment...
+[0;32m[✓][0m Build environment configured
+[0;32m[✓][0m Python 3.12 found
+[0;34m[INFO][0m Phase 1: Installing build tools...
+[0;32m[✓][0m Phase 1 complete: Build tools already installed
+[0;34m[INFO][0m Phase 2: Building numpy...
+[0;32m[✓][0m numpy is already installed and satisfies version requirement (numpy), skipping build
+[0;32m[✓][0m Phase 2 complete: numpy installed
+[0;34m[INFO][0m Phase 3: Building scientific stack...
+[0;32m[✓][0m scipy is already installed and satisfies version requirement (scipy>=1.8.0,<1.17.0), skipping build
+[0;32m[✓][0m pandas is already installed and satisfies version requirement (pandas<2.3.0), skipping build
+[0;34m[INFO][0m scikit-learn dependencies already installed
+[0;32m[✓][0m scikit-learn is already installed and satisfies version requirement (scikit-learn), skipping build
+[0;32m[✓][0m Phase 3 complete: Scientific stack installed
+[0;34m[INFO][0m Phase 4: Building jiter...
+[0;32m[✓][0m jiter is already installed and satisfies version requirement (jiter==0.12.0), skipping build
+[0;32m[✓][0m Phase 4 complete: jiter installed
+[0;34m[INFO][0m Phase 5: Building other compiled packages...
+[0;32m[✓][0m pyarrow is already installed and satisfies version requirement (pyarrow), skipping build
+[0;32m[✓][0m psutil is already installed and satisfies version requirement (psutil), skipping build
+[0;32m[✓][0m grpcio is already installed, skipping build
+[0;32m[✓][0m grpcio installed (wheel fixed)
+[0;34m[INFO][0m pillow not installed or version requirement (pillow) not satisfied, will build
+[0;34m[INFO][0m Building pillow...
+[0;34m[INFO][0m Building pillow wheel (pip will download source automatically)...
+[0;34m[INFO][0m   Downloading pillow-12.0.0.tar.gz (47.0 MB)
+[0;34m[INFO][0m   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 47.0/47.0 MB 4.3 MB/s  0:00:10
+[0;34m[INFO][0m   Installing build dependencies: started
+[0;34m[INFO][0m   Installing build dependencies: finished with status 'done'
+[0;34m[INFO][0m   Getting requirements to build wheel: started
+[0;34m[INFO][0m   Getting requirements to build wheel: finished with status 'done'
+[0;34m[INFO][0m   Preparing metadata (pyproject.toml): started
+[0;34m[INFO][0m   Preparing metadata (pyproject.toml): finished with status 'done'
+[0;34m[INFO][0m   Building wheels for collected packages: pillow
+[0;34m[INFO][0m   Building wheel for pillow (pyproject.toml): started
+[0;34m[INFO][0m   Building wheel for pillow (pyproject.toml): finished with status 'done'
+[0;34m[INFO][0m   Created wheel for pillow: filename=pillow-12.0.0-cp312-cp312-linux_x86_64.whl size=1255632 sha256=fba0275677cfb45a31c69383fc2fd6c43d57b86080e0a16cd0dc057280d131f4
+[0;34m[INFO][0m   Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/76/30/e5/9260f5ba51937728473b6fe4529b5f29eff66fd88cce4e0ae5
+[0;34m[INFO][0m   Successfully built pillow
+[0;32m[✓][0m pillow wheel built successfully
+[0;34m[INFO][0m Installing pillow wheel...
+Looking in links: .
+Processing ./pillow-12.0.0-cp312-cp312-linux_x86_64.whl
+Installing collected packages: pillow
+Successfully installed pillow-12.0.0
+[0;32m[✓][0m pillow installed
+[0;32m[✓][0m Phase 5 complete: Other compiled packages installed
+[0;34m[INFO][0m Phase 6: Checking optional compiled packages...
+[0;34m[INFO][0m Installing missing optional packages: tokenizers safetensors cryptography pydantic-core orjson
+Looking in links: /data/data/com.termux/files/home/wheels
+Collecting tokenizers
+  Downloading tokenizers-0.22.1.tar.gz (363 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting safetensors
+  Downloading safetensors-0.7.0.tar.gz (200 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting cryptography
+  Downloading cryptography-46.0.3.tar.gz (749 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 749.3/749.3 kB 4.8 MB/s  0:00:00
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting pydantic-core
+  Downloading pydantic_core-2.41.5.tar.gz (460 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting orjson
+  Downloading orjson-3.11.5.tar.gz (6.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.0/6.0 MB 3.4 MB/s  0:00:01
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting huggingface-hub<2.0,>=0.16.4 (from tokenizers)
+  Downloading huggingface_hub-1.2.3-py3-none-any.whl.metadata (13 kB)
+Collecting filelock (from huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading filelock-3.20.1-py3-none-any.whl.metadata (2.1 kB)
+Collecting fsspec>=2023.5.0 (from huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading fsspec-2025.12.0-py3-none-any.whl.metadata (10 kB)
+Collecting hf-xet<2.0.0,>=1.2.0 (from huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading hf_xet-1.2.0.tar.gz (506 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting httpx<1,>=0.23.0 (from huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+Requirement already satisfied: packaging>=20.9 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from huggingface-hub<2.0,>=0.16.4->tokenizers) (25.0)
+Collecting pyyaml>=5.1 (from huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading pyyaml-6.0.3.tar.gz (130 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting shellingham (from huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+Collecting tqdm>=4.42.1 (from huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading tqdm-4.67.1-py3-none-any.whl.metadata (57 kB)
+Collecting typer-slim (from huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading typer_slim-0.20.0-py3-none-any.whl.metadata (16 kB)
+Requirement already satisfied: typing-extensions>=3.7.4.3 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from huggingface-hub<2.0,>=0.16.4->tokenizers) (4.15.0)
+Collecting anyio (from httpx<1,>=0.23.0->huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading anyio-4.12.0-py3-none-any.whl.metadata (4.3 kB)
+Collecting certifi (from httpx<1,>=0.23.0->huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading certifi-2025.11.12-py3-none-any.whl.metadata (2.5 kB)
+Collecting httpcore==1.* (from httpx<1,>=0.23.0->huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+Collecting idna (from httpx<1,>=0.23.0->huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading idna-3.11-py3-none-any.whl.metadata (8.4 kB)
+Collecting h11>=0.16 (from httpcore==1.*->httpx<1,>=0.23.0->huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Collecting cffi>=2.0.0 (from cryptography)
+  Using cached cffi-2.0.0-cp312-cp312-linux_x86_64.whl
+Collecting pycparser (from cffi>=2.0.0->cryptography)
+  Using cached pycparser-2.23-py3-none-any.whl.metadata (993 bytes)
+Collecting click>=8.0.0 (from typer-slim->huggingface-hub<2.0,>=0.16.4->tokenizers)
+  Downloading click-8.3.1-py3-none-any.whl.metadata (2.6 kB)
+Downloading huggingface_hub-1.2.3-py3-none-any.whl (520 kB)
+Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+Downloading fsspec-2025.12.0-py3-none-any.whl (201 kB)
+Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+Downloading tqdm-4.67.1-py3-none-any.whl (78 kB)
+Downloading anyio-4.12.0-py3-none-any.whl (113 kB)
+Downloading idna-3.11-py3-none-any.whl (71 kB)
+Downloading certifi-2025.11.12-py3-none-any.whl (159 kB)
+Downloading filelock-3.20.1-py3-none-any.whl (16 kB)
+Using cached pycparser-2.23-py3-none-any.whl (118 kB)
+Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+Downloading typer_slim-0.20.0-py3-none-any.whl (47 kB)
+Downloading click-8.3.1-py3-none-any.whl (108 kB)
+Building wheels for collected packages: tokenizers, hf-xet, safetensors, cryptography, pydantic-core, orjson, pyyaml
+  Building wheel for tokenizers (pyproject.toml): started
+  Building wheel for tokenizers (pyproject.toml): still running...
+  Building wheel for tokenizers (pyproject.toml): finished with status 'error'
+  Building wheel for hf-xet (pyproject.toml): started
+  Building wheel for hf-xet (pyproject.toml): still running...
