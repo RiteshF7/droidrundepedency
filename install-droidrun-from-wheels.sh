@@ -183,6 +183,56 @@ download_wheels() {
 	return 0
 }
 
+# Helper function to install a package from wheels directory
+# Usage: install_from_wheels <wheels_dir> <package_spec> [fallback_to_pypi]
+# Returns 0 on success, 1 on failure
+install_from_wheels() {
+	local wheels_dir="$1"
+	local package_spec="$2"
+	local fallback_to_pypi="${3:-1}"  # Default to 1 (allow fallback)
+	
+	# Convert to absolute path
+	wheels_dir=$(cd "$wheels_dir" 2>/dev/null && pwd || echo "$wheels_dir")
+	
+	# Extract package name (remove version constraints for searching)
+	local package_name=$(echo "$package_spec" | sed -E 's/[<>=!].*//' | tr '[:upper:]' '[:lower:]')
+	# Normalize package name: replace underscores with dashes for matching (wheel files use dashes)
+	local package_search=$(echo "$package_name" | tr '_' '-')
+	
+	# Try to find matching wheel file
+	# Search for both original name and normalized name (e.g., meson_python vs meson-python)
+	local wheel_file
+	wheel_file=$(ls -1 "${wheels_dir}/${package_search}"*.whl 2>/dev/null | head -1)
+	if [ -z "$wheel_file" ]; then
+		# Try with original name
+		wheel_file=$(ls -1 "${wheels_dir}/${package_name}"*.whl 2>/dev/null | head -1)
+	fi
+	# Fallback: case-insensitive search
+	if [ -z "$wheel_file" ]; then
+		wheel_file=$(find "$wheels_dir" -maxdepth 1 -iname "${package_search}*.whl" 2>/dev/null | head -1)
+	fi
+	
+	if [ -n "$wheel_file" ] && [ -f "$wheel_file" ]; then
+		# Install directly from wheel file
+		log "    Found wheel: $(basename "$wheel_file")"
+		if pip install --no-deps "$wheel_file" 2>/dev/null; then
+			return 0
+		fi
+	fi
+	
+	# Try with --find-links using absolute path
+	if pip install --no-index --find-links "$wheels_dir" "$package_spec" 2>/dev/null; then
+		return 0
+	fi
+	
+	# Fallback to PyPI if allowed
+	if [ "$fallback_to_pypi" = "1" ]; then
+		return 1  # Signal to caller that fallback should be attempted
+	fi
+	
+	return 1
+}
+
 # Function to install droidrun from wheels
 install_droidrun_from_wheels() {
 	local wheels_dir="$1"
@@ -209,8 +259,9 @@ install_droidrun_from_wheels() {
 
 	log "Found $wheel_count wheel files in $actual_wheels_dir"
 	
-	# Update wheels_dir to point to actual location
-	wheels_dir="$actual_wheels_dir"
+	# Convert to absolute path and update wheels_dir
+	wheels_dir=$(cd "$actual_wheels_dir" 2>/dev/null && pwd || echo "$actual_wheels_dir")
+	log "Using wheels directory: $wheels_dir"
 
 	# Set up environment variables
 	export PREFIX
@@ -253,32 +304,32 @@ install_droidrun_from_wheels() {
 	log "Phase 1: Installing build tools (Cython, meson-python, maturin)..."
 	
 	log "  Installing Cython (required for numpy, scipy, pandas, scikit-learn)..."
-	pip install --no-index --find-links "$wheels_dir" Cython 2>/dev/null || {
+	if ! install_from_wheels "$wheels_dir" Cython; then
 		# If not in wheels, try installing from PyPI (pure Python, should work)
 		log_warn "Cython not found in wheels, installing from PyPI..."
-		pip install Cython || {
+		if ! pip install Cython; then
 			log_error "Failed to install Cython"
 			return 1
-		}
-	}
+		fi
+	fi
 	
 	log "  Installing meson-python (required for pandas, scikit-learn)..."
-	pip install --no-index --find-links "$wheels_dir" "meson-python<0.19.0,>=0.16.0" 2>/dev/null || {
+	if ! install_from_wheels "$wheels_dir" "meson-python<0.19.0,>=0.16.0"; then
 		log_warn "meson-python not found in wheels, installing from PyPI..."
-		pip install "meson-python<0.19.0,>=0.16.0" || {
+		if ! pip install "meson-python<0.19.0,>=0.16.0"; then
 			log_error "Failed to install meson-python"
 			return 1
-		}
-	}
+		fi
+	fi
 	
 	log "  Installing maturin (required for jiter)..."
-	pip install --no-index --find-links "$wheels_dir" "maturin<2,>=1.9.4" 2>/dev/null || {
+	if ! install_from_wheels "$wheels_dir" "maturin<2,>=1.9.4"; then
 		log_warn "maturin not found in wheels, installing from PyPI..."
-		pip install "maturin<2,>=1.9.4" || {
+		if ! pip install "maturin<2,>=1.9.4"; then
 			log_error "Failed to install maturin"
 			return 1
-		}
-	}
+		fi
+	fi
 	log "✓ Phase 1 build tools installed successfully"
 
 	# Phase 2: numpy (foundation) - MUST be installed before scipy, pandas, scikit-learn, pyarrow
