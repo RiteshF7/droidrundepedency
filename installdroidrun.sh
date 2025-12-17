@@ -357,6 +357,16 @@ build_package() {
     # Pre-check for pre-built wheels (e.g., pyarrow)
     if [ "$pre_check" = true ]; then
         log_info "Checking for pre-built $pkg_name wheel..."
+        # First check local WHEELS_DIR
+        local_wheel=$(find "$WHEELS_DIR" -name "${wheel_pattern}" 2>/dev/null | head -1)
+        if [ -n "$local_wheel" ] && [ -f "$local_wheel" ]; then
+            log_info "Found pre-built wheel: $(basename "$local_wheel")"
+            if pip install --find-links "$WHEELS_DIR" --no-index "$local_wheel" 2>/dev/null; then
+                log_success "$pkg_name installed (pre-built wheel)"
+                return 0
+            fi
+        fi
+        # Try downloading from PyPI
         pip download "$version_spec" --dest . --no-cache-dir 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done || true
         if pip install --find-links . --no-index ${wheel_pattern} 2>/dev/null; then
             log_success "$pkg_name installed (pre-built wheel)"
@@ -771,7 +781,32 @@ if [ ${#missing_packages[@]} -eq 0 ]; then
     log_success "Phase 6 complete: All optional packages already installed"
 else
     log_info "Installing missing optional packages: ${missing_packages[*]}"
-    # These usually have pre-built wheels, try install first
+    
+    # First, try to find and install pre-built wheels from dependencies folder
+    DEPENDENCIES_WHEELS_DIR="${SCRIPT_DIR}/depedencies/wheels"
+    if [ -d "$DEPENDENCIES_WHEELS_DIR" ]; then
+        # Try to find architecture-specific wheel directory
+        ARCH_DIR=""
+        if [ -d "${DEPENDENCIES_WHEELS_DIR}/_x86_64_wheels" ]; then
+            ARCH_DIR="${DEPENDENCIES_WHEELS_DIR}/_x86_64_wheels"
+        elif [ -d "${DEPENDENCIES_WHEELS_DIR}/arch64_wheels" ]; then
+            ARCH_DIR="${DEPENDENCIES_WHEELS_DIR}/arch64_wheels"
+        fi
+        
+        if [ -n "$ARCH_DIR" ]; then
+            log_info "Checking for pre-built wheels in $ARCH_DIR..."
+            # Copy matching wheels to WHEELS_DIR
+            for pkg in "${missing_packages[@]}"; do
+                wheel_file=$(find "$ARCH_DIR" -name "${pkg}*.whl" 2>/dev/null | head -1)
+                if [ -n "$wheel_file" ] && [ -f "$wheel_file" ]; then
+                    log_info "Found pre-built wheel for $pkg: $(basename "$wheel_file")"
+                    cp "$wheel_file" "$WHEELS_DIR/" 2>/dev/null || true
+                fi
+            done
+        fi
+    fi
+    
+    # Try installing with pre-built wheels first
     if pip install "${missing_packages[@]}" --find-links "$WHEELS_DIR" 2>/dev/null; then
         log_success "Phase 6 complete: Optional packages installed (pre-built wheels)"
     else
@@ -781,10 +816,34 @@ else
         
         # Build each missing package (continue on failure)
         for pkg in "${missing_packages[@]}"; do
-            if build_package "$pkg" "$pkg" 2>/dev/null; then
-                built_packages+=("$pkg")
+            # Special handling for tokenizers - prefer pre-built wheel due to Android pthread limitations
+            if [ "$pkg" = "tokenizers" ]; then
+                # First try to install from pre-built wheel
+                tokenizers_wheel=$(find "$WHEELS_DIR" -name "tokenizers*.whl" 2>/dev/null | head -1)
+                if [ -n "$tokenizers_wheel" ] && [ -f "$tokenizers_wheel" ]; then
+                    log_info "Installing $pkg from pre-built wheel: $(basename "$tokenizers_wheel")"
+                    if pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>/dev/null; then
+                        log_success "$pkg installed from pre-built wheel"
+                        built_packages+=("$pkg")
+                        continue
+                    fi
+                fi
+                # If wheel installation failed, try building with special flags
+                log_info "Building $pkg with special compiler flags for Android/Termux compatibility..."
+                # Note: pthread_cond_clockwait is not available on Android, so building may fail
+                # The pre-built wheel is strongly recommended
+                if build_package "$pkg" "$pkg" --env-var="CXXFLAGS=-D_GNU_SOURCE" 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+                    built_packages+=("$pkg")
+                else
+                    log_warning "Skipping $pkg (build failed - pthread_cond_clockwait not available on Android)"
+                    log_info "Recommendation: Use pre-built wheel from dependencies folder"
+                fi
             else
-                log_warning "Skipping $pkg (build failed)"
+                if build_package "$pkg" "$pkg" 2>/dev/null; then
+                    built_packages+=("$pkg")
+                else
+                    log_warning "Skipping $pkg (build failed)"
+                fi
             fi
         done
         
@@ -810,7 +869,35 @@ cd "$HOME"
 
 # Install base droidrun with all providers
 log_info "Installing droidrun with all LLM providers..."
-pip install 'droidrun[google,anthropic,openai,deepseek,ollama,openrouter]' --find-links "$WHEELS_DIR"
+# Try to install tokenizers from pre-built wheel first if available
+if ! python_pkg_installed "tokenizers" "tokenizers"; then
+    tokenizers_wheel=$(find "$WHEELS_DIR" -name "tokenizers*.whl" 2>/dev/null | head -1)
+    if [ -n "$tokenizers_wheel" ] && [ -f "$tokenizers_wheel" ]; then
+        log_info "Installing tokenizers from pre-built wheel..."
+        pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>/dev/null || log_warning "Failed to install tokenizers wheel, will try during droidrun install"
+    fi
+fi
+
+# Install droidrun - continue even if tokenizers fails (it's optional)
+if pip install 'droidrun[google,anthropic,openai,deepseek,ollama,openrouter]' --find-links "$WHEELS_DIR" 2>&1 | tee /tmp/droidrun_install.log; then
+    log_success "droidrun installed successfully"
+else
+    # Check if failure was due to tokenizers
+    if grep -q "tokenizers" /tmp/droidrun_install.log 2>/dev/null; then
+        log_warning "droidrun installation encountered tokenizers issue, trying without tokenizers..."
+        # Try installing tokenizers separately with pre-built wheel
+        tokenizers_wheel=$(find "$WHEELS_DIR" -name "tokenizers*.whl" 2>/dev/null | head -1)
+        if [ -n "$tokenizers_wheel" ] && [ -f "$tokenizers_wheel" ]; then
+            pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>/dev/null || true
+        fi
+        # Retry droidrun installation
+        pip install 'droidrun[google,anthropic,openai,deepseek,ollama,openrouter]' --find-links "$WHEELS_DIR" || log_warning "droidrun installation completed with warnings (tokenizers may be missing)"
+    else
+        log_error "droidrun installation failed"
+        exit 1
+    fi
+fi
+rm -f /tmp/droidrun_install.log 2>/dev/null || true
 
 log_success "Phase 7 complete: droidrun installed"
 

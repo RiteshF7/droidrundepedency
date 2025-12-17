@@ -238,3 +238,1114 @@ Building wheels for collected packages: tokenizers, hf-xet, safetensors, cryptog
   Building wheel for tokenizers (pyproject.toml): finished with status 'error'
   Building wheel for hf-xet (pyproject.toml): started
   Building wheel for hf-xet (pyproject.toml): still running...
+  Building wheel for hf-xet (pyproject.toml): still running...
+  Building wheel for hf-xet (pyproject.toml): still running...
+  Building wheel for hf-xet (pyproject.toml): still running...
+  Building wheel for hf-xet (pyproject.toml): finished with status 'done'
+  Created wheel for hf-xet: filename=hf_xet-1.2.0-cp37-abi3-linux_x86_64.whl size=3420327 sha256=0d97554b342eece0894c15a5b463f4e20a74e9d6e1e979af5f18659cd22fe7a7
+  Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/d8/2f/4a/305a21049d923c0ba936047d7e626fa77ce73edcc8c7461381
+  Building wheel for safetensors (pyproject.toml): started
+  Building wheel for safetensors (pyproject.toml): finished with status 'done'
+  Created wheel for safetensors: filename=safetensors-0.7.0-cp38-abi3-linux_x86_64.whl size=530903 sha256=129a62bbea1234d3dd27f03a7889a1d9c7be625dedaeca4e7f2d0150971a01aa
+  Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/2b/de/d7/950379725bc8bab7474ee46bb898cdb79057c21e294da09590
+  Building wheel for cryptography (pyproject.toml): started
+  Building wheel for cryptography (pyproject.toml): still running...
+  Building wheel for cryptography (pyproject.toml): finished with status 'done'
+  Created wheel for cryptography: filename=cryptography-46.0.3-cp312-abi3-linux_x86_64.whl size=1860959 sha256=f559b11d946fbc2b6c4b5ee2e2da68709f6095137a1b45c43402b42a9dc3f80b
+  Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/9c/23/70/557b45e713587f52de38bf6f5fdcbf51399b29591ecc8b4342
+  Building wheel for pydantic-core (pyproject.toml): started
+  Building wheel for pydantic-core (pyproject.toml): still running...
+  Building wheel for pydantic-core (pyproject.toml): still running...
+  Building wheel for pydantic-core (pyproject.toml): still running...
+  Building wheel for pydantic-core (pyproject.toml): finished with status 'done'
+  Created wheel for pydantic-core: filename=pydantic_core-2.41.5-cp312-cp312-linux_x86_64.whl size=2202179 sha256=b90fae61e9346c8bc091998b279a4173d98b11de4604c0b117c900ffb31e0e88
+  Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/fd/e1/8c/a4f87d58a2863224fc86ef9267067cb0308a3b8a8b135caf33
+  Building wheel for orjson (pyproject.toml): started
+  Building wheel for orjson (pyproject.toml): finished with status 'done'
+  Created wheel for orjson: filename=orjson-3.11.5-cp312-cp312-linux_x86_64.whl size=325047 sha256=e40bd42d4a0706989bc2bc981c5501aeb8bbdad769429dd609743ec05d032314
+  Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/3a/92/da/2af9c85fdde7f328f99159b73dbd8f60e17933f45d45e00d30
+  Building wheel for pyyaml (pyproject.toml): started
+  Building wheel for pyyaml (pyproject.toml): finished with status 'done'
+  Created wheel for pyyaml: filename=pyyaml-6.0.3-cp312-cp312-linux_x86_64.whl size=45464 sha256=d533224d83a7dfaab53a8c12fbd2f09c7a2ed4ff1c80cba32bd6fe08c61b0b92
+  Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/2a/40/b6/3634409f39c7dcb1652d049e48a7a4a63c09b2bdf6e8bb3d1d
+Successfully built hf-xet safetensors cryptography pydantic-core orjson pyyaml
+Failed to build tokenizers
+[0;34m[INFO][0m Some packages need building from source...
+[0;34m[INFO][0m tokenizers not installed or version requirement (tokenizers) not satisfied, will build
+[0;34m[INFO][0m Building tokenizers...
+[0;34m[INFO][0m Building tokenizers wheel (pip will download source automatically)...
+[0;34m[INFO][0m   Using cached tokenizers-0.22.1.tar.gz (363 kB)
+[0;34m[INFO][0m   Installing build dependencies: started
+[0;34m[INFO][0m   Installing build dependencies: finished with status 'done'
+[0;34m[INFO][0m   Getting requirements to build wheel: started
+[0;34m[INFO][0m   Getting requirements to build wheel: finished with status 'done'
+[0;34m[INFO][0m   Preparing metadata (pyproject.toml): started
+[0;34m[INFO][0m   Preparing metadata (pyproject.toml): finished with status 'done'
+[0;34m[INFO][0m   Building wheels for collected packages: tokenizers
+[0;34m[INFO][0m   Building wheel for tokenizers (pyproject.toml): started
+[0;34m[INFO][0m   Building wheel for tokenizers (pyproject.toml): still running...
+[0;34m[INFO][0m   Building wheel for tokenizers (pyproject.toml): finished with status 'error'
+[0;34m[INFO][0m   error: subprocess-exited-with-error
+[0;34m[INFO][0m   
+[0;34m[INFO][0m   × Building wheel for tokenizers (pyproject.toml) did not run successfully.
+[0;34m[INFO][0m   │ exit code: 1
+[0;34m[INFO][0m   ╰─> [146 lines of output]
+[0;34m[INFO][0m   Running `maturin pep517 build-wheel -i /data/data/com.termux/files/usr/bin/python3.12 --compatibility off`
+[0;34m[INFO][0m   🍹 Building a mixed python/rust project
+[0;34m[INFO][0m   🔗 Found pyo3 bindings with abi3 support
+[0;34m[INFO][0m   🐍 Found CPython 3.12 at /data/data/com.termux/files/usr/bin/python3.12
+[0;34m[INFO][0m   📡 Using build options features, bindings from pyproject.toml
+[0;34m[INFO][0m   Compiling proc-macro2 v1.0.101
+[0;34m[INFO][0m   Compiling unicode-ident v1.0.19
+[0;34m[INFO][0m   Compiling target-lexicon v0.13.3
+[0;34m[INFO][0m   Compiling libc v0.2.175
+[0;34m[INFO][0m   Compiling once_cell v1.21.3
+[0;34m[INFO][0m   Compiling autocfg v1.5.0
+[0;34m[INFO][0m   Compiling memchr v2.7.5
+[0;34m[INFO][0m   Compiling pyo3-build-config v0.25.1
+[0;34m[INFO][0m   Compiling quote v1.0.40
+[0;34m[INFO][0m   Compiling syn v2.0.106
+[0;34m[INFO][0m   Compiling serde_core v1.0.225
+[0;34m[INFO][0m   Compiling find-msvc-tools v0.1.2
+[0;34m[INFO][0m   Compiling shlex v1.3.0
+[0;34m[INFO][0m   Compiling cc v1.2.38
+[0;34m[INFO][0m   Compiling crossbeam-utils v0.8.21
+[0;34m[INFO][0m   Compiling zerocopy v0.8.27
+[0;34m[INFO][0m   Compiling serde v1.0.225
+[0;34m[INFO][0m   Compiling cfg-if v1.0.3
+[0;34m[INFO][0m   Compiling getrandom v0.3.3
+[0;34m[INFO][0m   Compiling fnv v1.0.7
+[0;34m[INFO][0m   Compiling ident_case v1.0.1
+[0;34m[INFO][0m   Compiling strsim v0.11.1
+[0;34m[INFO][0m   Compiling pyo3-macros-backend v0.25.1
+[0;34m[INFO][0m   Compiling pyo3-ffi v0.25.1
+[0;34m[INFO][0m   Compiling darling_core v0.20.11
+[0;34m[INFO][0m   Compiling num-traits v0.2.19
+[0;34m[INFO][0m   Compiling crossbeam-epoch v0.9.18
+[0;34m[INFO][0m   Compiling aho-corasick v1.1.3
+[0;34m[INFO][0m   Compiling serde_derive v1.0.225
+[0;34m[INFO][0m   Compiling darling_macro v0.20.11
+[0;34m[INFO][0m   Compiling memoffset v0.9.1
+[0;34m[INFO][0m   Compiling futures-core v0.3.31
+[0;34m[INFO][0m   Compiling futures-sink v0.3.31
+[0;34m[INFO][0m   Compiling pin-project-lite v0.2.16
+[0;34m[INFO][0m   Compiling regex-syntax v0.8.6
+[0;34m[INFO][0m   Compiling heck v0.5.0
+[0;34m[INFO][0m   Compiling rustversion v1.0.22
+[0;34m[INFO][0m   Compiling rayon-core v1.13.0
+[0;34m[INFO][0m   Compiling pkg-config v0.3.32
+[0;34m[INFO][0m   Compiling onig_sys v69.9.1
+[0;34m[INFO][0m   Compiling regex-automata v0.4.10
+[0;34m[INFO][0m   Compiling futures-channel v0.3.31
+[0;34m[INFO][0m   Compiling darling v0.20.11
+[0;34m[INFO][0m   Compiling futures-macro v0.3.31
+[0;34m[INFO][0m   Compiling crossbeam-deque v0.8.6
+[0;34m[INFO][0m   Compiling pyo3 v0.25.1
+[0;34m[INFO][0m   Compiling matrixmultiply v0.3.10
+[0;34m[INFO][0m   Compiling pin-utils v0.1.0
+[0;34m[INFO][0m   Compiling futures-task v0.3.31
+[0;34m[INFO][0m   Compiling slab v0.4.11
+[0;34m[INFO][0m   Compiling portable-atomic v1.11.1
+[0;34m[INFO][0m   Compiling version_check v0.9.5
+[0;34m[INFO][0m   Compiling futures-io v0.3.31
+[0;34m[INFO][0m   Compiling paste v1.0.15
+[0;34m[INFO][0m   Compiling either v1.15.0
+[0;34m[INFO][0m   Compiling futures-util v0.3.31
+[0;34m[INFO][0m   Compiling ahash v0.8.12
+[0;34m[INFO][0m   Compiling pyo3-macros v0.25.1
+[0;34m[INFO][0m   Compiling regex v1.11.2
+[0;34m[INFO][0m   Compiling derive_builder_core v0.20.2
+[0;34m[INFO][0m   Compiling ppv-lite86 v0.2.21
+[0;34m[INFO][0m   Compiling rand_core v0.9.3
+[0;34m[INFO][0m   Compiling esaxx-rs v0.1.10
+[0;34m[INFO][0m   Compiling log v0.4.28
+[0;34m[INFO][0m   Compiling itoa v1.0.15
+[0;34m[INFO][0m   Compiling unicode-width v0.2.1
+[0;34m[INFO][0m   Compiling utf8parse v0.2.2
+[0;34m[INFO][0m   Compiling indoc v2.0.6
+[0;34m[INFO][0m   Compiling rawpointer v0.2.1
+[0;34m[INFO][0m   Compiling thiserror v2.0.16
+[0;34m[INFO][0m   Compiling unindent v0.2.4
+[0;34m[INFO][0m   Compiling ryu v1.0.20
+[0;34m[INFO][0m   Compiling minimal-lexical v0.2.1
+[0;34m[INFO][0m   Compiling serde_json v1.0.145
+[0;34m[INFO][0m   Compiling nom v7.1.3
+[0;34m[INFO][0m   Compiling anstyle-parse v0.2.7
+[0;34m[INFO][0m   Compiling console v0.15.11
+[0;34m[INFO][0m   Compiling rand_chacha v0.9.0
+[0;34m[INFO][0m   warning: esaxx-rs@0.1.10: In file included from src/esaxx.cpp:621:
+[0;34m[INFO][0m   warning: esaxx-rs@0.1.10: In file included from src/esa.hxx:30:
+[0;34m[INFO][0m   warning: esaxx-rs@0.1.10: In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/vector:2992:
+[0;34m[INFO][0m   warning: esaxx-rs@0.1.10: In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/locale:209:
+[0;34m[INFO][0m   warning: esaxx-rs@0.1.10: In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/ios:843:
+[0;34m[INFO][0m   warning: esaxx-rs@0.1.10: In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/mutex:191:
+[0;34m[INFO][0m   warning: esaxx-rs@0.1.10: /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/__condition_variable/condition_variable.h:226:14: error: use of undeclared identifier 'pthread_cond_clockwait'
+[0;34m[INFO][0m   warning: esaxx-rs@0.1.10:   226 |   int __ec = pthread_cond_clockwait(&__cv_, __lk.mutex()->native_handle(), CLOCK_MONOTONIC, &__ts);
+[0;34m[INFO][0m   warning: esaxx-rs@0.1.10:       |              ^~~~~~~~~~~~~~~~~~~~~~
+[0;34m[INFO][0m   warning: esaxx-rs@0.1.10: 1 error generated.
+[0;34m[INFO][0m   error: failed to run custom build command for `esaxx-rs v0.1.10`
+[0;34m[INFO][0m   
+[0;34m[INFO][0m   Caused by:
+[0;34m[INFO][0m   process didn't exit successfully: `/data/data/com.termux/files/home/tmp/pip-wheel-ni_bmndz/tokenizers_091f474e3b544fbe9158fba08bdaa147/bindings/python/target/release/build/esaxx-rs-9b97f4d1e41ce9f1/build-script-build` (exit status: 1)
+[0;34m[INFO][0m   --- stdout
+[0;34m[INFO][0m   OUT_DIR = Some(/data/data/com.termux/files/home/tmp/pip-wheel-ni_bmndz/tokenizers_091f474e3b544fbe9158fba08bdaa147/bindings/python/target/release/build/esaxx-rs-7b1c1b74acab46fe/out)
+[0;34m[INFO][0m   OPT_LEVEL = Some(3)
+[0;34m[INFO][0m   TARGET = Some(x86_64-linux-android)
+[0;34m[INFO][0m   HOST = Some(x86_64-linux-android)
+[0;34m[INFO][0m   cargo:rerun-if-env-changed=CXX_x86_64-linux-android
+[0;34m[INFO][0m   CXX_x86_64-linux-android = None
+[0;34m[INFO][0m   cargo:rerun-if-env-changed=CXX_x86_64_linux_android
+[0;34m[INFO][0m   CXX_x86_64_linux_android = None
+[0;34m[INFO][0m   cargo:rerun-if-env-changed=HOST_CXX
+[0;34m[INFO][0m   HOST_CXX = None
+[0;34m[INFO][0m   cargo:rerun-if-env-changed=CXX
+[0;34m[INFO][0m   CXX = Some(/data/data/com.termux/files/usr/bin/clang++)
+[0;34m[INFO][0m   RUSTC_WRAPPER = None
+[0;34m[INFO][0m   cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+[0;34m[INFO][0m   cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+[0;34m[INFO][0m   CRATE_CC_NO_DEFAULTS = None
+[0;34m[INFO][0m   DEBUG = Some(false)
+[0;34m[INFO][0m   cargo:rerun-if-env-changed=CXXFLAGS
+[0;34m[INFO][0m   CXXFLAGS = None
+[0;34m[INFO][0m   cargo:rerun-if-env-changed=HOST_CXXFLAGS
+[0;34m[INFO][0m   HOST_CXXFLAGS = None
+[0;34m[INFO][0m   cargo:rerun-if-env-changed=CXXFLAGS_x86_64_linux_android
+[0;34m[INFO][0m   CXXFLAGS_x86_64_linux_android = None
+[0;34m[INFO][0m   cargo:rerun-if-env-changed=CXXFLAGS_x86_64-linux-android
+[0;34m[INFO][0m   CXXFLAGS_x86_64-linux-android = None
+[0;34m[INFO][0m   CARGO_ENCODED_RUSTFLAGS = Some()
+[0;34m[INFO][0m   cargo:warning=In file included from src/esaxx.cpp:621:
+[0;34m[INFO][0m   cargo:warning=In file included from src/esa.hxx:30:
+[0;34m[INFO][0m   cargo:warning=In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/vector:2992:
+[0;34m[INFO][0m   cargo:warning=In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/locale:209:
+[0;34m[INFO][0m   cargo:warning=In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/ios:843:
+[0;34m[INFO][0m   cargo:warning=In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/mutex:191:
+[0;34m[INFO][0m   cargo:warning=/data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/__condition_variable/condition_variable.h:226:14: error: use of undeclared identifier 'pthread_cond_clockwait'
+[0;34m[INFO][0m   cargo:warning=  226 |   int __ec = pthread_cond_clockwait(&__cv_, __lk.mutex()->native_handle(), CLOCK_MONOTONIC, &__ts);
+[0;34m[INFO][0m   cargo:warning=      |              ^~~~~~~~~~~~~~~~~~~~~~
+[0;34m[INFO][0m   cargo:warning=1 error generated.
+[0;34m[INFO][0m   
+[0;34m[INFO][0m   --- stderr
+[0;34m[INFO][0m   
+[0;34m[INFO][0m   
+[0;34m[INFO][0m   error occurred in cc-rs: command did not execute successfully (status code exit status: 1): LC_ALL="C" "/data/data/com.termux/files/usr/bin/clang++" "-O3" "-DANDROID" "-ffunction-sections" "-fdata-sections" "-fPIC" "-m64" "--target=x86_64-linux-android" "-I" "src" "-Wall" "-Wextra" "-std=c++11" "-o" "/data/data/com.termux/files/home/tmp/pip-wheel-ni_bmndz/tokenizers_091f474e3b544fbe9158fba08bdaa147/bindings/python/target/release/build/esaxx-rs-7b1c1b74acab46fe/out/0602fb52cb66f316-esaxx.o" "-c" "src/esaxx.cpp"
+[0;34m[INFO][0m   
+[0;34m[INFO][0m   
+[0;34m[INFO][0m   warning: build failed, waiting for other jobs to finish...
+[0;34m[INFO][0m   💥 maturin failed
+[0;34m[INFO][0m   Caused by: Failed to build a native library through cargo
+[0;34m[INFO][0m   Caused by: Cargo build finished with "exit status: 101": `env -u CARGO PYO3_BUILD_EXTENSION_MODULE="1" PYO3_ENVIRONMENT_SIGNATURE="cpython-3.12-64bit" PYO3_PYTHON="/data/data/com.termux/files/usr/bin/python3.12" PYTHON_SYS_EXECUTABLE="/data/data/com.termux/files/usr/bin/python3.12" "cargo" "rustc" "--profile" "release" "--features" "pyo3/extension-module" "--message-format" "json-render-diagnostics" "--manifest-path" "/data/data/com.termux/files/home/tmp/pip-wheel-ni_bmndz/tokenizers_091f474e3b544fbe9158fba08bdaa147/bindings/python/Cargo.toml" "--lib"`
+[0;34m[INFO][0m   Error: command ['maturin', 'pep517', 'build-wheel', '-i', '/data/data/com.termux/files/usr/bin/python3.12', '--compatibility', 'off'] returned non-zero exit status 1
+[0;34m[INFO][0m   [end of output]
+[0;34m[INFO][0m   
+[0;34m[INFO][0m   note: This error originates from a subprocess, and is likely not a problem with pip.
+[0;34m[INFO][0m   ERROR: Failed building wheel for tokenizers
+[0;34m[INFO][0m   Failed to build tokenizers
+[0;34m[INFO][0m   ERROR: Failed to build one or more wheels
+[1;33m[⚠][0m Skipping tokenizers (build failed)
+[0;34m[INFO][0m safetensors not installed or version requirement (safetensors) not satisfied, will build
+[0;34m[INFO][0m Building safetensors...
+[0;34m[INFO][0m Building safetensors wheel (pip will download source automatically)...
+[0;34m[INFO][0m   Using cached safetensors-0.7.0-cp38-abi3-linux_x86_64.whl
+[0;34m[INFO][0m   Saved ./safetensors-0.7.0-cp38-abi3-linux_x86_64.whl
+[0;32m[✓][0m safetensors wheel built successfully
+[0;34m[INFO][0m Installing safetensors wheel...
+Looking in links: .
+Processing ./safetensors-0.7.0-cp38-abi3-linux_x86_64.whl
+Installing collected packages: safetensors
+Successfully installed safetensors-0.7.0
+[0;32m[✓][0m safetensors installed
+[0;34m[INFO][0m cryptography not installed or version requirement (cryptography) not satisfied, will build
+[0;34m[INFO][0m Building cryptography...
+[0;34m[INFO][0m Building cryptography wheel (pip will download source automatically)...
+[0;34m[INFO][0m   Using cached cryptography-46.0.3-cp312-abi3-linux_x86_64.whl
+[0;34m[INFO][0m   Saved ./cryptography-46.0.3-cp312-abi3-linux_x86_64.whl
+[0;32m[✓][0m cryptography wheel built successfully
+[0;34m[INFO][0m Installing cryptography wheel...
+Looking in links: .
+Processing ./cryptography-46.0.3-cp312-abi3-linux_x86_64.whl
+INFO: pip is looking at multiple versions of cryptography to determine which version is compatible with other requirements. This could take a while.
+[0;32m[✓][0m cryptography installed
+[0;34m[INFO][0m pydantic-core not installed or version requirement (pydantic-core) not satisfied, will build
+[0;34m[INFO][0m Building pydantic-core...
+[0;34m[INFO][0m Building pydantic-core wheel (pip will download source automatically)...
+[0;34m[INFO][0m   Using cached pydantic_core-2.41.5-cp312-cp312-linux_x86_64.whl
+[0;34m[INFO][0m   Saved ./pydantic_core-2.41.5-cp312-cp312-linux_x86_64.whl
+[0;32m[✓][0m pydantic-core wheel built successfully
+[0;34m[INFO][0m Installing pydantic-core wheel...
+[0;32m[✓][0m pydantic-core installed
+[0;34m[INFO][0m orjson not installed or version requirement (orjson) not satisfied, will build
+[0;34m[INFO][0m Building orjson...
+[0;34m[INFO][0m Building orjson wheel (pip will download source automatically)...
+[0;34m[INFO][0m   Using cached orjson-3.11.5-cp312-cp312-linux_x86_64.whl
+[0;34m[INFO][0m   Saved ./orjson-3.11.5-cp312-cp312-linux_x86_64.whl
+[0;32m[✓][0m orjson wheel built successfully
+[0;34m[INFO][0m Installing orjson wheel...
+Looking in links: .
+Processing ./orjson-3.11.5-cp312-cp312-linux_x86_64.whl
+Installing collected packages: orjson
+Successfully installed orjson-3.11.5
+[0;32m[✓][0m orjson installed
+[0;32m[✓][0m Phase 6 complete: Optional packages processed
+[0;34m[INFO][0m Phase 7: Installing droidrun and LLM providers...
+[0;34m[INFO][0m Installing droidrun with all LLM providers...
+Looking in links: /data/data/com.termux/files/home/wheels
+Collecting droidrun[anthropic,deepseek,google,ollama,openai,openrouter]
+  Downloading droidrun-0.4.16-py3-none-any.whl.metadata (8.3 kB)
+Collecting aiofiles>=25.1.0 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading aiofiles-25.1.0-py3-none-any.whl.metadata (6.3 kB)
+Collecting arize-phoenix>=12.3.0 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading arize_phoenix-12.25.1-py3-none-any.whl.metadata (36 kB)
+Collecting async-adbutils (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading async_adbutils-0.1.1-py3-none-any.whl.metadata (16 kB)
+Collecting httpx>=0.27.0 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+Collecting llama-index-callbacks-arize-phoenix>=0.6.1 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_callbacks_arize_phoenix-0.6.1-py3-none-any.whl.metadata (499 bytes)
+Collecting llama-index-workflows==2.8.3 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_workflows-2.8.3-py3-none-any.whl.metadata (6.5 kB)
+Collecting llama-index==0.14.4 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index-0.14.4-py3-none-any.whl.metadata (13 kB)
+Collecting posthog>=6.7.6 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading posthog-7.4.0-py3-none-any.whl.metadata (6.0 kB)
+Collecting pydantic>=2.11.10 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading pydantic-2.12.5-py3-none-any.whl.metadata (90 kB)
+Collecting rich>=14.1.0 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading rich-14.2.0-py3-none-any.whl.metadata (18 kB)
+Collecting anthropic>=0.67.0 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading anthropic-0.75.0-py3-none-any.whl.metadata (28 kB)
+Collecting llama-index-llms-anthropic<0.9.0,>=0.8.6 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_llms_anthropic-0.8.6-py3-none-any.whl.metadata (6.2 kB)
+Collecting llama-index-llms-deepseek>=0.2.1 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_llms_deepseek-0.2.2-py3-none-any.whl.metadata (752 bytes)
+Collecting llama-index-llms-google-genai>=0.3.1 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_llms_google_genai-0.8.2-py3-none-any.whl.metadata (3.0 kB)
+Collecting llama-index-llms-ollama>=0.7.2 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_llms_ollama-0.9.0-py3-none-any.whl.metadata (3.6 kB)
+Collecting llama-index-llms-openai-like>=0.5.1 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_llms_openai_like-0.5.3-py3-none-any.whl.metadata (1.1 kB)
+Collecting llama-index-llms-openai>=0.5.6 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_llms_openai-0.6.12-py3-none-any.whl.metadata (3.0 kB)
+Collecting openai>=1.99.1 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading openai-2.13.0-py3-none-any.whl.metadata (29 kB)
+Collecting llama-index-llms-openrouter>=0.4.2 (from droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_llms_openrouter-0.4.2-py3-none-any.whl.metadata (2.3 kB)
+Collecting llama-index-cli<0.6,>=0.5.0 (from llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_cli-0.5.3-py3-none-any.whl.metadata (1.4 kB)
+Collecting llama-index-core<0.15.0,>=0.14.4 (from llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_core-0.14.10-py3-none-any.whl.metadata (2.5 kB)
+Collecting llama-index-embeddings-openai<0.6,>=0.5.0 (from llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_embeddings_openai-0.5.1-py3-none-any.whl.metadata (400 bytes)
+Collecting llama-index-indices-managed-llama-cloud>=0.4.0 (from llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_indices_managed_llama_cloud-0.9.4-py3-none-any.whl.metadata (3.7 kB)
+Collecting llama-index-readers-file<0.6,>=0.5.0 (from llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_readers_file-0.5.5-py3-none-any.whl.metadata (5.7 kB)
+Collecting llama-index-readers-llama-parse>=0.4.0 (from llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_readers_llama_parse-0.5.1-py3-none-any.whl.metadata (3.1 kB)
+Collecting nltk>3.8.1 (from llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading nltk-3.9.2-py3-none-any.whl.metadata (3.2 kB)
+Collecting llama-index-instrumentation>=0.1.0 (from llama-index-workflows==2.8.3->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_index_instrumentation-0.4.2-py3-none-any.whl.metadata (1.1 kB)
+Requirement already satisfied: typing-extensions>=4.6.0 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from llama-index-workflows==2.8.3->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (4.15.0)
+Collecting aiohttp<4,>=3.8.6 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading aiohttp-3.13.2.tar.gz (7.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.8/7.8 MB 3.5 MB/s  0:00:02
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting aiosqlite (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading aiosqlite-0.22.0-py3-none-any.whl.metadata (4.3 kB)
+Collecting banks<3,>=2.2.0 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading banks-2.2.0-py3-none-any.whl.metadata (12 kB)
+Collecting dataclasses-json (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading dataclasses_json-0.6.7-py3-none-any.whl.metadata (25 kB)
+Collecting deprecated>=1.2.9.3 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading deprecated-1.3.1-py2.py3-none-any.whl.metadata (5.9 kB)
+Collecting dirtyjson<2,>=1.0.8 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading dirtyjson-1.0.8-py3-none-any.whl.metadata (11 kB)
+Collecting filetype<2,>=1.2.0 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading filetype-1.2.0-py2.py3-none-any.whl.metadata (6.5 kB)
+Collecting fsspec>=2023.5.0 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached fsspec-2025.12.0-py3-none-any.whl.metadata (10 kB)
+Collecting nest-asyncio<2,>=1.5.8 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading nest_asyncio-1.6.0-py3-none-any.whl.metadata (2.8 kB)
+Collecting networkx>=3.0 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading networkx-3.6.1-py3-none-any.whl.metadata (6.8 kB)
+Requirement already satisfied: numpy in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (2.3.5)
+Requirement already satisfied: pillow>=9.0.0 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (12.0.0)
+Collecting platformdirs (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading platformdirs-4.5.1-py3-none-any.whl.metadata (12 kB)
+Collecting pyyaml>=6.0.1 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached pyyaml-6.0.3-cp312-cp312-linux_x86_64.whl
+Collecting requests>=2.31.0 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading requests-2.32.5-py3-none-any.whl.metadata (4.9 kB)
+Requirement already satisfied: setuptools>=80.9.0 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (80.9.0)
+Collecting sqlalchemy>=1.4.49 (from sqlalchemy[asyncio]>=1.4.49->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading sqlalchemy-2.0.45-py3-none-any.whl.metadata (9.5 kB)
+Collecting tenacity!=8.4.0,<10.0.0,>=8.2.0 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading tenacity-9.1.2-py3-none-any.whl.metadata (1.2 kB)
+Collecting tiktoken>=0.7.0 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading tiktoken-0.12.0.tar.gz (37 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting tqdm<5,>=4.66.1 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached tqdm-4.67.1-py3-none-any.whl.metadata (57 kB)
+Collecting typing-inspect>=0.8.0 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading typing_inspect-0.9.0-py3-none-any.whl.metadata (1.5 kB)
+Collecting wrapt (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading wrapt-2.0.1-py3-none-any.whl.metadata (9.0 kB)
+Collecting aiohappyeyeballs>=2.5.0 (from aiohttp<4,>=3.8.6->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading aiohappyeyeballs-2.6.1-py3-none-any.whl.metadata (5.9 kB)
+Collecting aiosignal>=1.4.0 (from aiohttp<4,>=3.8.6->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading aiosignal-1.4.0-py3-none-any.whl.metadata (3.7 kB)
+Collecting attrs>=17.3.0 (from aiohttp<4,>=3.8.6->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading attrs-25.4.0-py3-none-any.whl.metadata (10 kB)
+Collecting frozenlist>=1.1.1 (from aiohttp<4,>=3.8.6->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading frozenlist-1.8.0-py3-none-any.whl.metadata (20 kB)
+Collecting multidict<7.0,>=4.5 (from aiohttp<4,>=3.8.6->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading multidict-6.7.0-py3-none-any.whl.metadata (5.3 kB)
+Collecting propcache>=0.2.0 (from aiohttp<4,>=3.8.6->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading propcache-0.4.1-py3-none-any.whl.metadata (13 kB)
+Collecting yarl<2.0,>=1.17.0 (from aiohttp<4,>=3.8.6->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading yarl-1.22.0-py3-none-any.whl.metadata (75 kB)
+Collecting griffe (from banks<3,>=2.2.0->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading griffe-1.15.0-py3-none-any.whl.metadata (5.2 kB)
+Collecting jinja2 (from banks<3,>=2.2.0->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting beautifulsoup4<5,>=4.12.3 (from llama-index-readers-file<0.6,>=0.5.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading beautifulsoup4-4.14.3-py3-none-any.whl.metadata (3.8 kB)
+Collecting defusedxml>=0.7.1 (from llama-index-readers-file<0.6,>=0.5.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading defusedxml-0.7.1-py2.py3-none-any.whl.metadata (32 kB)
+Requirement already satisfied: pandas<2.3.0 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from llama-index-readers-file<0.6,>=0.5.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (2.2.3)
+Collecting pypdf<7,>=6.1.3 (from llama-index-readers-file<0.6,>=0.5.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading pypdf-6.4.2-py3-none-any.whl.metadata (7.1 kB)
+Collecting striprtf<0.0.27,>=0.0.26 (from llama-index-readers-file<0.6,>=0.5.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading striprtf-0.0.26-py3-none-any.whl.metadata (2.1 kB)
+Collecting soupsieve>=1.6.1 (from beautifulsoup4<5,>=4.12.3->llama-index-readers-file<0.6,>=0.5.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading soupsieve-2.8-py3-none-any.whl.metadata (4.6 kB)
+Collecting anyio<5,>=3.5.0 (from openai>=1.99.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached anyio-4.12.0-py3-none-any.whl.metadata (4.3 kB)
+Collecting distro<2,>=1.7.0 (from openai>=1.99.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading distro-1.9.0-py3-none-any.whl.metadata (6.8 kB)
+Requirement already satisfied: jiter<1,>=0.10.0 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from openai>=1.99.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (0.12.0)
+Collecting sniffio (from openai>=1.99.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+Collecting idna>=2.8 (from anyio<5,>=3.5.0->openai>=1.99.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached idna-3.11-py3-none-any.whl.metadata (8.4 kB)
+Collecting certifi (from httpx>=0.27.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached certifi-2025.11.12-py3-none-any.whl.metadata (2.5 kB)
+Collecting httpcore==1.* (from httpx>=0.27.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+Collecting h11>=0.16 (from httpcore==1.*->httpx>=0.27.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Requirement already satisfied: python-dateutil>=2.8.2 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from pandas<2.3.0->llama-index-readers-file<0.6,>=0.5.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (2.9.0.post0)
+Requirement already satisfied: pytz>=2020.1 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from pandas<2.3.0->llama-index-readers-file<0.6,>=0.5.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (2025.2)
+Requirement already satisfied: tzdata>=2022.7 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from pandas<2.3.0->llama-index-readers-file<0.6,>=0.5.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (2025.3)
+Collecting annotated-types>=0.6.0 (from pydantic>=2.11.10->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+Processing ./wheels/pydantic_core-2.41.5-cp312-cp312-linux_x86_64.whl (from pydantic>=2.11.10->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+Collecting typing-inspection>=0.4.2 (from pydantic>=2.11.10->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading typing_inspection-0.4.2-py3-none-any.whl.metadata (2.6 kB)
+Collecting docstring-parser<1,>=0.15 (from anthropic>=0.67.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading docstring_parser-0.17.0-py3-none-any.whl.metadata (3.5 kB)
+Collecting boto3>=1.28.57 (from anthropic[bedrock,vertex]>=0.62.0->llama-index-llms-anthropic<0.9.0,>=0.8.6->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading boto3-1.42.11-py3-none-any.whl.metadata (6.8 kB)
+Collecting botocore>=1.31.57 (from anthropic[bedrock,vertex]>=0.62.0->llama-index-llms-anthropic<0.9.0,>=0.8.6->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading botocore-1.42.11-py3-none-any.whl.metadata (5.9 kB)
+Collecting google-auth<3,>=2 (from google-auth[requests]<3,>=2; extra == "vertex"->anthropic[bedrock,vertex]>=0.62.0->llama-index-llms-anthropic<0.9.0,>=0.8.6->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading google_auth-2.45.0-py2.py3-none-any.whl.metadata (6.8 kB)
+Collecting cachetools<7.0,>=2.0.0 (from google-auth<3,>=2->google-auth[requests]<3,>=2; extra == "vertex"->anthropic[bedrock,vertex]>=0.62.0->llama-index-llms-anthropic<0.9.0,>=0.8.6->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading cachetools-6.2.4-py3-none-any.whl.metadata (5.6 kB)
+Collecting pyasn1-modules>=0.2.1 (from google-auth<3,>=2->google-auth[requests]<3,>=2; extra == "vertex"->anthropic[bedrock,vertex]>=0.62.0->llama-index-llms-anthropic<0.9.0,>=0.8.6->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading pyasn1_modules-0.4.2-py3-none-any.whl.metadata (3.5 kB)
+Collecting rsa<5,>=3.1.4 (from google-auth<3,>=2->google-auth[requests]<3,>=2; extra == "vertex"->anthropic[bedrock,vertex]>=0.62.0->llama-index-llms-anthropic<0.9.0,>=0.8.6->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading rsa-4.9.1-py3-none-any.whl.metadata (5.6 kB)
+Collecting charset_normalizer<4,>=2 (from requests>=2.31.0->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading charset_normalizer-3.4.4-py3-none-any.whl.metadata (37 kB)
+Collecting urllib3<3,>=1.21.1 (from requests>=2.31.0->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading urllib3-2.6.2-py3-none-any.whl.metadata (6.6 kB)
+Collecting pyasn1>=0.1.3 (from rsa<5,>=3.1.4->google-auth<3,>=2->google-auth[requests]<3,>=2; extra == "vertex"->anthropic[bedrock,vertex]>=0.62.0->llama-index-llms-anthropic<0.9.0,>=0.8.6->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading pyasn1-0.6.1-py3-none-any.whl.metadata (8.4 kB)
+Collecting aioitertools (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading aioitertools-0.13.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting alembic<2,>=1.3.0 (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading alembic-1.17.2-py3-none-any.whl.metadata (7.2 kB)
+Collecting arize-phoenix-client>=1.27.0 (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading arize_phoenix_client-1.27.1-py3-none-any.whl.metadata (11 kB)
+Collecting arize-phoenix-evals>=2.7.1 (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading arize_phoenix_evals-2.7.1-py3-none-any.whl.metadata (6.6 kB)
+Collecting arize-phoenix-otel>=0.14.0 (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading arize_phoenix_otel-0.14.0-py3-none-any.whl.metadata (8.3 kB)
+Collecting authlib (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading authlib-1.6.6-py2.py3-none-any.whl.metadata (9.8 kB)
+Collecting email-validator (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading email_validator-2.3.0-py3-none-any.whl.metadata (26 kB)
+Collecting fastapi (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading fastapi-0.124.4-py3-none-any.whl.metadata (30 kB)
+Collecting grpc-interceptor (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading grpc_interceptor-0.15.4-py3-none-any.whl.metadata (8.4 kB)
+Requirement already satisfied: grpcio in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (1.76.0)
+Collecting jmespath (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading jmespath-1.0.1-py3-none-any.whl.metadata (7.6 kB)
+Collecting ldap3 (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading ldap3-2.9.1-py2.py3-none-any.whl.metadata (5.4 kB)
+Collecting openinference-instrumentation>=0.1.32 (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading openinference_instrumentation-0.1.42-py3-none-any.whl.metadata (5.0 kB)
+Collecting openinference-semantic-conventions>=0.1.20 (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading openinference_semantic_conventions-0.1.25-py3-none-any.whl.metadata (1.3 kB)
+Collecting opentelemetry-exporter-otlp (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading opentelemetry_exporter_otlp-1.39.1-py3-none-any.whl.metadata (2.4 kB)
+Collecting opentelemetry-proto>=1.12.0 (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading opentelemetry_proto-1.39.1-py3-none-any.whl.metadata (2.3 kB)
+Collecting opentelemetry-sdk (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading opentelemetry_sdk-1.39.1-py3-none-any.whl.metadata (1.5 kB)
+Collecting opentelemetry-semantic-conventions (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading opentelemetry_semantic_conventions-0.60b1-py3-none-any.whl.metadata (2.4 kB)
+Requirement already satisfied: orjson in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (3.11.5)
+Collecting prometheus-client (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading prometheus_client-0.23.1-py3-none-any.whl.metadata (1.9 kB)
+Collecting protobuf>=4.25.8 (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading protobuf-6.33.2-py3-none-any.whl.metadata (593 bytes)
+Requirement already satisfied: psutil in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (7.1.3)
+Requirement already satisfied: pyarrow in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (22.0.0)
+Collecting python-multipart (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading python_multipart-0.0.21-py3-none-any.whl.metadata (1.8 kB)
+Requirement already satisfied: scikit-learn in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (1.9.dev0)
+Requirement already satisfied: scipy in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (1.16.3)
+Collecting sqlean-py>=3.45.1 (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading sqlean_py-3.50.4.5.tar.gz (3.5 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.5/3.5 MB 2.6 MB/s  0:00:01
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting starlette (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading starlette-0.50.0-py3-none-any.whl.metadata (6.3 kB)
+Collecting strawberry-graphql==0.270.1 (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading strawberry_graphql-0.270.1-py3-none-any.whl.metadata (7.7 kB)
+Collecting uvicorn (from arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading uvicorn-0.38.0-py3-none-any.whl.metadata (6.8 kB)
+Collecting wrapt (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading wrapt-1.17.3-py3-none-any.whl.metadata (6.4 kB)
+Collecting graphql-core<3.4.0,>=3.2.0 (from strawberry-graphql==0.270.1->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading graphql_core-3.2.7-py3-none-any.whl.metadata (11 kB)
+Requirement already satisfied: packaging>=23 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from strawberry-graphql==0.270.1->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (25.0)
+Collecting Mako (from alembic<2,>=1.3.0->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading mako-1.3.10-py3-none-any.whl.metadata (2.9 kB)
+Requirement already satisfied: six>=1.5 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from python-dateutil>=2.8.2->pandas<2.3.0->llama-index-readers-file<0.6,>=0.5.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (1.17.0)
+Collecting greenlet>=1 (from sqlalchemy>=1.4.49->sqlalchemy[asyncio]>=1.4.49->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading greenlet-3.3.0.tar.gz (190 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting jsonpath-ng (from arize-phoenix-evals>=2.7.1->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading jsonpath_ng-1.7.0-py3-none-any.whl.metadata (18 kB)
+Collecting opentelemetry-api (from arize-phoenix-evals>=2.7.1->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading opentelemetry_api-1.39.1-py3-none-any.whl.metadata (1.5 kB)
+Collecting pystache (from arize-phoenix-evals>=2.7.1->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading pystache-0.6.8-py3-none-any.whl.metadata (14 kB)
+Collecting s3transfer<0.17.0,>=0.16.0 (from boto3>=1.28.57->anthropic[bedrock,vertex]>=0.62.0->llama-index-llms-anthropic<0.9.0,>=0.8.6->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading s3transfer-0.16.0-py3-none-any.whl.metadata (1.7 kB)
+Collecting openinference-instrumentation-llama-index>=4.1.0 (from llama-index-callbacks-arize-phoenix>=0.6.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading openinference_instrumentation_llama_index-4.3.9-py3-none-any.whl.metadata (5.2 kB)
+Collecting deprecated>=1.2.9.3 (from llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading Deprecated-1.2.18-py2.py3-none-any.whl.metadata (5.7 kB)
+Collecting llama-cloud==0.1.35 (from llama-index-indices-managed-llama-cloud>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud-0.1.35-py3-none-any.whl.metadata (1.2 kB)
+Collecting transformers<5,>=4.37.0 (from llama-index-llms-openai-like>=0.5.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading transformers-4.57.3-py3-none-any.whl.metadata (43 kB)
+Collecting filelock (from transformers<5,>=4.37.0->llama-index-llms-openai-like>=0.5.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached filelock-3.20.1-py3-none-any.whl.metadata (2.1 kB)
+Collecting huggingface-hub<1.0,>=0.34.0 (from transformers<5,>=4.37.0->llama-index-llms-openai-like>=0.5.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading huggingface_hub-0.36.0-py3-none-any.whl.metadata (14 kB)
+Collecting regex!=2019.12.17 (from transformers<5,>=4.37.0->llama-index-llms-openai-like>=0.5.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading regex-2025.11.3.tar.gz (414 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting tokenizers<=0.23.0,>=0.22.0 (from transformers<5,>=4.37.0->llama-index-llms-openai-like>=0.5.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached tokenizers-0.22.1.tar.gz (363 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Requirement already satisfied: safetensors>=0.4.3 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from transformers<5,>=4.37.0->llama-index-llms-openai-like>=0.5.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (0.7.0)
+Collecting hf-xet<2.0.0,>=1.1.3 (from huggingface-hub<1.0,>=0.34.0->transformers<5,>=4.37.0->llama-index-llms-openai-like>=0.5.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached hf_xet-1.2.0-cp37-abi3-linux_x86_64.whl
+Collecting google-genai<2,>=1.52.0 (from llama-index-llms-google-genai>=0.3.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading google_genai-1.55.0-py3-none-any.whl.metadata (47 kB)
+Collecting websockets<15.1.0,>=13.0.0 (from google-genai<2,>=1.52.0->llama-index-llms-google-genai>=0.3.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading websockets-15.0.1-py3-none-any.whl.metadata (6.8 kB)
+Collecting ollama>=0.5.1 (from llama-index-llms-ollama>=0.7.2->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading ollama-0.6.1-py3-none-any.whl.metadata (4.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.88-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.88 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.88-py3-none-any.whl.metadata (3.3 kB)
+Collecting click<9,>=8.1.7 (from llama-cloud-services>=0.6.88->llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached click-8.3.1-py3-none-any.whl.metadata (2.6 kB)
+INFO: pip is looking at multiple versions of llama-cloud-services to determine which version is compatible with other requirements. This could take a while.
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.87-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.87 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.87-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.86-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.86 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.86-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.85-py3-none-any.whl.metadata (6.6 kB)
+INFO: pip is still looking at multiple versions of llama-cloud-services to determine which version is compatible with other requirements. This could take a while.
+Collecting llama-cloud-services>=0.6.85 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.85-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.84-py3-none-any.whl.metadata (6.6 kB)
+INFO: This is taking longer than usual. You might need to provide the dependency resolver with stricter constraints to reduce runtime. See https://pip.pypa.io/warnings/backtracking for guidance. If you want to abort this run, press Ctrl + C.
+Collecting llama-cloud-services>=0.6.84 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.84-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.83-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.82 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.83-py3-none-any.whl.metadata (3.3 kB)
+  Downloading llama_cloud_services-0.6.82-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.82-py3-none-any.whl.metadata (6.6 kB)
+  Downloading llama_parse-0.6.81-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.81 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.81-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.80-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.80 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.80-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.79-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.79 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.79-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.78-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.78 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.78-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.77-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.77 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.77-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.76-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.76 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.76-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.75-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.75 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.75-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.74-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.74 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.74-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.73-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.73 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.73-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.72-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.72 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.72-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.71-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.71 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.71-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.70-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.70 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.70-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.69-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.69 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.69-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.68-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.68 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.68-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.67-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.67 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.67-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.66-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.66 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.66-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.65-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.64 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.65-py3-none-any.whl.metadata (3.3 kB)
+  Downloading llama_cloud_services-0.6.64-py3-none-any.whl.metadata (3.3 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.64-py3-none-any.whl.metadata (6.6 kB)
+  Downloading llama_parse-0.6.63-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.63 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.63-py3-none-any.whl.metadata (3.7 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.62-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.62 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.62-py3-none-any.whl.metadata (3.7 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.60-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.60 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.60-py3-none-any.whl.metadata (3.7 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.59-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.59 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.59-py3-none-any.whl.metadata (3.7 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.58-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.58 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.58-py3-none-any.whl.metadata (3.7 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.57-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.56 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.57-py3-none-any.whl.metadata (3.7 kB)
+  Downloading llama_cloud_services-0.6.56-py3-none-any.whl.metadata (3.7 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.56-py3-none-any.whl.metadata (6.6 kB)
+  Downloading llama_parse-0.6.55-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.55 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.55-py3-none-any.whl.metadata (3.7 kB)
+Collecting llama-parse>=0.5.0 (from llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_parse-0.6.54-py3-none-any.whl.metadata (6.6 kB)
+Collecting llama-cloud-services>=0.6.54 (from llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading llama_cloud_services-0.6.54-py3-none-any.whl.metadata (3.6 kB)
+Collecting python-dotenv<2,>=1.0.1 (from llama-cloud-services>=0.6.54->llama-parse>=0.5.0->llama-index-readers-llama-parse>=0.4.0->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading python_dotenv-1.2.1-py3-none-any.whl.metadata (25 kB)
+Requirement already satisfied: joblib in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from nltk>3.8.1->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (1.5.3)
+Collecting opentelemetry-instrumentation (from openinference-instrumentation-llama-index>=4.1.0->llama-index-callbacks-arize-phoenix>=0.6.1->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading opentelemetry_instrumentation-0.60b1-py3-none-any.whl.metadata (7.2 kB)
+Collecting backoff>=1.10.0 (from posthog>=6.7.6->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading backoff-2.2.1-py3-none-any.whl.metadata (14 kB)
+Collecting markdown-it-py>=2.2.0 (from rich>=14.1.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading markdown_it_py-4.0.0-py3-none-any.whl.metadata (7.3 kB)
+Collecting pygments<3.0.0,>=2.13.0 (from rich>=14.1.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading pygments-2.19.2-py3-none-any.whl.metadata (2.5 kB)
+Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=14.1.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+Collecting mypy-extensions>=0.3.0 (from typing-inspect>=0.8.0->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading mypy_extensions-1.1.0-py3-none-any.whl.metadata (1.1 kB)
+Collecting retry (from async-adbutils->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading retry-0.9.2-py2.py3-none-any.whl.metadata (5.8 kB)
+Collecting apkutils2 (from async-adbutils->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading apkutils2-1.0.0.tar.gz (60 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting pyelftools (from apkutils2->async-adbutils->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading pyelftools-0.32-py3-none-any.whl.metadata (372 bytes)
+Collecting cigam (from apkutils2->async-adbutils->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading cigam-0.0.3-py3-none-any.whl.metadata (419 bytes)
+Collecting xmltodict (from apkutils2->async-adbutils->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading xmltodict-1.0.2-py3-none-any.whl.metadata (15 kB)
+Processing ./wheels/cryptography-46.0.3-cp312-abi3-linux_x86_64.whl (from authlib->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+Collecting cffi>=2.0.0 (from cryptography->authlib->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached cffi-2.0.0-cp312-cp312-linux_x86_64.whl
+Collecting pycparser (from cffi>=2.0.0->cryptography->authlib->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached pycparser-2.23-py3-none-any.whl.metadata (993 bytes)
+Collecting marshmallow<4.0.0,>=3.18.0 (from dataclasses-json->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading marshmallow-3.26.1-py3-none-any.whl.metadata (7.3 kB)
+Collecting dnspython>=2.0.0 (from email-validator->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading dnspython-2.8.0-py3-none-any.whl.metadata (5.7 kB)
+Collecting annotated-doc>=0.0.2 (from fastapi->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading annotated_doc-0.0.4-py3-none-any.whl.metadata (6.6 kB)
+Collecting colorama>=0.4 (from griffe->banks<3,>=2.2.0->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+Collecting MarkupSafe>=2.0 (from jinja2->banks<3,>=2.2.0->llama-index-core<0.15.0,>=0.14.4->llama-index==0.14.4->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading markupsafe-3.0.3.tar.gz (80 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting ply (from jsonpath-ng->arize-phoenix-evals>=2.7.1->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Using cached ply-3.11-py2.py3-none-any.whl.metadata (844 bytes)
+Collecting importlib-metadata<8.8.0,>=6.0 (from opentelemetry-api->arize-phoenix-evals>=2.7.1->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading importlib_metadata-8.7.0-py3-none-any.whl.metadata (4.8 kB)
+Collecting zipp>=3.20 (from importlib-metadata<8.8.0,>=6.0->opentelemetry-api->arize-phoenix-evals>=2.7.1->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading zipp-3.23.0-py3-none-any.whl.metadata (3.6 kB)
+Collecting opentelemetry-exporter-otlp-proto-grpc==1.39.1 (from opentelemetry-exporter-otlp->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading opentelemetry_exporter_otlp_proto_grpc-1.39.1-py3-none-any.whl.metadata (2.5 kB)
+Collecting opentelemetry-exporter-otlp-proto-http==1.39.1 (from opentelemetry-exporter-otlp->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading opentelemetry_exporter_otlp_proto_http-1.39.1-py3-none-any.whl.metadata (2.4 kB)
+Collecting googleapis-common-protos~=1.57 (from opentelemetry-exporter-otlp-proto-grpc==1.39.1->opentelemetry-exporter-otlp->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading googleapis_common_protos-1.72.0-py3-none-any.whl.metadata (9.4 kB)
+Collecting opentelemetry-exporter-otlp-proto-common==1.39.1 (from opentelemetry-exporter-otlp-proto-grpc==1.39.1->opentelemetry-exporter-otlp->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading opentelemetry_exporter_otlp_proto_common-1.39.1-py3-none-any.whl.metadata (1.8 kB)
+Collecting decorator>=3.4.2 (from retry->async-adbutils->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading decorator-5.2.1-py3-none-any.whl.metadata (3.9 kB)
+Collecting py<2.0.0,>=1.4.26 (from retry->async-adbutils->droidrun[anthropic,deepseek,google,ollama,openai,openrouter])
+  Downloading py-1.11.0-py2.py3-none-any.whl.metadata (2.8 kB)
+Requirement already satisfied: threadpoolctl>=3.2.0 in /data/data/com.termux/files/usr/lib/python3.12/site-packages (from scikit-learn->arize-phoenix>=12.3.0->droidrun[anthropic,deepseek,google,ollama,openai,openrouter]) (3.6.0)
+Downloading droidrun-0.4.16-py3-none-any.whl (184 kB)
+Downloading llama_index-0.14.4-py3-none-any.whl (7.4 kB)
+Downloading llama_index_workflows-2.8.3-py3-none-any.whl (61 kB)
+Downloading llama_index_cli-0.5.3-py3-none-any.whl (28 kB)
+Downloading llama_index_core-0.14.10-py3-none-any.whl (11.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 11.9/11.9 MB 2.5 MB/s  0:00:04
+Downloading banks-2.2.0-py3-none-any.whl (29 kB)
+Downloading dirtyjson-1.0.8-py3-none-any.whl (25 kB)
+Downloading filetype-1.2.0-py2.py3-none-any.whl (19 kB)
+Downloading llama_index_embeddings_openai-0.5.1-py3-none-any.whl (7.0 kB)
+Downloading llama_index_llms_anthropic-0.8.6-py3-none-any.whl (12 kB)
+Downloading llama_index_llms_openai-0.6.12-py3-none-any.whl (26 kB)
+Downloading llama_index_readers_file-0.5.5-py3-none-any.whl (51 kB)
+Downloading beautifulsoup4-4.14.3-py3-none-any.whl (107 kB)
+Downloading multidict-6.7.0-py3-none-any.whl (12 kB)
+Downloading nest_asyncio-1.6.0-py3-none-any.whl (5.2 kB)
+Downloading openai-2.13.0-py3-none-any.whl (1.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.1/1.1 MB 1.9 MB/s  0:00:00
+Using cached anyio-4.12.0-py3-none-any.whl (113 kB)
+Downloading distro-1.9.0-py3-none-any.whl (20 kB)
+Using cached httpx-0.28.1-py3-none-any.whl (73 kB)
+Using cached httpcore-1.0.9-py3-none-any.whl (78 kB)
+Downloading pydantic-2.12.5-py3-none-any.whl (463 kB)
+Downloading pypdf-6.4.2-py3-none-any.whl (328 kB)
+Downloading striprtf-0.0.26-py3-none-any.whl (6.9 kB)
+Downloading tenacity-9.1.2-py3-none-any.whl (28 kB)
+Using cached tqdm-4.67.1-py3-none-any.whl (78 kB)
+Downloading yarl-1.22.0-py3-none-any.whl (46 kB)
+Downloading aiofiles-25.1.0-py3-none-any.whl (14 kB)
+Downloading aiohappyeyeballs-2.6.1-py3-none-any.whl (15 kB)
+Downloading aiosignal-1.4.0-py3-none-any.whl (7.5 kB)
+Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
+Downloading anthropic-0.75.0-py3-none-any.whl (388 kB)
+Downloading docstring_parser-0.17.0-py3-none-any.whl (36 kB)
+Downloading google_auth-2.45.0-py2.py3-none-any.whl (233 kB)
+Downloading cachetools-6.2.4-py3-none-any.whl (11 kB)
+Downloading requests-2.32.5-py3-none-any.whl (64 kB)
+Downloading charset_normalizer-3.4.4-py3-none-any.whl (53 kB)
+Using cached idna-3.11-py3-none-any.whl (71 kB)
+Downloading rsa-4.9.1-py3-none-any.whl (34 kB)
+Downloading urllib3-2.6.2-py3-none-any.whl (131 kB)
+Downloading arize_phoenix-12.25.1-py3-none-any.whl (2.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.6/2.6 MB 2.0 MB/s  0:00:01
+Downloading strawberry_graphql-0.270.1-py3-none-any.whl (301 kB)
+Downloading alembic-1.17.2-py3-none-any.whl (248 kB)
+Downloading graphql_core-3.2.7-py3-none-any.whl (207 kB)
+Downloading sqlalchemy-2.0.45-py3-none-any.whl (1.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.9/1.9 MB 2.4 MB/s  0:00:00
+Downloading wrapt-1.17.3-py3-none-any.whl (23 kB)
+Downloading arize_phoenix_client-1.27.1-py3-none-any.whl (148 kB)
+Downloading arize_phoenix_evals-2.7.1-py3-none-any.whl (156 kB)
+Downloading arize_phoenix_otel-0.14.0-py3-none-any.whl (17 kB)
+Downloading attrs-25.4.0-py3-none-any.whl (67 kB)
+Downloading boto3-1.42.11-py3-none-any.whl (140 kB)
+Downloading botocore-1.42.11-py3-none-any.whl (14.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.5/14.5 MB 2.1 MB/s  0:00:07
+Downloading jmespath-1.0.1-py3-none-any.whl (20 kB)
+Downloading s3transfer-0.16.0-py3-none-any.whl (86 kB)
+Using cached certifi-2025.11.12-py3-none-any.whl (159 kB)
+Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+Downloading frozenlist-1.8.0-py3-none-any.whl (13 kB)
+Using cached fsspec-2025.12.0-py3-none-any.whl (201 kB)
+Using cached h11-0.16.0-py3-none-any.whl (37 kB)
+Downloading llama_index_callbacks_arize_phoenix-0.6.1-py3-none-any.whl (3.1 kB)
+Downloading llama_index_indices_managed_llama_cloud-0.9.4-py3-none-any.whl (17 kB)
+Downloading Deprecated-1.2.18-py2.py3-none-any.whl (10.0 kB)
+Downloading llama_cloud-0.1.35-py3-none-any.whl (303 kB)
+Downloading llama_index_instrumentation-0.4.2-py3-none-any.whl (15 kB)
+Downloading llama_index_llms_deepseek-0.2.2-py3-none-any.whl (3.6 kB)
+Downloading llama_index_llms_openai_like-0.5.3-py3-none-any.whl (4.7 kB)
+Downloading transformers-4.57.3-py3-none-any.whl (12.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.0/12.0 MB 1.5 MB/s  0:00:08
+Downloading huggingface_hub-0.36.0-py3-none-any.whl (566 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 566.1/566.1 kB 1.0 MB/s  0:00:00
+Downloading llama_index_llms_google_genai-0.8.2-py3-none-any.whl (13 kB)
+Downloading google_genai-1.55.0-py3-none-any.whl (703 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 703.4/703.4 kB 1.3 MB/s  0:00:00
+Downloading websockets-15.0.1-py3-none-any.whl (169 kB)
+Downloading llama_index_llms_ollama-0.9.0-py3-none-any.whl (8.6 kB)
+Downloading llama_index_llms_openrouter-0.4.2-py3-none-any.whl (4.5 kB)
+Downloading llama_index_readers_llama_parse-0.5.1-py3-none-any.whl (3.2 kB)
+Downloading llama_parse-0.6.54-py3-none-any.whl (4.9 kB)
+Downloading llama_cloud_services-0.6.54-py3-none-any.whl (63 kB)
+Using cached click-8.3.1-py3-none-any.whl (108 kB)
+Downloading platformdirs-4.5.1-py3-none-any.whl (18 kB)
+Downloading python_dotenv-1.2.1-py3-none-any.whl (21 kB)
+Downloading networkx-3.6.1-py3-none-any.whl (2.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 1.3 MB/s  0:00:01
+Downloading nltk-3.9.2-py3-none-any.whl (1.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.5/1.5 MB 1.6 MB/s  0:00:00
+Downloading ollama-0.6.1-py3-none-any.whl (14 kB)
+Downloading openinference_instrumentation-0.1.42-py3-none-any.whl (30 kB)
+Downloading openinference_instrumentation_llama_index-4.3.9-py3-none-any.whl (29 kB)
+Downloading openinference_semantic_conventions-0.1.25-py3-none-any.whl (10 kB)
+Downloading opentelemetry_proto-1.39.1-py3-none-any.whl (72 kB)
+Downloading protobuf-6.33.2-py3-none-any.whl (170 kB)
+Downloading posthog-7.4.0-py3-none-any.whl (166 kB)
+Downloading backoff-2.2.1-py3-none-any.whl (15 kB)
+Downloading propcache-0.4.1-py3-none-any.whl (13 kB)
+Downloading pyasn1-0.6.1-py3-none-any.whl (83 kB)
+Downloading pyasn1_modules-0.4.2-py3-none-any.whl (181 kB)
+Downloading rich-14.2.0-py3-none-any.whl (243 kB)
+Downloading pygments-2.19.2-py3-none-any.whl (1.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 1.2 MB/s  0:00:00
+Downloading markdown_it_py-4.0.0-py3-none-any.whl (87 kB)
+Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+Downloading soupsieve-2.8-py3-none-any.whl (36 kB)
+Downloading typing_inspect-0.9.0-py3-none-any.whl (8.8 kB)
+Downloading mypy_extensions-1.1.0-py3-none-any.whl (5.0 kB)
+Downloading typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+Downloading aioitertools-0.13.0-py3-none-any.whl (24 kB)
+Downloading aiosqlite-0.22.0-py3-none-any.whl (17 kB)
+Downloading async_adbutils-0.1.1-py3-none-any.whl (37 kB)
+Downloading authlib-1.6.6-py2.py3-none-any.whl (244 kB)
+Downloading cigam-0.0.3-py3-none-any.whl (3.8 kB)
+Downloading dataclasses_json-0.6.7-py3-none-any.whl (28 kB)
+Downloading marshmallow-3.26.1-py3-none-any.whl (50 kB)
+Downloading email_validator-2.3.0-py3-none-any.whl (35 kB)
+Downloading dnspython-2.8.0-py3-none-any.whl (331 kB)
+Downloading fastapi-0.124.4-py3-none-any.whl (113 kB)
+Downloading starlette-0.50.0-py3-none-any.whl (74 kB)
+Downloading annotated_doc-0.0.4-py3-none-any.whl (5.3 kB)
+Using cached filelock-3.20.1-py3-none-any.whl (16 kB)
+Downloading griffe-1.15.0-py3-none-any.whl (150 kB)
+Downloading colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+Downloading grpc_interceptor-0.15.4-py3-none-any.whl (20 kB)
+Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)
+Downloading jsonpath_ng-1.7.0-py3-none-any.whl (30 kB)
+Downloading ldap3-2.9.1-py2.py3-none-any.whl (432 kB)
+Downloading mako-1.3.10-py3-none-any.whl (78 kB)
+Downloading opentelemetry_api-1.39.1-py3-none-any.whl (66 kB)
+Downloading importlib_metadata-8.7.0-py3-none-any.whl (27 kB)
+Downloading zipp-3.23.0-py3-none-any.whl (10 kB)
+Downloading opentelemetry_exporter_otlp-1.39.1-py3-none-any.whl (7.0 kB)
+Downloading opentelemetry_exporter_otlp_proto_grpc-1.39.1-py3-none-any.whl (19 kB)
+Downloading opentelemetry_exporter_otlp_proto_common-1.39.1-py3-none-any.whl (18 kB)
+Downloading opentelemetry_exporter_otlp_proto_http-1.39.1-py3-none-any.whl (19 kB)
+Downloading googleapis_common_protos-1.72.0-py3-none-any.whl (297 kB)
+Downloading opentelemetry_sdk-1.39.1-py3-none-any.whl (132 kB)
+Downloading opentelemetry_semantic_conventions-0.60b1-py3-none-any.whl (219 kB)
+Downloading opentelemetry_instrumentation-0.60b1-py3-none-any.whl (33 kB)
+Using cached ply-3.11-py2.py3-none-any.whl (49 kB)
+Downloading prometheus_client-0.23.1-py3-none-any.whl (61 kB)
+Using cached pycparser-2.23-py3-none-any.whl (118 kB)
+Downloading pyelftools-0.32-py3-none-any.whl (188 kB)
+Downloading pystache-0.6.8-py3-none-any.whl (82 kB)
+Downloading python_multipart-0.0.21-py3-none-any.whl (24 kB)
+Downloading retry-0.9.2-py2.py3-none-any.whl (8.0 kB)
+Downloading py-1.11.0-py2.py3-none-any.whl (98 kB)
+Downloading decorator-5.2.1-py3-none-any.whl (9.2 kB)
+Downloading sniffio-1.3.1-py3-none-any.whl (10 kB)
+Downloading uvicorn-0.38.0-py3-none-any.whl (68 kB)
+Downloading xmltodict-1.0.2-py3-none-any.whl (13 kB)
+Building wheels for collected packages: aiohttp, greenlet, tokenizers, regex, sqlean-py, tiktoken, apkutils2, MarkupSafe
+  Building wheel for aiohttp (pyproject.toml): started
+  Building wheel for aiohttp (pyproject.toml): finished with status 'done'
+  Created wheel for aiohttp: filename=aiohttp-3.13.2-cp312-cp312-linux_x86_64.whl size=1142542 sha256=37a8d0b674ce9cde4e22e203846ad3f5b0d4eb164f5d1ce89a303c6b44d944c2
+  Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/54/c3/5d/769c0e5073c18714efa14b85e5759408fb0a6778d091850ab6
+  Building wheel for greenlet (pyproject.toml): started
+  Building wheel for greenlet (pyproject.toml): finished with status 'done'
+  Created wheel for greenlet: filename=greenlet-3.3.0-cp312-cp312-linux_x86_64.whl size=432447 sha256=d9a88514e1e087fd378cced8dd42a7fcb7bc5ee41a7064b98e97245c125ef2f4
+  Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/8e/75/95/f3a82fe519c1eb37f1482303953edaabeb9a225b86704ecdc7
+  Building wheel for tokenizers (pyproject.toml): started
+  Building wheel for tokenizers (pyproject.toml): still running...
+  Building wheel for tokenizers (pyproject.toml): finished with status 'error'
+  error: subprocess-exited-with-error
+  
+  × Building wheel for tokenizers (pyproject.toml) did not run successfully.
+  │ exit code: 1
+  ╰─> [146 lines of output]
+      Running `maturin pep517 build-wheel -i /data/data/com.termux/files/usr/bin/python3.12 --compatibility off`
+      🍹 Building a mixed python/rust project
+      🔗 Found pyo3 bindings with abi3 support
+      🐍 Found CPython 3.12 at /data/data/com.termux/files/usr/bin/python3.12
+      📡 Using build options features, bindings from pyproject.toml
+         Compiling proc-macro2 v1.0.101
+         Compiling unicode-ident v1.0.19
+         Compiling target-lexicon v0.13.3
+         Compiling libc v0.2.175
+         Compiling autocfg v1.5.0
+         Compiling once_cell v1.21.3
+         Compiling memchr v2.7.5
+         Compiling pyo3-build-config v0.25.1
+         Compiling quote v1.0.40
+         Compiling syn v2.0.106
+         Compiling serde_core v1.0.225
+         Compiling find-msvc-tools v0.1.2
+         Compiling shlex v1.3.0
+         Compiling cc v1.2.38
+         Compiling crossbeam-utils v0.8.21
+         Compiling cfg-if v1.0.3
+         Compiling getrandom v0.3.3
+         Compiling ident_case v1.0.1
+         Compiling serde v1.0.225
+         Compiling zerocopy v0.8.27
+         Compiling fnv v1.0.7
+         Compiling strsim v0.11.1
+         Compiling pyo3-macros-backend v0.25.1
+         Compiling pyo3-ffi v0.25.1
+         Compiling num-traits v0.2.19
+         Compiling darling_core v0.20.11
+         Compiling crossbeam-epoch v0.9.18
+         Compiling aho-corasick v1.1.3
+         Compiling serde_derive v1.0.225
+         Compiling darling_macro v0.20.11
+         Compiling memoffset v0.9.1
+         Compiling pin-project-lite v0.2.16
+         Compiling regex-syntax v0.8.6
+         Compiling pkg-config v0.3.32
+         Compiling futures-sink v0.3.31
+         Compiling heck v0.5.0
+         Compiling rustversion v1.0.22
+         Compiling rayon-core v1.13.0
+         Compiling futures-core v0.3.31
+         Compiling futures-channel v0.3.31
+         Compiling regex-automata v0.4.10
+         Compiling onig_sys v69.9.1
+         Compiling darling v0.20.11
+         Compiling futures-macro v0.3.31
+         Compiling crossbeam-deque v0.8.6
+         Compiling pyo3 v0.25.1
+         Compiling matrixmultiply v0.3.10
+         Compiling pin-utils v0.1.0
+         Compiling paste v1.0.15
+         Compiling futures-task v0.3.31
+         Compiling futures-io v0.3.31
+         Compiling portable-atomic v1.11.1
+         Compiling slab v0.4.11
+         Compiling version_check v0.9.5
+         Compiling either v1.15.0
+         Compiling ahash v0.8.12
+         Compiling futures-util v0.3.31
+         Compiling pyo3-macros v0.25.1
+         Compiling regex v1.11.2
+         Compiling derive_builder_core v0.20.2
+         Compiling ppv-lite86 v0.2.21
+         Compiling rand_core v0.9.3
+         Compiling esaxx-rs v0.1.10
+         Compiling rawpointer v0.2.1
+         Compiling utf8parse v0.2.2
+         Compiling minimal-lexical v0.2.1
+         Compiling serde_json v1.0.145
+         Compiling thiserror v2.0.16
+         Compiling unicode-width v0.2.1
+         Compiling indoc v2.0.6
+         Compiling itoa v1.0.15
+         Compiling ryu v1.0.20
+         Compiling log v0.4.28
+         Compiling unindent v0.2.4
+         Compiling console v0.15.11
+         Compiling nom v7.1.3
+         Compiling anstyle-parse v0.2.7
+         Compiling rand_chacha v0.9.0
+      warning: esaxx-rs@0.1.10: In file included from src/esaxx.cpp:621:
+      warning: esaxx-rs@0.1.10: In file included from src/esa.hxx:30:
+      warning: esaxx-rs@0.1.10: In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/vector:2992:
+      warning: esaxx-rs@0.1.10: In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/locale:209:
+      warning: esaxx-rs@0.1.10: In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/ios:843:
+      warning: esaxx-rs@0.1.10: In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/mutex:191:
+      warning: esaxx-rs@0.1.10: /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/__condition_variable/condition_variable.h:226:14: error: use of undeclared identifier 'pthread_cond_clockwait'
+      warning: esaxx-rs@0.1.10:   226 |   int __ec = pthread_cond_clockwait(&__cv_, __lk.mutex()->native_handle(), CLOCK_MONOTONIC, &__ts);
+      warning: esaxx-rs@0.1.10:       |              ^~~~~~~~~~~~~~~~~~~~~~
+      warning: esaxx-rs@0.1.10: 1 error generated.
+      error: failed to run custom build command for `esaxx-rs v0.1.10`
+      
+      Caused by:
+        process didn't exit successfully: `/data/data/com.termux/files/home/tmp/pip-install-2uduky9w/tokenizers_3dd8a105b2364ac78df3ca8ab722b8bb/bindings/python/target/release/build/esaxx-rs-9b97f4d1e41ce9f1/build-script-build` (exit status: 1)
+        --- stdout
+        OUT_DIR = Some(/data/data/com.termux/files/home/tmp/pip-install-2uduky9w/tokenizers_3dd8a105b2364ac78df3ca8ab722b8bb/bindings/python/target/release/build/esaxx-rs-7b1c1b74acab46fe/out)
+        OPT_LEVEL = Some(3)
+        TARGET = Some(x86_64-linux-android)
+        HOST = Some(x86_64-linux-android)
+        cargo:rerun-if-env-changed=CXX_x86_64-linux-android
+        CXX_x86_64-linux-android = None
+        cargo:rerun-if-env-changed=CXX_x86_64_linux_android
+        CXX_x86_64_linux_android = None
+        cargo:rerun-if-env-changed=HOST_CXX
+        HOST_CXX = None
+        cargo:rerun-if-env-changed=CXX
+        CXX = Some(/data/data/com.termux/files/usr/bin/clang++)
+        RUSTC_WRAPPER = None
+        cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+        cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+        CRATE_CC_NO_DEFAULTS = None
+        DEBUG = Some(false)
+        cargo:rerun-if-env-changed=CXXFLAGS
+        CXXFLAGS = None
+        cargo:rerun-if-env-changed=HOST_CXXFLAGS
+        HOST_CXXFLAGS = None
+        cargo:rerun-if-env-changed=CXXFLAGS_x86_64_linux_android
+        CXXFLAGS_x86_64_linux_android = None
+        cargo:rerun-if-env-changed=CXXFLAGS_x86_64-linux-android
+        CXXFLAGS_x86_64-linux-android = None
+        CARGO_ENCODED_RUSTFLAGS = Some()
+        cargo:warning=In file included from src/esaxx.cpp:621:
+        cargo:warning=In file included from src/esa.hxx:30:
+        cargo:warning=In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/vector:2992:
+        cargo:warning=In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/locale:209:
+        cargo:warning=In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/ios:843:
+        cargo:warning=In file included from /data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/mutex:191:
+        cargo:warning=/data/data/com.termux/files/usr/bin/../../usr/include/c++/v1/__condition_variable/condition_variable.h:226:14: error: use of undeclared identifier 'pthread_cond_clockwait'
+        cargo:warning=  226 |   int __ec = pthread_cond_clockwait(&__cv_, __lk.mutex()->native_handle(), CLOCK_MONOTONIC, &__ts);
+        cargo:warning=      |              ^~~~~~~~~~~~~~~~~~~~~~
+        cargo:warning=1 error generated.
+      
+        --- stderr
+      
+      
+        error occurred in cc-rs: command did not execute successfully (status code exit status: 1): LC_ALL="C" "/data/data/com.termux/files/usr/bin/clang++" "-O3" "-DANDROID" "-ffunction-sections" "-fdata-sections" "-fPIC" "-m64" "--target=x86_64-linux-android" "-I" "src" "-Wall" "-Wextra" "-std=c++11" "-o" "/data/data/com.termux/files/home/tmp/pip-install-2uduky9w/tokenizers_3dd8a105b2364ac78df3ca8ab722b8bb/bindings/python/target/release/build/esaxx-rs-7b1c1b74acab46fe/out/0602fb52cb66f316-esaxx.o" "-c" "src/esaxx.cpp"
+      
+      
+      warning: build failed, waiting for other jobs to finish...
+      💥 maturin failed
+        Caused by: Failed to build a native library through cargo
+        Caused by: Cargo build finished with "exit status: 101": `env -u CARGO PYO3_BUILD_EXTENSION_MODULE="1" PYO3_ENVIRONMENT_SIGNATURE="cpython-3.12-64bit" PYO3_PYTHON="/data/data/com.termux/files/usr/bin/python3.12" PYTHON_SYS_EXECUTABLE="/data/data/com.termux/files/usr/bin/python3.12" "cargo" "rustc" "--profile" "release" "--features" "pyo3/extension-module" "--message-format" "json-render-diagnostics" "--manifest-path" "/data/data/com.termux/files/home/tmp/pip-install-2uduky9w/tokenizers_3dd8a105b2364ac78df3ca8ab722b8bb/bindings/python/Cargo.toml" "--lib"`
+      Error: command ['maturin', 'pep517', 'build-wheel', '-i', '/data/data/com.termux/files/usr/bin/python3.12', '--compatibility', 'off'] returned non-zero exit status 1
+      [end of output]
+  
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+  ERROR: Failed building wheel for tokenizers
+  Building wheel for regex (pyproject.toml): started
+  Building wheel for regex (pyproject.toml): finished with status 'done'
+  Created wheel for regex: filename=regex-2025.11.3-cp312-cp312-linux_x86_64.whl size=572426 sha256=46f0f199a6c76b54471bf8945cb8a589c8c0864b71a7d6fc4a918a1d31357cf1
+  Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/9d/e8/25/e8d45251f100a9706b471087b58a72abd8957e767977f506ab
+  Building wheel for sqlean-py (pyproject.toml): started
+  Building wheel for sqlean-py (pyproject.toml): still running...
+  Building wheel for sqlean-py (pyproject.toml): finished with status 'done'
+  Created wheel for sqlean-py: filename=sqlean_py-3.50.4.5-cp312-cp312-linux_x86_64.whl size=3719646 sha256=02246def1eb78970ef07ba8c95f48cc5b5498c175fd6ba2da59ae113ed6ed0fd
+  Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/1d/36/c5/27593d2f4c3344bf04d3f813baf7cd227927a0c421fec6c636
+  Building wheel for tiktoken (pyproject.toml): started
+  Building wheel for tiktoken (pyproject.toml): still running...
+  Building wheel for tiktoken (pyproject.toml): finished with status 'done'
+  Created wheel for tiktoken: filename=tiktoken-0.12.0-cp312-cp312-linux_x86_64.whl size=1164490 sha256=00fefd3fe88eb4cc329589922333509841a23522ad0f539a326c8485f7de12e6
+  Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/b0/13/14/8483252204b6b9eaae2d4e2231fdf65a206842e167b0a16837
+  Building wheel for apkutils2 (pyproject.toml): started
+  Building wheel for apkutils2 (pyproject.toml): finished with status 'done'
+  Created wheel for apkutils2: filename=apkutils2-1.0.0-py3-none-any.whl size=69257 sha256=6d4e705d98222c1dda712c004c727d6f4f74c4198e8b4209ebc778ff2a2af13a
+  Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/4a/6c/e9/40d6dc71fa3fac7b44c19637e0d16093c107d7f86512097587
+  Building wheel for MarkupSafe (pyproject.toml): started
+  Building wheel for MarkupSafe (pyproject.toml): finished with status 'done'
+  Created wheel for MarkupSafe: filename=markupsafe-3.0.3-cp312-cp312-linux_x86_64.whl size=18855 sha256=403d37495104b29991d6f094f550bb49bd11316b7c8b618e0df7bfe999d3552a
+  Stored in directory: /data/data/com.termux/files/home/.cache/pip/wheels/5d/61/14/c02299b5de7913d7640a5f7a1fc6dc10e18ca436ff2ae27475
+Successfully built aiohttp greenlet regex sqlean-py tiktoken apkutils2 MarkupSafe
+Failed to build tokenizers
+error: failed-wheel-build-for-install
+
+× Failed to build installable wheels for some pyproject.toml based projects
+╰─> tokenizers
