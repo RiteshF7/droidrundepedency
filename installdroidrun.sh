@@ -773,10 +773,46 @@ if ! build_package "scipy" "scipy>=1.8.0,<1.17.0"; then
     exit 1
 fi
 
-# Build pandas (with meson.build fix)
-if ! build_package "pandas" "pandas<2.3.0" --fix-source=pandas; then
-    log_error "Failed to build pandas - this is required, exiting"
-    exit 1
+# Build pandas using the tested build_pandas.sh script
+if python_pkg_installed "pandas" "pandas<2.3.0"; then
+    log_success "pandas is already installed and satisfies version requirement (pandas<2.3.0), skipping build"
+else
+    log_info "pandas not installed or version requirement (pandas<2.3.0) not satisfied, will build"
+    log_info "Building pandas using build_pandas.sh..."
+    
+    # Check if build_pandas.sh exists
+    BUILD_PANDAS_SCRIPT="${SCRIPT_DIR}/build_pandas.sh"
+    if [ ! -f "$BUILD_PANDAS_SCRIPT" ]; then
+        # Try alternative locations
+        BUILD_PANDAS_SCRIPT="${HOME}/droidrundepedency/build_pandas.sh"
+        if [ ! -f "$BUILD_PANDAS_SCRIPT" ]; then
+            BUILD_PANDAS_SCRIPT="./build_pandas.sh"
+        fi
+    fi
+    
+    if [ ! -f "$BUILD_PANDAS_SCRIPT" ]; then
+        log_error "build_pandas.sh not found. Expected locations:"
+        log_error "  ${SCRIPT_DIR}/build_pandas.sh"
+        log_error "  ${HOME}/droidrundepedency/build_pandas.sh"
+        log_error "  ./build_pandas.sh"
+        log_error "Falling back to build_package method..."
+        if ! build_package "pandas" "pandas<2.3.0" --fix-source=pandas; then
+            log_error "Failed to build pandas - this is required, exiting"
+            exit 1
+        fi
+    else
+        log_info "Using build script: $BUILD_PANDAS_SCRIPT"
+        # Make script executable
+        chmod +x "$BUILD_PANDAS_SCRIPT" 2>/dev/null || true
+        
+        # Run build_pandas.sh with same environment variables
+        if bash "$BUILD_PANDAS_SCRIPT"; then
+            log_success "pandas built and installed successfully using build_pandas.sh"
+        else
+            log_error "Failed to build pandas using build_pandas.sh - this is required, exiting"
+            exit 1
+        fi
+    fi
 fi
 
 # Build scikit-learn (with source fixes)
