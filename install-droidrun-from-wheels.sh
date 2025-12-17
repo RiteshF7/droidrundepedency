@@ -26,6 +26,24 @@ WHEELS_URL="${1:-${DEFAULT_WHEELS_URL}}"
 WHEELS_DIR="${2:-${HOME}/droidrun-wheels}"
 PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
 
+# Function to check if wheels already exist
+wheels_exist() {
+	local wheels_dir="$1"
+	
+	# Check if directory exists and has wheel files
+	if [ -d "$wheels_dir" ]; then
+		# Check main directory
+		if ls -1 "${wheels_dir}"/*.whl >/dev/null 2>&1; then
+			return 0
+		fi
+		# Check subdirectory (_x86_64_wheels)
+		if [ -d "${wheels_dir}/_x86_64_wheels" ] && ls -1 "${wheels_dir}/_x86_64_wheels"/*.whl >/dev/null 2>&1; then
+			return 0
+		fi
+	fi
+	return 1
+}
+
 # Function to download wheels from URL
 download_wheels() {
 	local url="$1"
@@ -33,6 +51,12 @@ download_wheels() {
 
 	if [ -z "$url" ]; then
 		log_warn "No URL provided, skipping download. Using existing wheels in $dest_dir"
+		return 0
+	fi
+
+	# Check if wheels already exist
+	if wheels_exist "$dest_dir"; then
+		log "Wheels already exist in $dest_dir, skipping download"
 		return 0
 	fi
 
@@ -51,9 +75,22 @@ download_wheels() {
 	if [[ "$url" == *.7z ]] || [[ "$url" == *.7Z ]]; then
 		file_ext="7z"
 		temp_file="${dest_dir}/wheels_temp.7z"
+		# Check if 7z extraction tool is available BEFORE downloading
+		if ! command -v 7z &> /dev/null && ! command -v 7za &> /dev/null; then
+			log_error "7z or 7za not found. Cannot extract .7z files."
+			log "Please install p7zip first: pkg install p7zip"
+			log "Or use a different archive format (zip/tar.gz)"
+			return 1
+		fi
 	elif [[ "$url" == *.zip ]] || [[ "$url" == *.ZIP ]]; then
 		file_ext="zip"
 		temp_file="${dest_dir}/wheels_temp.zip"
+		# Check if unzip is available
+		if ! command -v unzip &> /dev/null; then
+			log_error "unzip not found. Cannot extract .zip files."
+			log "Please install unzip: pkg install unzip"
+			return 1
+		fi
 	elif [[ "$url" == *.tar.gz ]] || [[ "$url" == *.tgz ]]; then
 		file_ext="tar.gz"
 		temp_file="${dest_dir}/wheels_temp.tar.gz"
@@ -64,6 +101,11 @@ download_wheels() {
 		log_warn "Unknown file type, assuming zip"
 		file_ext="zip"
 		temp_file="${dest_dir}/wheels_temp.zip"
+		if ! command -v unzip &> /dev/null; then
+			log_error "unzip not found. Cannot extract files."
+			log "Please install unzip: pkg install unzip"
+			return 1
+		fi
 	fi
 	
 	log "Downloading wheels archive..."
@@ -85,20 +127,23 @@ download_wheels() {
 	# Extract wheels based on file type
 	log "Extracting wheels archive..."
 	if [ "$file_ext" = "7z" ]; then
-		# Check if 7z is available
+		# Extract using 7z or 7za (already checked availability above)
 		if command -v 7z &> /dev/null; then
-			7z x -o"$dest_dir" "$temp_file" -y > /dev/null 2>&1 || {
+			if 7z x -o"$dest_dir" "$temp_file" -y > /dev/null 2>&1; then
+				log "✓ Successfully extracted 7z archive"
+			else
 				log_error "Failed to extract 7z file"
+				rm -f "$temp_file"
 				return 1
-			}
+			fi
 		elif command -v 7za &> /dev/null; then
-			7za x -o"$dest_dir" "$temp_file" -y > /dev/null 2>&1 || {
+			if 7za x -o"$dest_dir" "$temp_file" -y > /dev/null 2>&1; then
+				log "✓ Successfully extracted 7z archive"
+			else
 				log_error "Failed to extract 7z file"
+				rm -f "$temp_file"
 				return 1
-			}
-		else
-			log_error "7z or 7za not found. Please install: pkg install p7zip"
-			return 1
+			fi
 		fi
 		# For 7z files, wheels are in _x86_64_wheels subdirectory
 		# The extraction creates: dest_dir/_x86_64_wheels/*.whl
@@ -290,6 +335,37 @@ install_droidrun_from_wheels() {
 	return 0
 }
 
+# Function to check required tools
+check_required_tools() {
+	local missing_tools=()
+	
+	# Check for download tools
+	if ! command -v curl &> /dev/null && ! command -v wget &> /dev/null; then
+		missing_tools+=("curl or wget")
+	fi
+	
+	# Check for extraction tools based on URL
+	if [[ "$WHEELS_URL" == *.7z ]] || [[ "$WHEELS_URL" == *.7Z ]] || [[ "$WHEELS_URL" == "$DEFAULT_WHEELS_URL" ]]; then
+		if ! command -v 7z &> /dev/null && ! command -v 7za &> /dev/null; then
+			missing_tools+=("7z or 7za (pkg install p7zip)")
+		fi
+	elif [[ "$WHEELS_URL" == *.zip ]] || [[ "$WHEELS_URL" == *.ZIP ]]; then
+		if ! command -v unzip &> /dev/null; then
+			missing_tools+=("unzip (pkg install unzip)")
+		fi
+	fi
+	
+	if [ ${#missing_tools[@]} -gt 0 ]; then
+		log_error "Missing required tools:"
+		for tool in "${missing_tools[@]}"; do
+			log_error "  - $tool"
+		done
+		return 1
+	fi
+	
+	return 0
+}
+
 # Main function
 main() {
 	log "=== Droidrun Installation Script ==="
@@ -303,9 +379,25 @@ main() {
 	log "  WHEELS_DIR: $WHEELS_DIR"
 	log "  PREFIX: $PREFIX"
 	log ""
+	
+	# Check required tools if we need to download
+	if [ -n "$WHEELS_URL" ] && [ "$WHEELS_URL" != "none" ] && ! wheels_exist "$WHEELS_DIR"; then
+		if ! check_required_tools; then
+			log_error "Please install the missing tools and try again."
+			return 1
+		fi
+	fi
 
-	# Download wheels if URL is provided (or use default GitHub release)
-	if [ -n "$WHEELS_URL" ] && [ "$WHEELS_URL" != "none" ]; then
+	# Check if wheels already exist before downloading
+	if wheels_exist "$WHEELS_DIR"; then
+		log "Wheels already exist, skipping download"
+		# Update WHEELS_DIR if wheels are in subdirectory
+		if [ -d "${WHEELS_DIR}/_x86_64_wheels" ] && [ "$(ls -A "${WHEELS_DIR}/_x86_64_wheels"/*.whl 2>/dev/null | wc -l)" -gt 0 ]; then
+			log "Using wheels from _x86_64_wheels subdirectory"
+			WHEELS_DIR="${WHEELS_DIR}/_x86_64_wheels"
+		fi
+	elif [ -n "$WHEELS_URL" ] && [ "$WHEELS_URL" != "none" ]; then
+		# Download wheels if URL is provided (or use default GitHub release)
 		download_wheels "$WHEELS_URL" "$WHEELS_DIR" || {
 			log_error "Failed to download wheels"
 			return 1
