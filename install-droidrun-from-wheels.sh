@@ -16,8 +16,13 @@ log() { echo -e "${GREEN}[*]${NC} $@"; }
 log_error() { echo -e "${RED}[!]${NC} $@" 1>&2; }
 log_warn() { echo -e "${YELLOW}[!]${NC} $@"; }
 
-# Default values
-WHEELS_URL="${1:-}"
+# Default values - GitHub release URL for pre-built wheels
+GITHUB_REPO="RiteshF7/droidrundepedency"
+GITHUB_RELEASE_TAG="v1.0.0-wheels"
+GITHUB_RELEASE_FILE="_x86_64_wheels.7z"
+DEFAULT_WHEELS_URL="https://github.com/${GITHUB_REPO}/releases/download/${GITHUB_RELEASE_TAG}/${GITHUB_RELEASE_FILE}"
+
+WHEELS_URL="${1:-${DEFAULT_WHEELS_URL}}"
 WHEELS_DIR="${2:-${HOME}/droidrun-wheels}"
 PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
 
@@ -39,9 +44,29 @@ download_wheels() {
 		return 1
 	}
 
-	# Download wheels (assuming it's a zip file or tar archive)
-	local temp_file="${dest_dir}/wheels_temp.zip"
+	# Determine file extension and set temp file name
+	local file_ext=""
+	local temp_file=""
 	
+	if [[ "$url" == *.7z ]] || [[ "$url" == *.7Z ]]; then
+		file_ext="7z"
+		temp_file="${dest_dir}/wheels_temp.7z"
+	elif [[ "$url" == *.zip ]] || [[ "$url" == *.ZIP ]]; then
+		file_ext="zip"
+		temp_file="${dest_dir}/wheels_temp.zip"
+	elif [[ "$url" == *.tar.gz ]] || [[ "$url" == *.tgz ]]; then
+		file_ext="tar.gz"
+		temp_file="${dest_dir}/wheels_temp.tar.gz"
+	elif [[ "$url" == *.tar ]]; then
+		file_ext="tar"
+		temp_file="${dest_dir}/wheels_temp.tar"
+	else
+		log_warn "Unknown file type, assuming zip"
+		file_ext="zip"
+		temp_file="${dest_dir}/wheels_temp.zip"
+	fi
+	
+	log "Downloading wheels archive..."
 	if command -v curl &> /dev/null; then
 		curl -L -o "$temp_file" "$url" || {
 			log_error "Failed to download wheels from $url"
@@ -57,27 +82,40 @@ download_wheels() {
 		return 1
 	fi
 
-	# Extract wheels
-	log "Extracting wheels..."
-	if [[ "$url" == *.zip ]] || [[ "$url" == *.ZIP ]]; then
+	# Extract wheels based on file type
+	log "Extracting wheels archive..."
+	if [ "$file_ext" = "7z" ]; then
+		# Check if 7z is available
+		if command -v 7z &> /dev/null; then
+			7z x -o"$dest_dir" "$temp_file" -y > /dev/null 2>&1 || {
+				log_error "Failed to extract 7z file"
+				return 1
+			}
+		elif command -v 7za &> /dev/null; then
+			7za x -o"$dest_dir" "$temp_file" -y > /dev/null 2>&1 || {
+				log_error "Failed to extract 7z file"
+				return 1
+			}
+		else
+			log_error "7z or 7za not found. Please install: pkg install p7zip"
+			return 1
+		fi
+		# For 7z files, wheels are in _x86_64_wheels subdirectory
+		# The extraction creates: dest_dir/_x86_64_wheels/*.whl
+		# We'll handle this in the main function
+	elif [ "$file_ext" = "zip" ]; then
 		unzip -q -o "$temp_file" -d "$dest_dir" || {
 			log_error "Failed to extract zip file"
 			return 1
 		}
-	elif [[ "$url" == *.tar.gz ]] || [[ "$url" == *.tgz ]]; then
+	elif [ "$file_ext" = "tar.gz" ] || [ "$file_ext" = "tgz" ]; then
 		tar -xzf "$temp_file" -C "$dest_dir" || {
 			log_error "Failed to extract tar.gz file"
 			return 1
 		}
-	elif [[ "$url" == *.tar ]]; then
+	elif [ "$file_ext" = "tar" ]; then
 		tar -xf "$temp_file" -C "$dest_dir" || {
 			log_error "Failed to extract tar file"
-			return 1
-		}
-	else
-		log_warn "Unknown file type. Assuming it's a zip file."
-		unzip -q -o "$temp_file" -d "$dest_dir" || {
-			log_error "Failed to extract file"
 			return 1
 		}
 	fi
@@ -99,14 +137,24 @@ install_droidrun_from_wheels() {
 		return 1
 	fi
 
+	# Check for wheels in subdirectory (_x86_64_wheels) if main directory is empty
+	local actual_wheels_dir="$wheels_dir"
+	if [ ! -f "${wheels_dir}"/*.whl ] 2>/dev/null && [ -d "${wheels_dir}/_x86_64_wheels" ]; then
+		actual_wheels_dir="${wheels_dir}/_x86_64_wheels"
+		log "Using wheels from subdirectory: $actual_wheels_dir"
+	fi
+
 	local wheel_count
-	wheel_count=$(ls -1 "$wheels_dir"/*.whl 2>/dev/null | wc -l)
+	wheel_count=$(ls -1 "${actual_wheels_dir}"/*.whl 2>/dev/null | wc -l)
 	if [ "$wheel_count" -eq 0 ]; then
-		log_error "No wheel files found in $wheels_dir"
+		log_error "No wheel files found in $actual_wheels_dir"
 		return 1
 	fi
 
-	log "Found $wheel_count wheel files in $wheels_dir"
+	log "Found $wheel_count wheel files in $actual_wheels_dir"
+	
+	# Update wheels_dir to point to actual location
+	wheels_dir="$actual_wheels_dir"
 
 	# Set up environment variables
 	export PREFIX
@@ -247,17 +295,26 @@ main() {
 	log "=== Droidrun Installation Script ==="
 	log ""
 	log "Configuration:"
-	log "  WHEELS_URL: ${WHEELS_URL:-'(not provided, using existing wheels)'}"
+	if [ "$WHEELS_URL" = "$DEFAULT_WHEELS_URL" ]; then
+		log "  WHEELS_URL: ${WHEELS_URL} (GitHub release)"
+	else
+		log "  WHEELS_URL: ${WHEELS_URL:-'(not provided, using existing wheels)'}"
+	fi
 	log "  WHEELS_DIR: $WHEELS_DIR"
 	log "  PREFIX: $PREFIX"
 	log ""
 
-	# Download wheels if URL is provided
-	if [ -n "$WHEELS_URL" ]; then
+	# Download wheels if URL is provided (or use default GitHub release)
+	if [ -n "$WHEELS_URL" ] && [ "$WHEELS_URL" != "none" ]; then
 		download_wheels "$WHEELS_URL" "$WHEELS_DIR" || {
 			log_error "Failed to download wheels"
 			return 1
 		}
+		# Update WHEELS_DIR if extraction created _x86_64_wheels subdirectory (for 7z files)
+		if [ -d "${WHEELS_DIR}/_x86_64_wheels" ] && [ "$(ls -A "${WHEELS_DIR}/_x86_64_wheels"/*.whl 2>/dev/null | wc -l)" -gt 0 ]; then
+			log "Using wheels from _x86_64_wheels subdirectory"
+			WHEELS_DIR="${WHEELS_DIR}/_x86_64_wheels"
+		fi
 	fi
 
 	# Install droidrun from wheels
@@ -281,8 +338,9 @@ Usage: $0 [WHEELS_URL] [WHEELS_DIR]
 Install droidrun and its dependencies from pre-built wheel files.
 
 Arguments:
-  WHEELS_URL    (optional) URL to download wheels from (zip/tar.gz/tar)
-                If not provided, will use existing wheels in WHEELS_DIR
+  WHEELS_URL    (optional) URL to download wheels from (7z/zip/tar.gz/tar)
+                Default: GitHub release (v1.0.0-wheels)
+                Use "none" to skip download and use existing wheels
   WHEELS_DIR    (optional) Directory containing wheel files
                 Default: \$HOME/droidrun-wheels
 
@@ -291,14 +349,17 @@ Environment Variables:
                 Default: /data/data/com.termux/files/usr
 
 Examples:
-  # Download and install from URL
-  $0 https://example.com/wheels.zip
-
-  # Install from local directory
-  $0 "" /path/to/wheels
-
-  # Use default directory (no download)
+  # Download from GitHub release and install (default)
   $0
+
+  # Download from custom URL
+  $0 https://example.com/wheels.7z
+
+  # Install from local directory (skip download)
+  $0 none /path/to/wheels
+
+  # Use default GitHub release with custom directory
+  $0 "" /path/to/wheels
 
 EOF
 	exit 0
