@@ -41,6 +41,53 @@ pkg_installed() {
     pkg list-installed 2>/dev/null | grep -q "^$1 " || return 1
 }
 
+# Check if Python package is already installed and satisfies version requirement
+python_pkg_installed() {
+    local pkg_name=$1
+    local version_spec=$2
+    
+    # Normalize package name (e.g., scikit-learn -> sklearn)
+    local import_name="$pkg_name"
+    case "$pkg_name" in
+        scikit-learn) import_name="sklearn" ;;
+        pyarrow) import_name="pyarrow" ;;
+        pydantic-core) import_name="pydantic_core" ;;
+    esac
+    
+    # Check if package can be imported
+    if ! python3 -c "import $import_name" 2>/dev/null; then
+        return 1
+    fi
+    
+    # If version spec is provided and contains version requirements, check if installed version satisfies it
+    if [ -n "$version_spec" ] && [[ "$version_spec" != "$pkg_name" ]] && [[ "$version_spec" =~ [<>=] ]]; then
+        # Extract version requirement from version_spec (e.g., 'pandas<2.3.0' -> '<2.3.0')
+        local version_req="$version_spec"
+        # Remove package name prefix if present
+        version_req="${version_req#$pkg_name}"
+        version_req="${version_req# }"
+        
+        # Use Python's packaging module to check version compatibility
+        if ! python3 -c "
+import sys
+try:
+    import $import_name
+    installed_version = $import_name.__version__
+    from packaging.specifiers import SpecifierSet
+    from packaging.version import Version
+    spec = SpecifierSet('$version_req')
+    if Version(installed_version) not in spec:
+        sys.exit(1)
+except Exception:
+    sys.exit(1)
+" 2>/dev/null; then
+            return 1
+        fi
+    fi
+    
+    return 0
+}
+
 # Validate tar.gz file integrity (global validation function)
 validate_tar_gz() {
     local file=$1
@@ -245,6 +292,12 @@ build_package() {
                 ;;
         esac
     done
+    
+    # Check if package is already installed and satisfies version requirement
+    if python_pkg_installed "$pkg_name" "$version_spec"; then
+        log_success "$pkg_name is already installed and satisfies version requirement, skipping build"
+        return 0
+    fi
     
     log_info "Building $pkg_name..."
     cd "$WHEELS_DIR"
@@ -510,9 +563,22 @@ log_success "Python $PYTHON_VERSION found"
 log_info "Phase 1: Installing build tools..."
 cd "$WHEELS_DIR"
 
-pip install --upgrade wheel setuptools --quiet
-pip install Cython "meson-python<0.19.0,>=0.16.0" "maturin<2,>=1.9.4" --quiet
-log_success "Phase 1 complete: Build tools installed"
+# Check and install build tools only if needed
+build_tools_needed=false
+for tool in "wheel" "setuptools" "Cython" "meson-python" "maturin"; do
+    if ! python_pkg_installed "$tool" "$tool"; then
+        build_tools_needed=true
+        break
+    fi
+done
+
+if [ "$build_tools_needed" = true ]; then
+    pip install --upgrade wheel setuptools --quiet
+    pip install Cython "meson-python<0.19.0,>=0.16.0" "maturin<2,>=1.9.4" --quiet
+    log_success "Phase 1 complete: Build tools installed"
+else
+    log_success "Phase 1 complete: Build tools already installed"
+fi
 
 # ============================================
 # Phase 2: Foundation (numpy)
@@ -539,9 +605,13 @@ if ! build_package "pandas" "pandas<2.3.0" --fix-source=pandas; then
 fi
 
 # Build scikit-learn (with source fixes)
-# Install dependencies first
-log_info "Installing scikit-learn dependencies..."
-pip install "joblib>=1.3.0" "threadpoolctl>=3.2.0" --quiet
+# Install dependencies first if needed
+if ! python_pkg_installed "joblib" "joblib>=1.3.0" || ! python_pkg_installed "threadpoolctl" "threadpoolctl>=3.2.0"; then
+    log_info "Installing scikit-learn dependencies..."
+    pip install "joblib>=1.3.0" "threadpoolctl>=3.2.0" --quiet
+else
+    log_info "scikit-learn dependencies already installed"
+fi
 
 if ! build_package "scikit-learn" "scikit-learn" --fix-source=scikit-learn --no-build-isolation --wheel-pattern="scikit_learn*.whl"; then
     exit 1
@@ -574,32 +644,36 @@ if ! build_package "psutil" "psutil"; then
 fi
 
 # Build grpcio (with wheel patching)
-log_info "Building grpcio (this may take a while)..."
-# Set GRPC build flags to use system libraries
-export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
-export GRPC_PYTHON_BUILD_SYSTEM_ZLIB=1
-export GRPC_PYTHON_BUILD_SYSTEM_CARES=1
-export GRPC_PYTHON_BUILD_SYSTEM_RE2=1
-export GRPC_PYTHON_BUILD_SYSTEM_ABSL=1
-export GRPC_PYTHON_BUILD_WITH_CYTHON=1
-
-cd "$WHEELS_DIR"
-log_info "Building grpcio wheel (pip will download source automatically)..."
-if pip wheel grpcio --no-deps --no-build-isolation --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
-    log_success "grpcio wheel built successfully"
+if python_pkg_installed "grpcio" "grpcio"; then
+    log_success "grpcio is already installed, skipping build"
 else
-    log_error "Failed to build grpcio wheel"
-    exit 1
-fi
+    log_info "Building grpcio (this may take a while)..."
+    # Set GRPC build flags to use system libraries
+    export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
+    export GRPC_PYTHON_BUILD_SYSTEM_ZLIB=1
+    export GRPC_PYTHON_BUILD_SYSTEM_CARES=1
+    export GRPC_PYTHON_BUILD_SYSTEM_RE2=1
+    export GRPC_PYTHON_BUILD_SYSTEM_ABSL=1
+    export GRPC_PYTHON_BUILD_WITH_CYTHON=1
 
-# Fix grpcio wheel
-if ! fix_grpcio_wheel; then
-    exit 1
-fi
+    cd "$WHEELS_DIR"
+    log_info "Building grpcio wheel (pip will download source automatically)..."
+    if pip wheel grpcio --no-deps --no-build-isolation --wheel-dir . 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+        log_success "grpcio wheel built successfully"
+    else
+        log_error "Failed to build grpcio wheel"
+        exit 1
+    fi
 
-# Install the fixed wheel
-log_info "Installing grpcio wheel..."
-pip install --find-links . --no-index grpcio*.whl
+    # Fix grpcio wheel
+    if ! fix_grpcio_wheel; then
+        exit 1
+    fi
+
+    # Install the fixed wheel
+    log_info "Installing grpcio wheel..."
+    pip install --find-links . --no-index grpcio*.whl
+fi
 
 # Set LD_LIBRARY_PATH for runtime (REQUIRED for grpcio to work)
 export LD_LIBRARY_PATH=$PREFIX/lib:$LD_LIBRARY_PATH
@@ -622,35 +696,49 @@ log_success "Phase 5 complete: Other compiled packages installed"
 # ============================================
 log_info "Phase 6: Checking optional compiled packages..."
 
-# These usually have pre-built wheels, try install first
-if pip install tokenizers safetensors cryptography pydantic-core orjson --find-links "$WHEELS_DIR" 2>/dev/null; then
-    log_success "Phase 6 complete: Optional packages installed (pre-built wheels)"
-else
-    log_info "Some packages need building from source..."
-    
-    # List of optional packages to build
-    optional_packages=("tokenizers" "safetensors" "cryptography" "pydantic-core" "orjson")
-    built_packages=()
-    
-    # Build each package (continue on failure)
-    for pkg in "${optional_packages[@]}"; do
-        if build_package "$pkg" "$pkg" 2>/dev/null; then
-            built_packages+=("$pkg")
-        else
-            log_warning "Skipping $pkg (build failed)"
-        fi
-    done
-    
-    # Install any wheels that were built
-    if [ ${#built_packages[@]} -gt 0 ]; then
-        wheel_patterns=""
-        for pkg in "${built_packages[@]}"; do
-            wheel_patterns="${wheel_patterns} ${pkg}*.whl"
-        done
-        pip install --find-links . --no-index $wheel_patterns 2>/dev/null || true
+# List of optional packages
+optional_packages=("tokenizers" "safetensors" "cryptography" "pydantic-core" "orjson")
+missing_packages=()
+
+# Check which packages are missing
+for pkg in "${optional_packages[@]}"; do
+    if ! python_pkg_installed "$pkg" "$pkg"; then
+        missing_packages+=("$pkg")
     fi
-    
-    log_success "Phase 6 complete: Optional packages processed"
+done
+
+if [ ${#missing_packages[@]} -eq 0 ]; then
+    log_success "Phase 6 complete: All optional packages already installed"
+else
+    log_info "Installing missing optional packages: ${missing_packages[*]}"
+    # These usually have pre-built wheels, try install first
+    if pip install "${missing_packages[@]}" --find-links "$WHEELS_DIR" 2>/dev/null; then
+        log_success "Phase 6 complete: Optional packages installed (pre-built wheels)"
+    else
+        log_info "Some packages need building from source..."
+        
+        built_packages=()
+        
+        # Build each missing package (continue on failure)
+        for pkg in "${missing_packages[@]}"; do
+            if build_package "$pkg" "$pkg" 2>/dev/null; then
+                built_packages+=("$pkg")
+            else
+                log_warning "Skipping $pkg (build failed)"
+            fi
+        done
+        
+        # Install any wheels that were built
+        if [ ${#built_packages[@]} -gt 0 ]; then
+            wheel_patterns=""
+            for pkg in "${built_packages[@]}"; do
+                wheel_patterns="${wheel_patterns} ${pkg}*.whl"
+            done
+            pip install --find-links . --no-index $wheel_patterns 2>/dev/null || true
+        fi
+        
+        log_success "Phase 6 complete: Optional packages processed"
+    fi
 fi
 
 # ============================================
