@@ -541,7 +541,7 @@ fi
 # Build scikit-learn (with source fixes)
 # Install dependencies first
 log_info "Installing scikit-learn dependencies..."
-pip install joblib>=1.3.0 threadpoolctl>=3.2.0 --quiet
+pip install "joblib>=1.3.0" "threadpoolctl>=3.2.0" --quiet
 
 if ! build_package "scikit-learn" "scikit-learn" --fix-source=scikit-learn --no-build-isolation --wheel-pattern="scikit_learn*.whl"; then
     exit 1
