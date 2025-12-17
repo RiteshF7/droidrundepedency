@@ -77,19 +77,26 @@ download_wheels() {
 		temp_file="${dest_dir}/wheels_temp.7z"
 		# Check if 7z extraction tool is available BEFORE downloading
 		if ! command -v 7z &> /dev/null && ! command -v 7za &> /dev/null; then
-			log_error "7z or 7za not found. Cannot extract .7z files."
-			log "Please install p7zip first: pkg install p7zip"
-			log "Or use a different archive format (zip/tar.gz)"
-			return 1
+			log "7z or 7za not found. Attempting to install p7zip..."
+			if ! install_p7zip; then
+				log_error "Cannot extract .7z files without p7zip"
+				return 1
+			fi
+			# Refresh command cache
+			hash -r 2>/dev/null || true
 		fi
 	elif [[ "$url" == *.zip ]] || [[ "$url" == *.ZIP ]]; then
 		file_ext="zip"
 		temp_file="${dest_dir}/wheels_temp.zip"
 		# Check if unzip is available
 		if ! command -v unzip &> /dev/null; then
-			log_error "unzip not found. Cannot extract .zip files."
-			log "Please install unzip: pkg install unzip"
-			return 1
+			log "unzip not found. Attempting to install..."
+			if ! install_unzip; then
+				log_error "Cannot extract .zip files without unzip"
+				return 1
+			fi
+			# Refresh command cache
+			hash -r 2>/dev/null || true
 		fi
 	elif [[ "$url" == *.tar.gz ]] || [[ "$url" == *.tgz ]]; then
 		file_ext="tar.gz"
@@ -102,9 +109,13 @@ download_wheels() {
 		file_ext="zip"
 		temp_file="${dest_dir}/wheels_temp.zip"
 		if ! command -v unzip &> /dev/null; then
-			log_error "unzip not found. Cannot extract files."
-			log "Please install unzip: pkg install unzip"
-			return 1
+			log "unzip not found. Attempting to install..."
+			if ! install_unzip; then
+				log_error "Cannot extract files without unzip"
+				return 1
+			fi
+			# Refresh command cache
+			hash -r 2>/dev/null || true
 		fi
 	fi
 	
@@ -221,25 +232,73 @@ install_droidrun_from_wheels() {
 
 	# Ensure pip is available
 	if ! command -v pip &> /dev/null; then
-		log_error "pip not found, cannot install droidrun"
-		log "Please install python-pip: pkg install python-pip"
-		return 1
+		log "pip not found, attempting to install python-pip..."
+		if ! install_python_pip; then
+			log_error "Cannot install droidrun without pip"
+			return 1
+		fi
+		# Verify pip is now available
+		if ! command -v pip &> /dev/null; then
+			log_error "python-pip installed but pip still not found in PATH"
+			log_error "Please restart your terminal or run: hash -r"
+			return 1
+		fi
 	fi
 
 	log "Using pip: $(which pip)"
 	log "Python version: $(python --version 2>&1 || echo 'unknown')"
 
-	# Phase 2: numpy (foundation)
-	log "Phase 2: Installing numpy..."
+	# Phase 1: Build Tools (Pure Python) - MUST be installed first
+	# These are build-time dependencies, but we install them from wheels if available
+	log "Phase 1: Installing build tools (Cython, meson-python, maturin)..."
+	
+	log "  Installing Cython (required for numpy, scipy, pandas, scikit-learn)..."
+	pip install --no-index --find-links "$wheels_dir" Cython 2>/dev/null || {
+		# If not in wheels, try installing from PyPI (pure Python, should work)
+		log_warn "Cython not found in wheels, installing from PyPI..."
+		pip install Cython || {
+			log_error "Failed to install Cython"
+			return 1
+		}
+	}
+	
+	log "  Installing meson-python (required for pandas, scikit-learn)..."
+	pip install --no-index --find-links "$wheels_dir" "meson-python<0.19.0,>=0.16.0" 2>/dev/null || {
+		log_warn "meson-python not found in wheels, installing from PyPI..."
+		pip install "meson-python<0.19.0,>=0.16.0" || {
+			log_error "Failed to install meson-python"
+			return 1
+		}
+	}
+	
+	log "  Installing maturin (required for jiter)..."
+	pip install --no-index --find-links "$wheels_dir" "maturin<2,>=1.9.4" 2>/dev/null || {
+		log_warn "maturin not found in wheels, installing from PyPI..."
+		pip install "maturin<2,>=1.9.4" || {
+			log_error "Failed to install maturin"
+			return 1
+		}
+	}
+	log "✓ Phase 1 build tools installed successfully"
+
+	# Phase 2: numpy (foundation) - MUST be installed before scipy, pandas, scikit-learn, pyarrow
+	log "Phase 2: Installing numpy (foundation for scipy, pandas, scikit-learn, pyarrow)..."
 	if pip install --no-index --find-links "$wheels_dir" numpy; then
 		log "✓ numpy installed successfully"
 	else
 		log_error "Failed to install numpy"
 		return 1
 	fi
+	
+	# Verify numpy is installed and importable
+	if ! python3 -c "import numpy" 2>/dev/null; then
+		log_error "numpy installation verification failed"
+		return 1
+	fi
 
-	# Phase 3: scipy, pandas, scikit-learn
-	log "Phase 3: Installing scipy..."
+	# Phase 3: Scientific Stack
+	# scipy → scikit-learn (requires numpy)
+	log "Phase 3: Installing scipy (required for scikit-learn)..."
 	if pip install --no-index --find-links "$wheels_dir" scipy; then
 		log "✓ scipy installed successfully"
 	else
@@ -247,24 +306,52 @@ install_droidrun_from_wheels() {
 		return 1
 	fi
 
-	log "Phase 3: Installing pandas..."
+	# pandas → llama-index-readers-file (requires numpy, meson-python)
+	log "Phase 3: Installing pandas (requires numpy, meson-python)..."
+	# Ensure numpy is explicitly available before installing pandas
+	log "  Verifying numpy is available..."
+	pip install --no-index --find-links "$wheels_dir" numpy --upgrade --force-reinstall 2>/dev/null || true
+	
+	# Install pandas pure Python dependencies first (python-dateutil, pytz, tzdata)
+	log "  Installing pandas dependencies (python-dateutil, pytz, tzdata)..."
+	pip install --no-index --find-links "$wheels_dir" python-dateutil pytz tzdata 2>/dev/null || {
+		# If not in wheels, try PyPI (these are pure Python)
+		log_warn "Some pandas dependencies not in wheels, installing from PyPI..."
+		pip install python-dateutil pytz tzdata 2>/dev/null || log_warn "Some pandas dependencies may already be installed"
+	}
+	
+	# Now install pandas (numpy and meson-python should already be installed)
 	if pip install --no-index --find-links "$wheels_dir" "pandas<2.3.0"; then
 		log "✓ pandas installed successfully"
 	else
 		log_error "Failed to install pandas"
+		log_error "Make sure numpy and meson-python are installed first"
 		return 1
 	fi
 
-	log "Phase 3: Installing scikit-learn..."
+	# scikit-learn → arize-phoenix (requires numpy, scipy, meson-python, joblib>=1.3.0, threadpoolctl>=3.2.0)
+	log "Phase 3: Installing scikit-learn dependencies (joblib, threadpoolctl)..."
+	pip install --no-index --find-links "$wheels_dir" "joblib>=1.3.0" "threadpoolctl>=3.2.0" 2>/dev/null || {
+		# If not in wheels, try PyPI (these are pure Python)
+		log_warn "scikit-learn dependencies not in wheels, installing from PyPI..."
+		pip install "joblib>=1.3.0" "threadpoolctl>=3.2.0" || {
+			log_error "Failed to install scikit-learn dependencies"
+			return 1
+		}
+	}
+	
+	log "Phase 3: Installing scikit-learn (requires numpy, scipy, meson-python, joblib, threadpoolctl)..."
 	if pip install --no-index --find-links "$wheels_dir" scikit-learn; then
 		log "✓ scikit-learn installed successfully"
 	else
 		log_error "Failed to install scikit-learn"
+		log_error "Make sure numpy, scipy, meson-python, joblib, and threadpoolctl are installed first"
 		return 1
 	fi
 
-	# Phase 4: jiter
-	log "Phase 4: Installing jiter..."
+	# Phase 4: Rust Packages
+	# jiter → arize-phoenix (requires maturin, already installed in Phase 1)
+	log "Phase 4: Installing jiter (required for arize-phoenix, depends on maturin)..."
 	if pip install --no-index --find-links "$wheels_dir" "jiter==0.12.0"; then
 		log "✓ jiter installed successfully"
 	else
@@ -272,15 +359,19 @@ install_droidrun_from_wheels() {
 		return 1
 	fi
 
-	# Phase 5: pyarrow, psutil, grpcio, Pillow
-	log "Phase 5: Installing pyarrow..."
+	# Phase 5: Other compiled packages
+	# pyarrow → arize-phoenix (requires numpy, already installed in Phase 2)
+	# psutil → arize-phoenix
+	# grpcio → google-cloud packages
+	# Pillow → image processing
+	log "Phase 5: Installing pyarrow (required for arize-phoenix, depends on numpy)..."
 	if pip install --no-index --find-links "$wheels_dir" pyarrow; then
 		log "✓ pyarrow installed successfully"
 	else
 		log_warn "pyarrow installation failed (optional)"
 	fi
 
-	log "Phase 5: Installing psutil..."
+	log "Phase 5: Installing psutil (required for arize-phoenix)..."
 	if pip install --no-index --find-links "$wheels_dir" psutil; then
 		log "✓ psutil installed successfully"
 	else
@@ -288,7 +379,7 @@ install_droidrun_from_wheels() {
 		return 1
 	fi
 
-	log "Phase 5: Installing grpcio..."
+	log "Phase 5: Installing grpcio (required for google-cloud packages)..."
 	if pip install --no-index --find-links "$wheels_dir" grpcio; then
 		log "✓ grpcio installed successfully"
 	else
@@ -296,7 +387,7 @@ install_droidrun_from_wheels() {
 		return 1
 	fi
 
-	log "Phase 5: Installing Pillow..."
+	log "Phase 5: Installing Pillow (required for image processing)..."
 	if pip install --no-index --find-links "$wheels_dir" Pillow; then
 		log "✓ Pillow installed successfully"
 	else
@@ -305,29 +396,42 @@ install_droidrun_from_wheels() {
 	fi
 
 	# Phase 6: Optional compiled packages
+	# Install these before droidrun to ensure dependencies are available
+	# tokenizers → transformers → llama-index-llms-deepseek
+	# safetensors → transformers
+	# cryptography → google-auth, authlib
+	# pydantic-core → pydantic
+	# orjson → fastapi, arize-phoenix
 	log "Phase 6: Installing optional compiled packages..."
 	
-	log "  Installing tokenizers..."
+	log "  Installing tokenizers (required for transformers → llama-index-llms-deepseek)..."
 	pip install --no-index --find-links "$wheels_dir" tokenizers || log_warn "tokenizers installation failed (optional)"
 	
-	log "  Installing safetensors..."
+	log "  Installing safetensors (required for transformers)..."
 	pip install --no-index --find-links "$wheels_dir" safetensors || log_warn "safetensors installation failed (optional)"
 	
-	log "  Installing cryptography..."
+	log "  Installing cryptography (required for google-auth, authlib)..."
 	pip install --no-index --find-links "$wheels_dir" cryptography || log_warn "cryptography installation failed (optional)"
 	
-	log "  Installing pydantic-core..."
+	log "  Installing pydantic-core (required for pydantic)..."
 	pip install --no-index --find-links "$wheels_dir" pydantic-core || log_warn "pydantic-core installation failed (optional)"
 	
-	log "  Installing orjson..."
+	log "  Installing orjson (required for fastapi, arize-phoenix)..."
 	pip install --no-index --find-links "$wheels_dir" orjson || log_warn "orjson installation failed (optional)"
 
-	# Phase 7: droidrun + all LLM providers
+	# Phase 7: Main Package + LLM Providers
+	# All dependencies should now be installed:
+	# - numpy, scipy, pandas, scikit-learn (Phase 2-3)
+	# - jiter, pyarrow, psutil (Phase 4-5)
+	# - tokenizers, safetensors, cryptography, pydantic-core, orjson (Phase 6)
+	# - grpcio, Pillow (Phase 5)
 	log "Phase 7: Installing droidrun with all LLM providers..."
+	log "  All dependencies should be installed: numpy, scipy, pandas, scikit-learn, jiter, pyarrow, psutil, grpcio, Pillow, tokenizers, safetensors, cryptography, pydantic-core, orjson"
 	if pip install --no-index --find-links "$wheels_dir" 'droidrun[google,anthropic,openai,deepseek,ollama,openrouter]'; then
 		log "✓ droidrun installed successfully"
 	else
 		log_error "Failed to install droidrun"
+		log_error "Make sure all dependencies from Phase 1-6 are installed correctly"
 		return 1
 	fi
 
@@ -335,32 +439,98 @@ install_droidrun_from_wheels() {
 	return 0
 }
 
-# Function to check required tools
+# Function to install p7zip
+install_p7zip() {
+	log "Installing p7zip (required for 7z extraction)..."
+	if command -v pkg &> /dev/null; then
+		if pkg install -y p7zip > /dev/null 2>&1; then
+			log "✓ p7zip installed successfully"
+			return 0
+		else
+			log_error "Failed to install p7zip. Please install manually: pkg install p7zip"
+			return 1
+		fi
+	else
+		log_error "pkg command not found. Cannot auto-install p7zip."
+		log_error "Please install manually: pkg install p7zip"
+		return 1
+	fi
+}
+
+# Function to install unzip
+install_unzip() {
+	log "Installing unzip (required for zip extraction)..."
+	if command -v pkg &> /dev/null; then
+		if pkg install -y unzip > /dev/null 2>&1; then
+			log "✓ unzip installed successfully"
+			return 0
+		else
+			log_error "Failed to install unzip. Please install manually: pkg install unzip"
+			return 1
+		fi
+	else
+		log_error "pkg command not found. Cannot auto-install unzip."
+		log_error "Please install manually: pkg install unzip"
+		return 1
+	fi
+}
+
+# Function to install python-pip
+install_python_pip() {
+	log "Installing python-pip (required for Python package installation)..."
+	if command -v pkg &> /dev/null; then
+		if pkg install -y python-pip > /dev/null 2>&1; then
+			log "✓ python-pip installed successfully"
+			# Refresh command cache
+			hash -r 2>/dev/null || true
+			return 0
+		else
+			log_error "Failed to install python-pip. Please install manually: pkg install python-pip"
+			return 1
+		fi
+	else
+		log_error "pkg command not found. Cannot auto-install python-pip."
+		log_error "Please install manually: pkg install python-pip"
+		return 1
+	fi
+}
+
+# Function to check and install required tools
 check_required_tools() {
-	local missing_tools=()
-	
 	# Check for download tools
 	if ! command -v curl &> /dev/null && ! command -v wget &> /dev/null; then
-		missing_tools+=("curl or wget")
+		log_error "Neither curl nor wget is available. Cannot download wheels."
+		log_error "Please install: pkg install curl"
+		return 1
 	fi
 	
 	# Check for extraction tools based on URL
 	if [[ "$WHEELS_URL" == *.7z ]] || [[ "$WHEELS_URL" == *.7Z ]] || [[ "$WHEELS_URL" == "$DEFAULT_WHEELS_URL" ]]; then
 		if ! command -v 7z &> /dev/null && ! command -v 7za &> /dev/null; then
-			missing_tools+=("7z or 7za (pkg install p7zip)")
+			log "7z/7za not found, attempting to install p7zip..."
+			if ! install_p7zip; then
+				return 1
+			fi
+			# Verify installation
+			if ! command -v 7z &> /dev/null && ! command -v 7za &> /dev/null; then
+				log_error "p7zip installed but 7z/7za still not found in PATH"
+				log_error "Please restart your terminal or run: hash -r"
+				return 1
+			fi
 		fi
 	elif [[ "$WHEELS_URL" == *.zip ]] || [[ "$WHEELS_URL" == *.ZIP ]]; then
 		if ! command -v unzip &> /dev/null; then
-			missing_tools+=("unzip (pkg install unzip)")
+			log "unzip not found, attempting to install..."
+			if ! install_unzip; then
+				return 1
+			fi
+			# Verify installation
+			if ! command -v unzip &> /dev/null; then
+				log_error "unzip installed but still not found in PATH"
+				log_error "Please restart your terminal or run: hash -r"
+				return 1
+			fi
 		fi
-	fi
-	
-	if [ ${#missing_tools[@]} -gt 0 ]; then
-		log_error "Missing required tools:"
-		for tool in "${missing_tools[@]}"; do
-			log_error "  - $tool"
-		done
-		return 1
 	fi
 	
 	return 0
