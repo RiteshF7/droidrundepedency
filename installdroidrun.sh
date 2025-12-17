@@ -46,80 +46,34 @@ python_pkg_installed() {
     local pkg_name=$1
     local version_spec=$2
     
-    # Normalize package name (e.g., scikit-learn -> sklearn)
-    local import_name="$pkg_name"
-    case "$pkg_name" in
-        scikit-learn) import_name="sklearn" ;;
-        pyarrow) import_name="pyarrow" ;;
-        pydantic-core) import_name="pydantic_core" ;;
-    esac
-    
-    # Check if package can be imported
-    if ! python3 -c "import $import_name" 2>/dev/null; then
+    # Use pip show to check if package is installed
+    if ! pip show "$pkg_name" &>/dev/null; then
         return 1
     fi
     
     # If version spec is provided and contains version requirements, check if installed version satisfies it
     if [ -n "$version_spec" ] && [[ "$version_spec" != "$pkg_name" ]] && [[ "$version_spec" =~ [<>=] ]]; then
-        # Extract version requirement from version_spec (e.g., 'pandas<2.3.0' -> '<2.3.0')
-        local version_req="$version_spec"
-        version_req="${version_req#$pkg_name}"
-        version_req="${version_req# }"
+        # Use pip install with --dry-run to check if requirement is satisfied
+        # This uses pip's own requirement resolver which is most reliable
+        local pip_output
+        pip_output=$(pip install --dry-run --no-deps "$version_spec" 2>&1)
         
-        # Check version using Python - try multiple methods for compatibility
-        if ! python3 << PYEOF 2>/dev/null; then
-import sys
-try:
-    import $import_name
-    installed_version = $import_name.__version__
-    
-    # Try packaging module first (most reliable)
-    try:
-        from packaging.specifiers import SpecifierSet
-        from packaging.version import Version
-        spec = SpecifierSet('$version_req')
-        if Version(installed_version) not in spec:
-            sys.exit(1)
-    except ImportError:
-        # Fallback to pkg_resources if packaging not available
-        try:
-            import pkg_resources
-            # Create requirement and check if version satisfies it
-            req_str = '$pkg_name' + '$version_req'
-            req = pkg_resources.Requirement.parse(req_str)
-            
-            # Try to get installed distribution
-            try:
-                dist = pkg_resources.get_distribution('$pkg_name')
-                # Check if distribution satisfies requirement
-                if dist not in req:
-                    sys.exit(1)
-            except pkg_resources.DistributionNotFound:
-                # Distribution not found via pkg_resources, check version manually
-                # Use requirement's specifier if available
-                if hasattr(req, 'specifier'):
-                    if hasattr(req.specifier, 'contains'):
-                        if not req.specifier.contains(installed_version):
-                            sys.exit(1)
-                    else:
-                        # Older pkg_resources - check by creating mock requirement
-                        # This is less reliable but better than nothing
-                        test_req = pkg_resources.Requirement.parse('$pkg_name==' + installed_version)
-                        # If versions don't match exactly, we need to check compatibility
-                        # For now, if we can't verify, assume it's OK to avoid unnecessary rebuilds
-                        pass
-        except Exception:
-            # If all version checking methods fail, we can't verify compatibility
-            # Exit with error to trigger rebuild (safer than assuming it's OK)
-            sys.exit(1)
-except Exception:
-    # If import fails or version check fails, need to install/upgrade
-    sys.exit(1)
-PYEOF
+        # If pip says "Requirement already satisfied", the version requirement is met
+        if echo "$pip_output" | grep -q "Requirement already satisfied"; then
+            return 0
+        fi
+        
+        # If pip would install/upgrade, the requirement is not satisfied
+        if echo "$pip_output" | grep -qE "(Would install|Would upgrade)"; then
             return 1
         fi
+        
+        # If output is unclear, assume requirement is satisfied (better to skip than rebuild unnecessarily)
+        # This handles edge cases where pip output format might differ
+        return 0
     fi
     
+    # If no version requirement or just package name, package is installed
     return 0
 }
 
@@ -610,14 +564,10 @@ for tool in "wheel" "setuptools" "Cython" "meson-python" "maturin"; do
 done
 
 if [ "$build_tools_needed" = true ]; then
-    pip install --upgrade wheel setuptools packaging --quiet
+    pip install --upgrade wheel setuptools --quiet
     pip install Cython "meson-python<0.19.0,>=0.16.0" "maturin<2,>=1.9.4" --quiet
     log_success "Phase 1 complete: Build tools installed"
 else
-    # Ensure packaging module is available for version checks
-    if ! python3 -c "import packaging" 2>/dev/null; then
-        pip install packaging --quiet
-    fi
     log_success "Phase 1 complete: Build tools already installed"
 fi
 
