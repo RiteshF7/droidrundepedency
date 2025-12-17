@@ -289,33 +289,6 @@ WHEEL_SIZE=$(stat -c%s "$WHEEL_FILE" 2>/dev/null || stat -f%z "$WHEEL_FILE" 2>/d
 log_success "Wheel created: $WHEEL_FILE ($WHEEL_SIZE bytes)"
 
 # ============================================
-# Pre-install pandas dependencies
-# ============================================
-log_step "Pre-installing pandas dependencies"
-
-log_info "Installing pandas runtime dependencies..."
-DEPENDENCIES=(
-    "python-dateutil>=2.8.2"
-    "pytz>=2020.1"
-    "tzdata>=2022.7"
-)
-
-for dep in "${DEPENDENCIES[@]}"; do
-    log_info "Checking/installing: $dep"
-    if python3 -m pip install "$dep" 2>&1 | while IFS= read -r line; do
-        if [[ "$line" != *"Looking in indexes"* ]] && [[ "$line" != *"Collecting"* ]]; then
-            log_info "  $line"
-        fi
-    done; then
-        log_success "$dep installed/available"
-    else
-        log_warning "Failed to install $dep, but continuing..."
-    fi
-done
-
-log_success "Pandas dependencies pre-installed"
-
-# ============================================
 # Install wheel
 # ============================================
 log_step "Installing pandas wheel"

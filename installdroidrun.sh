@@ -778,6 +778,29 @@ if python_pkg_installed "pandas" "pandas<2.3.0"; then
     log_success "pandas is already installed and satisfies version requirement (pandas<2.3.0), skipping build"
 else
     log_info "pandas not installed or version requirement (pandas<2.3.0) not satisfied, will build"
+    
+    # Pre-install pandas dependencies before building
+    log_info "Pre-installing pandas runtime dependencies..."
+    PANDAS_DEPS=(
+        "python-dateutil>=2.8.2"
+        "pytz>=2020.1"
+        "tzdata>=2022.7"
+    )
+    
+    for dep in "${PANDAS_DEPS[@]}"; do
+        dep_name=$(echo "$dep" | sed 's/[<>=].*//')
+        if ! python_pkg_installed "$dep_name" "$dep"; then
+            log_info "Installing $dep..."
+            if ! python3 -m pip install "$dep" --quiet 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done; then
+                log_warning "Failed to install $dep, but continuing..."
+            else
+                log_success "$dep installed"
+            fi
+        else
+            log_info "$dep_name already installed"
+        fi
+    done
+    
     log_info "Building pandas using build_pandas.sh..."
     
     # Check if build_pandas.sh exists
