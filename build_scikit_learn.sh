@@ -305,18 +305,26 @@ if [ ! -f "$MESON_BUILD" ]; then
 fi
 
 log_info "Found meson.build at: $MESON_BUILD"
-log_info "Original meson.build (first 10 lines):"
-head -10 "$MESON_BUILD" | while IFS= read -r line; do
-    log_info "  $line"
-done
+VERSION_LINE=$(grep "^[[:space:]]*version:" "$MESON_BUILD" | head -1)
+log_info "Original meson.build version line: $VERSION_LINE"
 
 log_info "Fixing meson.build: replacing version extraction with '$PKG_VERSION'"
 # Try to replace version: run_command first, if that fails try version: pattern
-if sed -i "s/version: run_command.*/version: '$PKG_VERSION',/" "$MESON_BUILD" 2>&1; then
+set +e  # Temporarily disable exit on error
+sed -i "s/version: run_command.*/version: '$PKG_VERSION',/" "$MESON_BUILD" 2>&1
+SED_EXIT1=$?
+set -e  # Re-enable exit on error
+
+if [ $SED_EXIT1 -eq 0 ] && grep -q "version: '$PKG_VERSION'" "$MESON_BUILD"; then
     log_success "meson.build fixed (run_command pattern)"
 else
     log_info "run_command pattern not found, trying generic version pattern"
-    if sed -i "s/version:.*/version: '$PKG_VERSION',/" "$MESON_BUILD" 2>&1; then
+    set +e  # Temporarily disable exit on error
+    sed -i "s/version:.*/version: '$PKG_VERSION',/" "$MESON_BUILD" 2>&1
+    SED_EXIT2=$?
+    set -e  # Re-enable exit on error
+    
+    if [ $SED_EXIT2 -eq 0 ] && grep -q "version: '$PKG_VERSION'" "$MESON_BUILD"; then
         log_success "meson.build fixed (generic pattern)"
     else
         log_error "Failed to fix meson.build"
@@ -325,10 +333,8 @@ else
     fi
 fi
 
-log_info "Fixed meson.build (first 10 lines):"
-head -10 "$MESON_BUILD" | while IFS= read -r line; do
-    log_info "  $line"
-done
+FIXED_VERSION_LINE=$(grep "^[[:space:]]*version:" "$MESON_BUILD" | head -1)
+log_info "Fixed meson.build version line: $FIXED_VERSION_LINE"
 
 # Repackage fixed source
 log_info "Repackaging fixed source..."
