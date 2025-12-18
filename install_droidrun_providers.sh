@@ -28,16 +28,20 @@ log_error() {
     echo -e "${RED}[✗]${NC} $1" >&2
 }
 
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+PIP_BIN="${PIP_BIN:-$PYTHON_BIN -m pip}"
+
 # Check if Python package is installed
 python_pkg_installed() {
     local pkg_name=$1
-    local import_name=$(echo "$pkg_name" | tr '-' '_')
+    local import_name
+    import_name=$(echo "$pkg_name" | tr '-' '_')
     
-    if python3 -c "import $import_name"; then
+    if $PYTHON_BIN -c "import $import_name" >/dev/null 2>&1; then
         return 0
     fi
     
-    if python3 -m pip show "$pkg_name"; then
+    if $PIP_BIN show "$pkg_name" >/dev/null 2>&1; then
         return 0
     fi
     
@@ -54,13 +58,24 @@ log_info "droidrun Providers Installation Script"
 log_info "=========================================="
 echo
 
-# Check if droidrun is installed
+# Ensure droidrun core is installed/importable
 if ! python_pkg_installed "droidrun"; then
-    log_error "droidrun is not installed. Please install droidrun first."
-    exit 1
+    log_warning "droidrun is not installed. Attempting to install..."
+    if $PIP_BIN install --find-links "$WHEELS_DIR" droidrun; then
+        if python_pkg_installed "droidrun"; then
+            log_success "droidrun installed successfully"
+        else
+            log_error "droidrun install reported success but import failed"
+            exit 1
+        fi
+    else
+        log_error "Failed to install droidrun. Please install manually and retry."
+        exit 1
+    fi
+else
+    log_success "droidrun core is installed"
 fi
 
-log_success "droidrun core is installed"
 echo
 
 # Check for tokenizers
@@ -125,10 +140,10 @@ for provider in "${PROVIDERS[@]}"; do
     fi
     
     # Try to install provider
-    log_info "Running: python3 -m pip install \"droidrun[$provider]\" --find-links \"$WHEELS_DIR\""
-    if python3 -m pip install "droidrun[$provider]" --find-links "$WHEELS_DIR"; then
+    log_info "Running: $PIP_BIN install \"droidrun[$provider]\" --find-links \"$WHEELS_DIR\""
+    if $PIP_BIN install "droidrun[$provider]" --find-links "$WHEELS_DIR"; then
         # Check if installation actually succeeded
-        if python3 -c "from droidrun.providers import $provider"; then
+        if $PYTHON_BIN -c "from droidrun.providers import $provider"; then
             log_success "droidrun[$provider] installed successfully"
             INSTALLED_PROVIDERS+=("$provider")
         else
