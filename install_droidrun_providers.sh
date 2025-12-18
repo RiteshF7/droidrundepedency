@@ -74,10 +74,18 @@ else
     log_info "Attempting to install tokenizers from pre-built wheel..."
     
     # Try to find pre-built tokenizers wheel
-    tokenizers_wheel=$(find "$WHEELS_DIR" -name "tokenizers*.whl" 2>/dev/null | head -1)
+    tokenizers_wheel=""
+    for wheel in "$WHEELS_DIR"/tokenizers*.whl; do
+        if [ -f "$wheel" ]; then
+            tokenizers_wheel="$wheel"
+            break
+        fi
+    done
+    
     if [ -n "$tokenizers_wheel" ] && [ -f "$tokenizers_wheel" ]; then
         log_info "Found pre-built tokenizers wheel: $(basename "$tokenizers_wheel")"
-        if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+        log_info "Installing tokenizers from pre-built wheel..."
+        if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>&1; then
             log_success "tokenizers installed from pre-built wheel"
             TOKENIZERS_AVAILABLE=true
         else
@@ -117,12 +125,8 @@ for provider in "${PROVIDERS[@]}"; do
     fi
     
     # Try to install provider
-    if python3 -m pip install "droidrun[$provider]" --find-links "$WHEELS_DIR" 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do
-        # Only show important lines
-        if echo "$line" | grep -qE "(Successfully|Installing|Building|error|Error|ERROR|Failed|failed)" || [ -z "$line" ]; then
-            log_info "  $line"
-        fi
-    done; then
+    log_info "Running: python3 -m pip install \"droidrun[$provider]\" --find-links \"$WHEELS_DIR\""
+    if python3 -m pip install "droidrun[$provider]" --find-links "$WHEELS_DIR" 2>&1; then
         # Check if installation actually succeeded
         if python3 -c "from droidrun.providers import $provider" 2>/dev/null; then
             log_success "droidrun[$provider] installed successfully"
