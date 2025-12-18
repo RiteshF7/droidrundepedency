@@ -259,7 +259,8 @@ fi
 
 log_success "Extraction completed"
 
-PKG_DIR=$(ls -d "$EXTRACT_DIR"/scikit-learn-* 2>/dev/null | head -1)
+# Try both patterns: scikit-learn-* and scikit_learn-*
+PKG_DIR=$(ls -d "$EXTRACT_DIR"/scikit-learn-* "$EXTRACT_DIR"/scikit_learn-* 2>/dev/null | head -1)
 if [ -z "$PKG_DIR" ]; then
     log_error "Extracted package directory not found"
     log_info "Contents of extract directory:"
@@ -272,8 +273,8 @@ fi
 
 log_success "Extracted to: $PKG_DIR"
 
-# Extract version from directory name
-PKG_VERSION=$(basename "$PKG_DIR" | sed "s/scikit-learn-//")
+# Extract version from directory name (handle both scikit-learn and scikit_learn)
+PKG_VERSION=$(basename "$PKG_DIR" | sed "s/scikit[-_]learn-//")
 log_info "Package version: $PKG_VERSION"
 
 # Fix sklearn/_build_utils/version.py - add shebang if missing
