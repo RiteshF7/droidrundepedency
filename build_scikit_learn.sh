@@ -220,8 +220,8 @@ log_info "Downloaded file size: $FILE_SIZE bytes"
 
 SOURCE_FILE="$SOURCE_PATH"
 
-# Verify downloaded file
-if [ ! -f "$WHEELS_DIR/$SOURCE_FILE" ]; then
+# Verify downloaded file (SOURCE_FILE already contains full path)
+if [ ! -f "$SOURCE_FILE" ]; then
     log_error "Downloaded source file not found: $SOURCE_FILE"
     log_info "Files in directory:"
     ls -la "$WHEELS_DIR" | while IFS= read -r line; do
