@@ -1210,85 +1210,51 @@ log_info "Phase 7: Installing droidrun and LLM providers..."
 
 cd "$HOME"
 
-# Install base droidrun with all providers
-log_info "Installing droidrun with all LLM providers..."
-
-# Try to install tokenizers from pre-built wheel first if available
-TOKENIZERS_INSTALLED=false
-if ! python_pkg_installed "tokenizers" "tokenizers"; then
-    tokenizers_wheel=$(find "$WHEELS_DIR" -name "tokenizers*.whl" 2>/dev/null | head -1)
-    if [ -n "$tokenizers_wheel" ] && [ -f "$tokenizers_wheel" ]; then
-        log_info "Installing tokenizers from pre-built wheel: $(basename "$tokenizers_wheel")"
-        if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>/dev/null; then
-            log_success "tokenizers installed from pre-built wheel"
-            TOKENIZERS_INSTALLED=true
-        else
-            log_warning "Failed to install tokenizers from pre-built wheel"
-        fi
-    else
-        log_info "No pre-built tokenizers wheel found in $WHEELS_DIR"
-    fi
-else
-    log_success "tokenizers already installed"
-    TOKENIZERS_INSTALLED=true
+# Find install_droidrun_providers.sh script
+PROVIDERS_SCRIPT=""
+if [ -f "${SCRIPT_DIR}/install_droidrun_providers.sh" ]; then
+    PROVIDERS_SCRIPT="${SCRIPT_DIR}/install_droidrun_providers.sh"
+elif [ -f "${HOME}/droidrundepedency/install_droidrun_providers.sh" ]; then
+    PROVIDERS_SCRIPT="${HOME}/droidrundepedency/install_droidrun_providers.sh"
+elif [ -f "./install_droidrun_providers.sh" ]; then
+    PROVIDERS_SCRIPT="./install_droidrun_providers.sh"
 fi
 
-# Install droidrun - handle tokenizers dependency gracefully
-# Check if droidrun is already installed
-if python_pkg_installed "droidrun" "droidrun"; then
-    log_success "droidrun is already installed, skipping installation"
-    log_success "Phase 7 complete: droidrun already installed"
-else
-    log_info "Installing droidrun with all LLM providers..."
-    INSTALL_LOG=$(mktemp)
-    if python3 -m pip install 'droidrun[google,anthropic,openai,deepseek,ollama,openrouter]' --find-links "$WHEELS_DIR" 2>&1 | tee "$INSTALL_LOG"; then
-        log_success "droidrun installed successfully"
-        rm -f "$INSTALL_LOG" 2>/dev/null || true
+if [ -n "$PROVIDERS_SCRIPT" ] && [ -f "$PROVIDERS_SCRIPT" ]; then
+    log_info "Using provider installation script: $PROVIDERS_SCRIPT"
+    # Make script executable
+    chmod +x "$PROVIDERS_SCRIPT" 2>/dev/null || true
+    
+    # Run install_droidrun_providers.sh with same environment variables
+    # The script will handle droidrun core installation and all providers
+    if bash "$PROVIDERS_SCRIPT"; then
+        log_success "Phase 7 complete: droidrun and providers installed"
     else
-        # Check if failure was due to tokenizers
-        if grep -qi "tokenizers" "$INSTALL_LOG" 2>/dev/null || grep -qi "failed.*wheel.*tokenizers" "$INSTALL_LOG" 2>/dev/null; then
-            log_warning "droidrun installation failed due to tokenizers issue"
-            
-            if [ "$TOKENIZERS_INSTALLED" = false ]; then
-                log_info "Attempting to install droidrun without tokenizers dependency..."
-                # Install droidrun core first, then try to add providers
-                if python3 -m pip install 'droidrun' --find-links "$WHEELS_DIR" --no-deps 2>/dev/null; then
-                    log_success "droidrun core installed"
-                    # Try installing providers one by one, skipping those that require tokenizers
-                    log_info "Installing LLM providers (skipping tokenizers-dependent ones)..."
-                    python3 -m pip install 'droidrun[google]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install google provider"
-                    python3 -m pip install 'droidrun[anthropic]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install anthropic provider"
-                    python3 -m pip install 'droidrun[openai]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install openai provider"
-                    python3 -m pip install 'droidrun[ollama]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install ollama provider"
-                    python3 -m pip install 'droidrun[openrouter]' --find-links "$WHEELS_DIR" 2>/dev/null || log_warning "Failed to install openrouter provider"
-                    # deepseek might require tokenizers, skip it
-                    log_warning "deepseek provider skipped (requires tokenizers)"
-                    log_success "droidrun installed with most providers (tokenizers-dependent features disabled)"
-                else
-                    # Last resort: install droidrun without any extras
-                    log_info "Attempting minimal droidrun installation..."
-                    if python3 -m pip install droidrun --find-links "$WHEELS_DIR" 2>/dev/null; then
-                        log_success "droidrun installed (minimal installation)"
-                        log_warning "Some LLM providers may not be available due to missing tokenizers"
-                    else
-                        log_error "Failed to install droidrun even without extras"
-                        log_error "Installation log saved to: $INSTALL_LOG"
-                        exit 1
-                    fi
-                fi
-            else
-                log_warning "tokenizers is installed but droidrun installation still failed"
-                log_error "Installation log saved to: $INSTALL_LOG"
-                exit 1
-            fi
+        log_error "Failed to install droidrun providers"
+        log_error "Provider installation script failed"
+        exit 1
+    fi
+else
+    log_warning "install_droidrun_providers.sh not found, falling back to inline installation"
+    log_warning "Expected locations:"
+    log_warning "  ${SCRIPT_DIR}/install_droidrun_providers.sh"
+    log_warning "  ${HOME}/droidrundepedency/install_droidrun_providers.sh"
+    log_warning "  ./install_droidrun_providers.sh"
+    
+    # Fallback: Install droidrun core only (providers should be installed separately)
+    if python_pkg_installed "droidrun" "droidrun"; then
+        log_success "droidrun is already installed"
+    else
+        log_info "Installing droidrun core..."
+        if python3 -m pip install droidrun --find-links "$WHEELS_DIR" 2>/dev/null; then
+            log_success "droidrun core installed"
+            log_warning "Run install_droidrun_providers.sh separately to install LLM providers"
         else
-            log_error "droidrun installation failed for unknown reason"
-            log_error "Installation log saved to: $INSTALL_LOG"
+            log_error "Failed to install droidrun core"
             exit 1
         fi
     fi
-    rm -f "$INSTALL_LOG" 2>/dev/null || true
-    log_success "Phase 7 complete: droidrun installed"
+    log_success "Phase 7 complete: droidrun core installed"
 fi
 
 # ============================================
