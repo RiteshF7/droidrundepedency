@@ -260,12 +260,20 @@ fi
 log_success "Extraction completed"
 
 # Try both patterns: scikit-learn-* and scikit_learn-*
-PKG_DIR=$(ls -d "$EXTRACT_DIR"/scikit-learn-* "$EXTRACT_DIR"/scikit_learn-* 2>/dev/null | head -1)
+# Use a loop to avoid pipe blocking
+PKG_DIR=""
+for pattern in "$EXTRACT_DIR"/scikit-learn-* "$EXTRACT_DIR"/scikit_learn-*; do
+    if [ -d "$pattern" ]; then
+        PKG_DIR="$pattern"
+        break
+    fi
+done
+
 if [ -z "$PKG_DIR" ]; then
     log_error "Extracted package directory not found"
     log_info "Contents of extract directory:"
-    ls -la "$EXTRACT_DIR" | while IFS= read -r line; do
-        log_info "  $line"
+    for item in "$EXTRACT_DIR"/*; do
+        log_info "  $(basename "$item")"
     done
     rm -rf "$EXTRACT_DIR"
     exit 1
