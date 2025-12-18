@@ -245,13 +245,19 @@ EXTRACT_DIR=$(mktemp -d)
 log_info "Extract directory: $EXTRACT_DIR"
 
 log_info "Extracting $SOURCE_FILE..."
-if ! tar -xzf "$SOURCE_FILE" -C "$EXTRACT_DIR" 2>&1 | while IFS= read -r line; do
-    log_info "  $line"
-done; then
-    log_error "Failed to extract $SOURCE_FILE"
+# Extract without piping to avoid blocking on empty output
+set +e  # Temporarily disable exit on error to capture exit code
+tar -xzf "$SOURCE_FILE" -C "$EXTRACT_DIR" >/dev/null 2>&1
+TAR_EXIT=$?
+set -e  # Re-enable exit on error
+
+if [ $TAR_EXIT -ne 0 ]; then
+    log_error "Failed to extract $SOURCE_FILE (exit code: $TAR_EXIT)"
     rm -rf "$EXTRACT_DIR"
     exit 1
 fi
+
+log_success "Extraction completed"
 
 PKG_DIR=$(ls -d "$EXTRACT_DIR"/scikit-learn-* 2>/dev/null | head -1)
 if [ -z "$PKG_DIR" ]; then
@@ -326,10 +332,13 @@ done
 # Repackage fixed source
 log_info "Repackaging fixed source..."
 FIXED_SOURCE="$WHEELS_DIR/scikit-learn-${PKG_VERSION}-fixed.tar.gz"
-if ! tar -czf "$FIXED_SOURCE" -C "$EXTRACT_DIR" "$(basename "$PKG_DIR")" 2>&1 | while IFS= read -r line; do
-    log_info "  $line"
-done; then
-    log_error "Failed to repackage scikit-learn source"
+set +e  # Temporarily disable exit on error to capture exit code
+tar -czf "$FIXED_SOURCE" -C "$EXTRACT_DIR" "$(basename "$PKG_DIR")" >/dev/null 2>&1
+TAR_EXIT=$?
+set -e  # Re-enable exit on error
+
+if [ $TAR_EXIT -ne 0 ]; then
+    log_error "Failed to repackage scikit-learn source (exit code: $TAR_EXIT)"
     rm -rf "$EXTRACT_DIR"
     exit 1
 fi
