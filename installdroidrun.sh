@@ -847,58 +847,67 @@ else
     fi
 fi
 
-# Build scikit-learn (with source fixes)
-# Install dependencies first if needed
-if ! python_pkg_installed "joblib" "joblib>=1.3.0" || ! python_pkg_installed "threadpoolctl" "threadpoolctl>=3.2.0"; then
-    log_info "Installing scikit-learn dependencies..."
-    
-    # Install joblib only if needed
-    if ! python_pkg_installed "joblib" "joblib>=1.3.0"; then
-        if ! python3 -m pip install "joblib>=1.3.0" --quiet 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done; then
-            log_warning "Failed to install joblib, but continuing..."
-        fi
-    else
-        log_info "joblib already installed"
-    fi
-    
-    # Install threadpoolctl only if needed
-    if ! python_pkg_installed "threadpoolctl" "threadpoolctl>=3.2.0"; then
-        if ! python3 -m pip install "threadpoolctl>=3.2.0" --quiet 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done; then
-            log_warning "Failed to install threadpoolctl, but continuing..."
-        fi
-    else
-        log_info "threadpoolctl already installed"
-    fi
+# Build scikit-learn using the tested build_scikit_learn.sh script
+if python_pkg_installed "scikit-learn" "scikit-learn"; then
+    log_success "scikit-learn is already installed, skipping build"
 else
-    log_info "scikit-learn dependencies already installed"
-fi
-
-# Try to build scikit-learn with retries
-SCIKIT_LEARN_BUILT=false
-for attempt in 1 2; do
-    if [ $attempt -gt 1 ]; then
-        log_info "Retrying scikit-learn build (attempt $attempt)..."
-        # Clean up any partial builds
-        rm -f scikit_learn*.whl 2>/dev/null || true
+    log_info "scikit-learn not installed, will build"
+    
+    # Pre-install scikit-learn runtime dependencies before building
+    log_info "Pre-installing scikit-learn runtime dependencies..."
+    SCIKIT_LEARN_DEPS=(
+        "joblib>=1.3.0"
+        "threadpoolctl>=3.2.0"
+    )
+    
+    for dep in "${SCIKIT_LEARN_DEPS[@]}"; do
+        dep_name=$(echo "$dep" | sed 's/[<>=].*//')
+        if ! python_pkg_installed "$dep_name" "$dep"; then
+            log_info "Installing $dep..."
+            scikit_dep_output=$(python3 -m pip install "$dep" 2>&1)
+            scikit_dep_exit=$?
+            if [ $scikit_dep_exit -ne 0 ]; then
+                log_warning "Failed to install $dep (exit code: $scikit_dep_exit)"
+                echo "$scikit_dep_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_warning "  $line"; done
+            else
+                log_success "$dep installed"
+            fi
+        else
+            log_info "$dep_name already installed"
+        fi
+    done
+    
+    log_info "Building scikit-learn using build_scikit_learn.sh..."
+    
+    # Find build_scikit_learn.sh
+    BUILD_SCIKIT_LEARN_SCRIPT=""
+    if [ -f "${SCRIPT_DIR}/build_scikit_learn.sh" ]; then
+        BUILD_SCIKIT_LEARN_SCRIPT="${SCRIPT_DIR}/build_scikit_learn.sh"
+    elif [ -f "${HOME}/droidrundepedency/build_scikit_learn.sh" ]; then
+        BUILD_SCIKIT_LEARN_SCRIPT="${HOME}/droidrundepedency/build_scikit_learn.sh"
+    elif [ -f "./build_scikit_learn.sh" ]; then
+        BUILD_SCIKIT_LEARN_SCRIPT="./build_scikit_learn.sh"
     fi
     
-    if build_package "scikit-learn" "scikit-learn" --fix-source=scikit-learn --no-build-isolation --wheel-pattern="scikit_learn*.whl"; then
-        SCIKIT_LEARN_BUILT=true
-        break
+    if [ -n "$BUILD_SCIKIT_LEARN_SCRIPT" ]; then
+        log_info "Using build script: $BUILD_SCIKIT_LEARN_SCRIPT"
+        # Make script executable
+        chmod +x "$BUILD_SCIKIT_LEARN_SCRIPT" 2>/dev/null || true
+        
+        # Run build_scikit_learn.sh with same environment variables
+        if bash "$BUILD_SCIKIT_LEARN_SCRIPT"; then
+            log_success "scikit-learn built and installed successfully using build_scikit_learn.sh"
+        else
+            log_warning "Failed to build scikit-learn using build_scikit_learn.sh - continuing without it"
+            log_warning "Some droidrun features may not work without scikit-learn"
+        fi
     else
-        log_warning "scikit-learn build failed (attempt $attempt)"
-        if [ $attempt -lt 2 ]; then
-            log_info "Waiting 5 seconds before retry..."
-            sleep 5
+        log_warning "build_scikit_learn.sh not found, falling back to generic build_package for scikit-learn"
+        if ! build_package "scikit-learn" "scikit-learn" --fix-source=scikit-learn --no-build-isolation --wheel-pattern="scikit_learn*.whl"; then
+            log_warning "Failed to build scikit-learn - continuing without it"
+            log_warning "Some droidrun features may not work without scikit-learn"
         fi
     fi
-done
-
-if [ "$SCIKIT_LEARN_BUILT" = false ]; then
-    log_warning "scikit-learn build failed after retries - continuing without it"
-    log_warning "Some droidrun features may not work without scikit-learn"
-else
-    log_success "scikit-learn installed successfully"
 fi
 
 log_success "Phase 3 complete: Scientific stack installed"
