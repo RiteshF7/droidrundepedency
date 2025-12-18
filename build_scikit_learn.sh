@@ -146,39 +146,55 @@ log_step "Downloading scikit-learn source"
 VERSION_SPEC="scikit-learn"
 log_info "Version spec: $VERSION_SPEC"
 
-# First, try to get the latest version from PyPI JSON API
+# Get the latest version from PyPI JSON API
 log_info "Getting latest version from PyPI..."
-PYPI_VERSION=$(python3 -c "import urllib.request, json; data = json.loads(urllib.request.urlopen('https://pypi.org/pypi/scikit-learn/json').read()); print(data['info']['version'])" 2>/dev/null || echo "")
+PYPI_VERSION=""
+if command -v curl >/dev/null 2>&1; then
+    PYPI_VERSION=$(curl -s https://pypi.org/pypi/scikit-learn/json | python3 -c "import sys, json; print(json.load(sys.stdin)['info']['version'])" 2>/dev/null || echo "")
+elif command -v wget >/dev/null 2>&1; then
+    PYPI_VERSION=$(wget -q -O - https://pypi.org/pypi/scikit-learn/json | python3 -c "import sys, json; print(json.load(sys.stdin)['info']['version'])" 2>/dev/null || echo "")
+else
+    PYPI_VERSION=$(python3 -c "import urllib.request, json; data = json.loads(urllib.request.urlopen('https://pypi.org/pypi/scikit-learn/json').read()); print(data['info']['version'])" 2>/dev/null || echo "")
+fi
 
 if [ -z "$PYPI_VERSION" ]; then
-    log_warning "Could not get version from PyPI, trying pip download method..."
-    # Fallback: try pip download (may fail during metadata prep, but tarball might be downloaded)
-    set +e
-    python3 -m pip download "$VERSION_SPEC" --dest . --no-cache-dir --no-binary :all: 2>&1 | while IFS= read -r line; do
+    log_error "Could not get version from PyPI. Please check network connection."
+    exit 1
+fi
+
+log_info "Latest version: $PYPI_VERSION"
+SOURCE_URL="https://pypi.org/packages/source/s/scikit-learn/scikit-learn-${PYPI_VERSION}.tar.gz"
+SOURCE_FILE="scikit-learn-${PYPI_VERSION}.tar.gz"
+SOURCE_PATH="$WHEELS_DIR/$SOURCE_FILE"
+
+log_info "Downloading from: $SOURCE_URL"
+log_info "Saving to: $SOURCE_PATH"
+
+# Download using curl, wget, or Python
+if command -v curl >/dev/null 2>&1; then
+    if ! curl -L -o "$SOURCE_PATH" "$SOURCE_URL" 2>&1 | while IFS= read -r line; do
         log_info "  $line"
-    done
-    set -e
-    # Check if tarball was downloaded even if metadata prep failed
-    SOURCE_FILE=$(ls scikit-learn-*.tar.gz 2>/dev/null | head -1)
-    if [ -z "$SOURCE_FILE" ]; then
-        log_error "Failed to download scikit-learn source"
+    done; then
+        log_error "Failed to download scikit-learn source using curl"
+        exit 1
+    fi
+elif command -v wget >/dev/null 2>&1; then
+    if ! wget -O "$SOURCE_PATH" "$SOURCE_URL" 2>&1 | while IFS= read -r line; do
+        log_info "  $line"
+    done; then
+        log_error "Failed to download scikit-learn source using wget"
         exit 1
     fi
 else
-    log_info "Latest version: $PYPI_VERSION"
-    SOURCE_URL="https://pypi.org/packages/source/s/scikit-learn/scikit-learn-${PYPI_VERSION}.tar.gz"
-    SOURCE_FILE="scikit-learn-${PYPI_VERSION}.tar.gz"
-    
-    log_info "Downloading from: $SOURCE_URL"
-    log_info "Saving to: $SOURCE_FILE"
-    
-    if ! python3 -c "import urllib.request; urllib.request.urlretrieve('$SOURCE_URL', '$WHEELS_DIR/$SOURCE_FILE')" 2>&1 | while IFS= read -r line; do
+    if ! python3 -c "import urllib.request; urllib.request.urlretrieve('$SOURCE_URL', '$SOURCE_PATH')" 2>&1 | while IFS= read -r line; do
         log_info "  $line"
     done; then
-        log_error "Failed to download scikit-learn source from PyPI"
+        log_error "Failed to download scikit-learn source using Python"
         exit 1
     fi
 fi
+
+SOURCE_FILE="$SOURCE_PATH"
 
 # Verify downloaded file
 if [ ! -f "$WHEELS_DIR/$SOURCE_FILE" ]; then
