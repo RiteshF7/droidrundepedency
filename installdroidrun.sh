@@ -966,7 +966,6 @@ else
 
     cd "$WHEELS_DIR"
     log_info "Building grpcio wheel (pip will download source automatically)..."
-    local grpcio_wheel_output
     grpcio_wheel_output=$(python3 -m pip wheel grpcio --no-deps --no-build-isolation --wheel-dir . 2>&1) || {
         log_error "Failed to build grpcio wheel"
         echo "$grpcio_wheel_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_error "  $line"; done
@@ -976,7 +975,7 @@ else
     echo "$grpcio_wheel_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done || true
     
     # Verify wheel was created and get absolute path
-    local grpcio_wheel=$(ls -1 grpcio*.whl 2>/dev/null | head -1)
+    grpcio_wheel=$(ls -1 grpcio*.whl 2>/dev/null | head -1)
     if [ -z "$grpcio_wheel" ] || [ ! -f "$grpcio_wheel" ]; then
         log_error "grpcio wheel file not found after build"
         exit 1
@@ -997,12 +996,11 @@ else
         log_error "grpcio wheel file not found after fix"
         exit 1
     fi
-    local grpcio_wheel_abs=$(cd "$(dirname "$grpcio_wheel")" && pwd)/$(basename "$grpcio_wheel")
-    local wheels_dir_abs=$(cd "$WHEELS_DIR" && pwd)
+    grpcio_wheel_abs=$(cd "$(dirname "$grpcio_wheel")" && pwd)/$(basename "$grpcio_wheel")
+    wheels_dir_abs=$(cd "$WHEELS_DIR" && pwd)
 
     # Install the fixed wheel - change to HOME directory to avoid "directory not found" errors
     log_info "Installing grpcio wheel..."
-    local grpcio_install_output
     grpcio_install_output=$(cd "$HOME" && python3 -m pip install --find-links "$wheels_dir_abs" --no-index "$grpcio_wheel_abs" 2>&1) || {
         log_error "Failed to install grpcio wheel"
         echo "$grpcio_install_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_error "  $line"; done
