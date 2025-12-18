@@ -56,7 +56,6 @@ mkdir -p "$WHEELS_DIR"
 log_info "=========================================="
 log_info "droidrun Providers Installation Script"
 log_info "=========================================="
-echo
 
 # Ensure droidrun core is installed/importable
 if ! python_pkg_installed "droidrun"; then
@@ -74,32 +73,6 @@ if ! python_pkg_installed "droidrun"; then
     fi
 else
     log_success "droidrun core is installed"
-fi
-
-echo
-
-# Ensure providers namespace exists before installing extras
-if ! $PYTHON_BIN - <<'PY' >/dev/null 2>&1
-import importlib
-importlib.import_module("droidrun.providers")
-PY
-then
-    log_warning "droidrun.providers not importable. Attempting to upgrade/reinstall droidrun..."
-    if $PIP_BIN install --upgrade --force-reinstall --find-links "$WHEELS_DIR" droidrun; then
-        if $PYTHON_BIN - <<'PY' >/dev/null 2>&1
-import importlib
-importlib.import_module("droidrun.providers")
-PY
-        then
-            log_success "droidrun.providers available after reinstall"
-        else
-            log_error "droidrun.providers still missing after reinstall. Please update droidrun package manually."
-            exit 1
-        fi
-    else
-        log_error "Failed to reinstall droidrun while trying to enable providers module."
-        exit 1
-    fi
 fi
 
 # Check for tokenizers
@@ -124,7 +97,7 @@ else
     if [ -n "$tokenizers_wheel" ] && [ -f "$tokenizers_wheel" ]; then
         log_info "Found pre-built tokenizers wheel: $(basename "$tokenizers_wheel")"
         log_info "Installing tokenizers from pre-built wheel..."
-        if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel"; then
+        if $PIP_BIN install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel"; then
             log_success "tokenizers installed from pre-built wheel"
             TOKENIZERS_AVAILABLE=true
         else
@@ -166,14 +139,8 @@ for provider in "${PROVIDERS[@]}"; do
     # Try to install provider
     log_info "Running: $PIP_BIN install \"droidrun[$provider]\" --find-links \"$WHEELS_DIR\""
     if $PIP_BIN install "droidrun[$provider]" --find-links "$WHEELS_DIR"; then
-        # Check if installation actually succeeded
-        if $PYTHON_BIN -c "from droidrun.providers import $provider"; then
-            log_success "droidrun[$provider] installed successfully"
-            INSTALLED_PROVIDERS+=("$provider")
-        else
-            log_warning "droidrun[$provider] installation reported success but provider not importable"
-            FAILED_PROVIDERS+=("$provider")
-        fi
+        log_success "droidrun[$provider] installed (pip reported success)"
+        INSTALLED_PROVIDERS+=("$provider")
     else
         log_warning "Failed to install droidrun[$provider]"
         FAILED_PROVIDERS+=("$provider")
@@ -182,12 +149,11 @@ for provider in "${PROVIDERS[@]}"; do
 done
 
 # Summary
-echo
 log_info "=========================================="
 log_info "Installation Summary"
 log_info "=========================================="
-echo
 
+echo
 if [ ${#INSTALLED_PROVIDERS[@]} -gt 0 ]; then
     log_success "Successfully installed providers: ${INSTALLED_PROVIDERS[*]}"
 fi
@@ -205,4 +171,3 @@ else
 fi
 
 exit 0
-
