@@ -146,83 +146,77 @@ log_step "Downloading scikit-learn source"
 VERSION_SPEC="scikit-learn"
 log_info "Version spec: $VERSION_SPEC"
 
-# Get the latest version from PyPI JSON API
-log_info "Getting latest version from PyPI..."
-PYPI_VERSION=""
+# Get the latest version and download URL from PyPI JSON API
+log_info "Getting latest version and download URL from PyPI..."
+PYPI_JSON=""
 if command -v curl >/dev/null 2>&1; then
-    PYPI_VERSION=$(curl -s https://pypi.org/pypi/scikit-learn/json | python3 -c "import sys, json; print(json.load(sys.stdin)['info']['version'])" 2>/dev/null || echo "")
+    PYPI_JSON=$(curl -s https://pypi.org/pypi/scikit-learn/json)
 elif command -v wget >/dev/null 2>&1; then
-    PYPI_VERSION=$(wget -q -O - https://pypi.org/pypi/scikit-learn/json | python3 -c "import sys, json; print(json.load(sys.stdin)['info']['version'])" 2>/dev/null || echo "")
+    PYPI_JSON=$(wget -q -O - https://pypi.org/pypi/scikit-learn/json)
 else
-    PYPI_VERSION=$(python3 -c "import urllib.request, json; data = json.loads(urllib.request.urlopen('https://pypi.org/pypi/scikit-learn/json').read()); print(data['info']['version'])" 2>/dev/null || echo "")
+    PYPI_JSON=$(python3 -c "import urllib.request; print(urllib.request.urlopen('https://pypi.org/pypi/scikit-learn/json').read().decode())" 2>/dev/null || echo "")
 fi
 
-if [ -z "$PYPI_VERSION" ]; then
-    log_error "Could not get version from PyPI. Please check network connection."
+if [ -z "$PYPI_JSON" ]; then
+    log_error "Could not get PyPI JSON. Please check network connection."
+    exit 1
+fi
+
+# Extract version and source tarball URL from JSON
+PYPI_VERSION=$(echo "$PYPI_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin)['info']['version'])" 2>/dev/null || echo "")
+SOURCE_URL=$(echo "$PYPI_JSON" | python3 -c "import sys, json; data = json.load(sys.stdin); urls = [f['url'] for f in data['urls'] if f['packagetype'] == 'sdist']; print(urls[0] if urls else '')" 2>/dev/null || echo "")
+
+if [ -z "$PYPI_VERSION" ] || [ -z "$SOURCE_URL" ]; then
+    log_error "Could not extract version or URL from PyPI JSON"
+    log_info "Version: $PYPI_VERSION"
+    log_info "URL: $SOURCE_URL"
     exit 1
 fi
 
 log_info "Latest version: $PYPI_VERSION"
-# Try multiple PyPI URL formats
-SOURCE_URLS=(
-    "https://files.pythonhosted.org/packages/source/s/scikit-learn/scikit-learn-${PYPI_VERSION}.tar.gz"
-    "https://pypi.org/packages/source/s/scikit-learn/scikit-learn-${PYPI_VERSION}.tar.gz"
-)
+log_info "Source URL: $SOURCE_URL"
 SOURCE_FILE="scikit-learn-${PYPI_VERSION}.tar.gz"
 SOURCE_PATH="$WHEELS_DIR/$SOURCE_FILE"
 
-DOWNLOAD_SUCCESS=false
-for SOURCE_URL in "${SOURCE_URLS[@]}"; do
-    log_info "Trying to download from: $SOURCE_URL"
-    log_info "Saving to: $SOURCE_PATH"
-    
-    # Download using curl, wget, or Python
-    if command -v curl >/dev/null 2>&1; then
-        if curl -L -f -o "$SOURCE_PATH" "$SOURCE_URL" 2>&1 | while IFS= read -r line; do
-            log_info "  $line"
-        done; then
-            # Check if file was downloaded and has reasonable size (>1MB)
-            if [ -f "$SOURCE_PATH" ] && [ $(stat -c%s "$SOURCE_PATH" 2>/dev/null || stat -f%z "$SOURCE_PATH" 2>/dev/null || echo 0) -gt 1000000 ]; then
-                DOWNLOAD_SUCCESS=true
-                break
-            else
-                log_warning "Downloaded file is too small or missing, trying next URL..."
-                rm -f "$SOURCE_PATH"
-            fi
-        fi
-    elif command -v wget >/dev/null 2>&1; then
-        if wget -O "$SOURCE_PATH" "$SOURCE_URL" 2>&1 | while IFS= read -r line; do
-            log_info "  $line"
-        done; then
-            # Check if file was downloaded and has reasonable size (>1MB)
-            if [ -f "$SOURCE_PATH" ] && [ $(stat -c%s "$SOURCE_PATH" 2>/dev/null || stat -f%z "$SOURCE_PATH" 2>/dev/null || echo 0) -gt 1000000 ]; then
-                DOWNLOAD_SUCCESS=true
-                break
-            else
-                log_warning "Downloaded file is too small or missing, trying next URL..."
-                rm -f "$SOURCE_PATH"
-            fi
-        fi
-    else
-        if python3 -c "import urllib.request; urllib.request.urlretrieve('$SOURCE_URL', '$SOURCE_PATH')" 2>&1 | while IFS= read -r line; do
-            log_info "  $line"
-        done; then
-            # Check if file was downloaded and has reasonable size (>1MB)
-            if [ -f "$SOURCE_PATH" ] && [ $(stat -c%s "$SOURCE_PATH" 2>/dev/null || stat -f%z "$SOURCE_PATH" 2>/dev/null || echo 0) -gt 1000000 ]; then
-                DOWNLOAD_SUCCESS=true
-                break
-            else
-                log_warning "Downloaded file is too small or missing, trying next URL..."
-                rm -f "$SOURCE_PATH"
-            fi
-        fi
-    fi
-done
+log_info "Downloading from: $SOURCE_URL"
+log_info "Saving to: $SOURCE_PATH"
 
-if [ "$DOWNLOAD_SUCCESS" = false ]; then
-    log_error "Failed to download scikit-learn source from all URLs"
+# Download using curl, wget, or Python
+DOWNLOAD_SUCCESS=false
+if command -v curl >/dev/null 2>&1; then
+    if curl -L -f -o "$SOURCE_PATH" "$SOURCE_URL" 2>&1 | while IFS= read -r line; do
+        log_info "  $line"
+    done; then
+        DOWNLOAD_SUCCESS=true
+    fi
+elif command -v wget >/dev/null 2>&1; then
+    if wget -O "$SOURCE_PATH" "$SOURCE_URL" 2>&1 | while IFS= read -r line; do
+        log_info "  $line"
+    done; then
+        DOWNLOAD_SUCCESS=true
+    fi
+else
+    if python3 -c "import urllib.request; urllib.request.urlretrieve('$SOURCE_URL', '$SOURCE_PATH')" 2>&1 | while IFS= read -r line; do
+        log_info "  $line"
+    done; then
+        DOWNLOAD_SUCCESS=true
+    fi
+fi
+
+# Verify download was successful and file has reasonable size (>1MB)
+if [ "$DOWNLOAD_SUCCESS" = false ] || [ ! -f "$SOURCE_PATH" ]; then
+    log_error "Failed to download scikit-learn source"
     exit 1
 fi
+
+FILE_SIZE=$(stat -c%s "$SOURCE_PATH" 2>/dev/null || stat -f%z "$SOURCE_PATH" 2>/dev/null || echo 0)
+if [ "$FILE_SIZE" -lt 1000000 ]; then
+    log_error "Downloaded file is too small ($FILE_SIZE bytes), download may have failed"
+    rm -f "$SOURCE_PATH"
+    exit 1
+fi
+
+log_info "Downloaded file size: $FILE_SIZE bytes"
 
 SOURCE_FILE="$SOURCE_PATH"
 
