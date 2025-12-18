@@ -163,35 +163,65 @@ if [ -z "$PYPI_VERSION" ]; then
 fi
 
 log_info "Latest version: $PYPI_VERSION"
-SOURCE_URL="https://pypi.org/packages/source/s/scikit-learn/scikit-learn-${PYPI_VERSION}.tar.gz"
+# Try multiple PyPI URL formats
+SOURCE_URLS=(
+    "https://files.pythonhosted.org/packages/source/s/scikit-learn/scikit-learn-${PYPI_VERSION}.tar.gz"
+    "https://pypi.org/packages/source/s/scikit-learn/scikit-learn-${PYPI_VERSION}.tar.gz"
+)
 SOURCE_FILE="scikit-learn-${PYPI_VERSION}.tar.gz"
 SOURCE_PATH="$WHEELS_DIR/$SOURCE_FILE"
 
-log_info "Downloading from: $SOURCE_URL"
-log_info "Saving to: $SOURCE_PATH"
+DOWNLOAD_SUCCESS=false
+for SOURCE_URL in "${SOURCE_URLS[@]}"; do
+    log_info "Trying to download from: $SOURCE_URL"
+    log_info "Saving to: $SOURCE_PATH"
+    
+    # Download using curl, wget, or Python
+    if command -v curl >/dev/null 2>&1; then
+        if curl -L -f -o "$SOURCE_PATH" "$SOURCE_URL" 2>&1 | while IFS= read -r line; do
+            log_info "  $line"
+        done; then
+            # Check if file was downloaded and has reasonable size (>1MB)
+            if [ -f "$SOURCE_PATH" ] && [ $(stat -c%s "$SOURCE_PATH" 2>/dev/null || stat -f%z "$SOURCE_PATH" 2>/dev/null || echo 0) -gt 1000000 ]; then
+                DOWNLOAD_SUCCESS=true
+                break
+            else
+                log_warning "Downloaded file is too small or missing, trying next URL..."
+                rm -f "$SOURCE_PATH"
+            fi
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        if wget -O "$SOURCE_PATH" "$SOURCE_URL" 2>&1 | while IFS= read -r line; do
+            log_info "  $line"
+        done; then
+            # Check if file was downloaded and has reasonable size (>1MB)
+            if [ -f "$SOURCE_PATH" ] && [ $(stat -c%s "$SOURCE_PATH" 2>/dev/null || stat -f%z "$SOURCE_PATH" 2>/dev/null || echo 0) -gt 1000000 ]; then
+                DOWNLOAD_SUCCESS=true
+                break
+            else
+                log_warning "Downloaded file is too small or missing, trying next URL..."
+                rm -f "$SOURCE_PATH"
+            fi
+        fi
+    else
+        if python3 -c "import urllib.request; urllib.request.urlretrieve('$SOURCE_URL', '$SOURCE_PATH')" 2>&1 | while IFS= read -r line; do
+            log_info "  $line"
+        done; then
+            # Check if file was downloaded and has reasonable size (>1MB)
+            if [ -f "$SOURCE_PATH" ] && [ $(stat -c%s "$SOURCE_PATH" 2>/dev/null || stat -f%z "$SOURCE_PATH" 2>/dev/null || echo 0) -gt 1000000 ]; then
+                DOWNLOAD_SUCCESS=true
+                break
+            else
+                log_warning "Downloaded file is too small or missing, trying next URL..."
+                rm -f "$SOURCE_PATH"
+            fi
+        fi
+    fi
+done
 
-# Download using curl, wget, or Python
-if command -v curl >/dev/null 2>&1; then
-    if ! curl -L -o "$SOURCE_PATH" "$SOURCE_URL" 2>&1 | while IFS= read -r line; do
-        log_info "  $line"
-    done; then
-        log_error "Failed to download scikit-learn source using curl"
-        exit 1
-    fi
-elif command -v wget >/dev/null 2>&1; then
-    if ! wget -O "$SOURCE_PATH" "$SOURCE_URL" 2>&1 | while IFS= read -r line; do
-        log_info "  $line"
-    done; then
-        log_error "Failed to download scikit-learn source using wget"
-        exit 1
-    fi
-else
-    if ! python3 -c "import urllib.request; urllib.request.urlretrieve('$SOURCE_URL', '$SOURCE_PATH')" 2>&1 | while IFS= read -r line; do
-        log_info "  $line"
-    done; then
-        log_error "Failed to download scikit-learn source using Python"
-        exit 1
-    fi
+if [ "$DOWNLOAD_SUCCESS" = false ]; then
+    log_error "Failed to download scikit-learn source from all URLs"
+    exit 1
 fi
 
 SOURCE_FILE="$SOURCE_PATH"
