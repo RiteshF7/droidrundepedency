@@ -230,7 +230,7 @@ if [ ! -f "$SOURCE_FILE" ]; then
     exit 1
 fi
 
-SOURCE_FILE="$WHEELS_DIR/$SOURCE_FILE"
+# SOURCE_FILE already contains the full path from line 221, no need to prepend WHEELS_DIR
 
 log_success "Found source file: $SOURCE_FILE"
 SOURCE_SIZE=$(stat -c%s "$SOURCE_FILE" 2>/dev/null || stat -f%z "$SOURCE_FILE" 2>/dev/null || echo "unknown")
