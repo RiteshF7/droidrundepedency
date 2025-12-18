@@ -78,6 +78,30 @@ fi
 
 echo
 
+# Ensure providers namespace exists before installing extras
+if ! $PYTHON_BIN - <<'PY' >/dev/null 2>&1
+import importlib
+importlib.import_module("droidrun.providers")
+PY
+then
+    log_warning "droidrun.providers not importable. Attempting to upgrade/reinstall droidrun..."
+    if $PIP_BIN install --upgrade --force-reinstall --find-links "$WHEELS_DIR" droidrun; then
+        if $PYTHON_BIN - <<'PY' >/dev/null 2>&1
+import importlib
+importlib.import_module("droidrun.providers")
+PY
+        then
+            log_success "droidrun.providers available after reinstall"
+        else
+            log_error "droidrun.providers still missing after reinstall. Please update droidrun package manually."
+            exit 1
+        fi
+    else
+        log_error "Failed to reinstall droidrun while trying to enable providers module."
+        exit 1
+    fi
+fi
+
 # Check for tokenizers
 TOKENIZERS_AVAILABLE=false
 if python_pkg_installed "tokenizers"; then
