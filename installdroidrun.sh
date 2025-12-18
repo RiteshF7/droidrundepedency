@@ -1267,16 +1267,16 @@ else
                         exit 1
                     fi
                 fi
+            else
+                log_warning "tokenizers is installed but droidrun installation still failed"
+                log_error "Installation log saved to: $INSTALL_LOG"
+                exit 1
             fi
         else
-            log_error "tokenizers is installed but droidrun installation still failed"
+            log_error "droidrun installation failed for unknown reason"
             log_error "Installation log saved to: $INSTALL_LOG"
             exit 1
         fi
-    else
-        log_error "droidrun installation failed for unknown reason"
-        log_error "Installation log saved to: $INSTALL_LOG"
-        exit 1
     fi
     rm -f "$INSTALL_LOG" 2>/dev/null || true
     log_success "Phase 7 complete: droidrun installed"
