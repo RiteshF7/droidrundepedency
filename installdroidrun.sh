@@ -1003,18 +1003,43 @@ else
     log_info "Installing grpcio dependencies..."
     if ! python_pkg_installed "typing-extensions" "typing-extensions>=4.12"; then
         log_info "Installing typing-extensions (required by grpcio)..."
-        typing_ext_output=$(cd "$HOME" && python3 -m pip install "typing-extensions>=4.12" 2>&1) || {
-            log_warning "Failed to install typing-extensions, but continuing..."
-            echo "$typing_ext_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_warning "  $line"; done || true
-        }
+        typing_ext_output=$(cd "$HOME" && python3 -m pip install "typing-extensions>=4.12" 2>&1)
+        typing_ext_exit=$?
+        
+        # Display output (filtering out noise)
+        echo "$typing_ext_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done || true
+        
+        if [ $typing_ext_exit -ne 0 ]; then
+            log_error "Failed to install typing-extensions (exit code: $typing_ext_exit) - this is required for grpcio"
+            echo "$typing_ext_output" | grep -i "error\|failed\|exception" | head -5 | while read line; do log_error "    $line"; done || true
+            exit 1
+        else
+            # Verify it's actually installed and importable
+            if python3 -c "import typing_extensions" 2>/dev/null; then
+                log_success "typing-extensions installed and verified"
+            else
+                log_error "typing-extensions installation succeeded but package is not importable"
+                exit 1
+            fi
+        fi
     else
         log_info "typing-extensions already installed"
+        # Verify it's importable
+        if ! python3 -c "import typing_extensions" 2>/dev/null; then
+            log_warning "typing-extensions appears installed but not importable, reinstalling..."
+            typing_ext_output=$(cd "$HOME" && python3 -m pip install --force-reinstall "typing-extensions>=4.12" 2>&1)
+            typing_ext_exit=$?
+            if [ $typing_ext_exit -ne 0 ]; then
+                log_error "Failed to reinstall typing-extensions"
+                exit 1
+            fi
+        fi
     fi
 
     # Install the fixed wheel - change to HOME directory to avoid "directory not found" errors
-    # Use --find-links to prefer local wheels, but allow PyPI for dependencies (remove --no-index)
-    log_info "Installing grpcio wheel..."
-    grpcio_install_output=$(cd "$HOME" && python3 -m pip install --find-links "$wheels_dir_abs" "$grpcio_wheel_abs" 2>&1) || {
+    # Use --no-deps since we've already installed typing-extensions
+    log_info "Installing grpcio wheel (dependencies already installed)..."
+    grpcio_install_output=$(cd "$HOME" && python3 -m pip install --no-deps "$grpcio_wheel_abs" 2>&1) || {
         log_error "Failed to install grpcio wheel"
         echo "$grpcio_install_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_error "  $line"; done
         exit 1
