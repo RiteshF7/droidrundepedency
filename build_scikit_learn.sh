@@ -146,39 +146,51 @@ log_step "Downloading scikit-learn source"
 VERSION_SPEC="scikit-learn"
 log_info "Version spec: $VERSION_SPEC"
 
-log_info "Running: python3 -m pip download \"$VERSION_SPEC\" --dest . --no-cache-dir --no-binary :all:"
-log_info "This may take a while..."
+# First, try to get the latest version from PyPI JSON API
+log_info "Getting latest version from PyPI..."
+PYPI_VERSION=$(python3 -c "import urllib.request, json; data = json.loads(urllib.request.urlopen('https://pypi.org/pypi/scikit-learn/json').read()); print(data['info']['version'])" 2>/dev/null || echo "")
 
-# Show output in real-time and capture exit code
-set +e  # Temporarily disable exit on error to capture exit code
-python3 -m pip download "$VERSION_SPEC" --dest . --no-cache-dir --no-binary :all: 2>&1 | while IFS= read -r line; do
-    log_info "  $line"
-done
-DOWNLOAD_EXIT_CODE=${PIPESTATUS[0]}
-set -e  # Re-enable exit on error
-
-log_info "pip download exit code: $DOWNLOAD_EXIT_CODE"
-
-if [ $DOWNLOAD_EXIT_CODE -ne 0 ]; then
-    log_error "Failed to download scikit-learn source (exit code: $DOWNLOAD_EXIT_CODE)"
-    log_info "Contents of working directory:"
-    ls -la "$WHEELS_DIR" | while IFS= read -r line; do
+if [ -z "$PYPI_VERSION" ]; then
+    log_warning "Could not get version from PyPI, trying pip download method..."
+    # Fallback: try pip download (may fail during metadata prep, but tarball might be downloaded)
+    set +e
+    python3 -m pip download "$VERSION_SPEC" --dest . --no-cache-dir --no-binary :all: 2>&1 | while IFS= read -r line; do
         log_info "  $line"
     done
-    exit 1
+    set -e
+    # Check if tarball was downloaded even if metadata prep failed
+    SOURCE_FILE=$(ls scikit-learn-*.tar.gz 2>/dev/null | head -1)
+    if [ -z "$SOURCE_FILE" ]; then
+        log_error "Failed to download scikit-learn source"
+        exit 1
+    fi
+else
+    log_info "Latest version: $PYPI_VERSION"
+    SOURCE_URL="https://pypi.org/packages/source/s/scikit-learn/scikit-learn-${PYPI_VERSION}.tar.gz"
+    SOURCE_FILE="scikit-learn-${PYPI_VERSION}.tar.gz"
+    
+    log_info "Downloading from: $SOURCE_URL"
+    log_info "Saving to: $SOURCE_FILE"
+    
+    if ! python3 -c "import urllib.request; urllib.request.urlretrieve('$SOURCE_URL', '$WHEELS_DIR/$SOURCE_FILE')" 2>&1 | while IFS= read -r line; do
+        log_info "  $line"
+    done; then
+        log_error "Failed to download scikit-learn source from PyPI"
+        exit 1
+    fi
 fi
 
-# Find downloaded file
-SOURCE_FILE=$(ls scikit-learn-*.tar.gz 2>/dev/null | head -1)
-if [ -z "$SOURCE_FILE" ]; then
-    log_error "Downloaded source file not found"
-    log_error "Expected pattern: scikit-learn-*.tar.gz"
+# Verify downloaded file
+if [ ! -f "$WHEELS_DIR/$SOURCE_FILE" ]; then
+    log_error "Downloaded source file not found: $SOURCE_FILE"
     log_info "Files in directory:"
     ls -la "$WHEELS_DIR" | while IFS= read -r line; do
         log_info "  $line"
     done
     exit 1
 fi
+
+SOURCE_FILE="$WHEELS_DIR/$SOURCE_FILE"
 
 log_success "Found source file: $SOURCE_FILE"
 SOURCE_SIZE=$(stat -c%s "$SOURCE_FILE" 2>/dev/null || stat -f%z "$SOURCE_FILE" 2>/dev/null || echo "unknown")
