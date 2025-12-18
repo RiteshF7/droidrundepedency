@@ -33,11 +33,11 @@ python_pkg_installed() {
     local pkg_name=$1
     local import_name=$(echo "$pkg_name" | tr '-' '_')
     
-    if python3 -c "import $import_name" 2>/dev/null; then
+    if python3 -c "import $import_name"; then
         return 0
     fi
     
-    if python3 -m pip show "$pkg_name" >/dev/null 2>&1; then
+    if python3 -m pip show "$pkg_name"; then
         return 0
     fi
     
@@ -85,7 +85,7 @@ else
     if [ -n "$tokenizers_wheel" ] && [ -f "$tokenizers_wheel" ]; then
         log_info "Found pre-built tokenizers wheel: $(basename "$tokenizers_wheel")"
         log_info "Installing tokenizers from pre-built wheel..."
-        if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>&1; then
+        if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel"; then
             log_success "tokenizers installed from pre-built wheel"
             TOKENIZERS_AVAILABLE=true
         else
@@ -126,9 +126,9 @@ for provider in "${PROVIDERS[@]}"; do
     
     # Try to install provider
     log_info "Running: python3 -m pip install \"droidrun[$provider]\" --find-links \"$WHEELS_DIR\""
-    if python3 -m pip install "droidrun[$provider]" --find-links "$WHEELS_DIR" 2>&1; then
+    if python3 -m pip install "droidrun[$provider]" --find-links "$WHEELS_DIR"; then
         # Check if installation actually succeeded
-        if python3 -c "from droidrun.providers import $provider" 2>/dev/null; then
+        if python3 -c "from droidrun.providers import $provider"; then
             log_success "droidrun[$provider] installed successfully"
             INSTALLED_PROVIDERS+=("$provider")
         else
