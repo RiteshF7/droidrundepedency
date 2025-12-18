@@ -147,17 +147,20 @@ VERSION_SPEC="scikit-learn"
 log_info "Version spec: $VERSION_SPEC"
 
 log_info "Running: python3 -m pip download \"$VERSION_SPEC\" --dest . --no-cache-dir --no-binary :all:"
-DOWNLOAD_OUTPUT=$(python3 -m pip download "$VERSION_SPEC" --dest . --no-cache-dir --no-binary :all: 2>&1)
-DOWNLOAD_EXIT_CODE=$?
+log_info "This may take a while..."
 
-log_info "pip download exit code: $DOWNLOAD_EXIT_CODE"
-log_info "pip download output:"
-echo "$DOWNLOAD_OUTPUT" | while IFS= read -r line; do
+# Show output in real-time and capture exit code
+set +e  # Temporarily disable exit on error to capture exit code
+python3 -m pip download "$VERSION_SPEC" --dest . --no-cache-dir --no-binary :all: 2>&1 | while IFS= read -r line; do
     log_info "  $line"
 done
+DOWNLOAD_EXIT_CODE=${PIPESTATUS[0]}
+set -e  # Re-enable exit on error
+
+log_info "pip download exit code: $DOWNLOAD_EXIT_CODE"
 
 if [ $DOWNLOAD_EXIT_CODE -ne 0 ]; then
-    log_error "Failed to download scikit-learn source"
+    log_error "Failed to download scikit-learn source (exit code: $DOWNLOAD_EXIT_CODE)"
     log_info "Contents of working directory:"
     ls -la "$WHEELS_DIR" | while IFS= read -r line; do
         log_info "  $line"
@@ -298,21 +301,27 @@ log_step "Building scikit-learn wheel"
 log_info "Running: python3 -m pip wheel \"$FIXED_SOURCE\" --no-deps --no-build-isolation --wheel-dir ."
 log_info "This may take a while..."
 
-if python3 -m pip wheel "$FIXED_SOURCE" --no-deps --no-build-isolation --wheel-dir . 2>&1 | while IFS= read -r line; do
+# Show output in real-time and capture exit code
+set +e  # Temporarily disable exit on error to capture exit code
+python3 -m pip wheel "$FIXED_SOURCE" --no-deps --no-build-isolation --wheel-dir . 2>&1 | while IFS= read -r line; do
     # Filter out some verbose pip messages but keep important ones
     if [[ "$line" != *"Looking in indexes"* ]] && [[ "$line" != *"Collecting"* ]]; then
         log_info "  $line"
     fi
-done; then
-    log_success "scikit-learn wheel built successfully"
-else
-    log_error "Failed to build scikit-learn wheel"
+done
+WHEEL_EXIT_CODE=${PIPESTATUS[0]}
+set -e  # Re-enable exit on error
+
+if [ $WHEEL_EXIT_CODE -ne 0 ]; then
+    log_error "Failed to build scikit-learn wheel (exit code: $WHEEL_EXIT_CODE)"
     log_info "Contents of working directory:"
     ls -la "$WHEELS_DIR" | while IFS= read -r line; do
         log_info "  $line"
     done
     exit 1
 fi
+
+log_success "scikit-learn wheel built successfully"
 
 # Find built wheel
 WHEEL_FILE=$(ls scikit_learn-*.whl 2>/dev/null | head -1)
@@ -334,14 +343,20 @@ log_success "Wheel created: $WHEEL_FILE ($WHEEL_SIZE bytes)"
 log_step "Installing scikit-learn wheel"
 
 log_info "Running: python3 -m pip install --find-links . --no-index --no-deps scikit_learn*.whl"
-if python3 -m pip install --find-links . --no-index --no-deps scikit_learn*.whl 2>&1 | while IFS= read -r line; do
+# Show output in real-time and capture exit code
+set +e  # Temporarily disable exit on error to capture exit code
+python3 -m pip install --find-links . --no-index --no-deps scikit_learn*.whl 2>&1 | while IFS= read -r line; do
     log_info "  $line"
-done; then
-    log_success "scikit-learn installed successfully"
-else
-    log_error "Failed to install scikit-learn wheel"
+done
+INSTALL_EXIT_CODE=${PIPESTATUS[0]}
+set -e  # Re-enable exit on error
+
+if [ $INSTALL_EXIT_CODE -ne 0 ]; then
+    log_error "Failed to install scikit-learn wheel (exit code: $INSTALL_EXIT_CODE)"
     exit 1
 fi
+
+log_success "scikit-learn installed successfully"
 
 # ============================================
 # Verify installation
