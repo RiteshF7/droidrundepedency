@@ -999,9 +999,22 @@ else
     grpcio_wheel_abs=$(cd "$(dirname "$grpcio_wheel")" && pwd)/$(basename "$grpcio_wheel")
     wheels_dir_abs=$(cd "$WHEELS_DIR" && pwd)
 
+    # Install grpcio dependencies first (typing-extensions is required)
+    log_info "Installing grpcio dependencies..."
+    if ! python_pkg_installed "typing-extensions" "typing-extensions>=4.12"; then
+        log_info "Installing typing-extensions (required by grpcio)..."
+        typing_ext_output=$(cd "$HOME" && python3 -m pip install "typing-extensions>=4.12" 2>&1) || {
+            log_warning "Failed to install typing-extensions, but continuing..."
+            echo "$typing_ext_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_warning "  $line"; done || true
+        }
+    else
+        log_info "typing-extensions already installed"
+    fi
+
     # Install the fixed wheel - change to HOME directory to avoid "directory not found" errors
+    # Use --find-links to prefer local wheels, but allow PyPI for dependencies (remove --no-index)
     log_info "Installing grpcio wheel..."
-    grpcio_install_output=$(cd "$HOME" && python3 -m pip install --find-links "$wheels_dir_abs" --no-index "$grpcio_wheel_abs" 2>&1) || {
+    grpcio_install_output=$(cd "$HOME" && python3 -m pip install --find-links "$wheels_dir_abs" "$grpcio_wheel_abs" 2>&1) || {
         log_error "Failed to install grpcio wheel"
         echo "$grpcio_install_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_error "  $line"; done
         exit 1
