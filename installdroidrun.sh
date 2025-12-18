@@ -1261,10 +1261,11 @@ else
                     if python3 -m pip install droidrun --find-links "$WHEELS_DIR" 2>/dev/null; then
                         log_success "droidrun installed (minimal installation)"
                         log_warning "Some LLM providers may not be available due to missing tokenizers"
-                else
-                    log_error "Failed to install droidrun even without extras"
-                    log_error "Installation log saved to: $INSTALL_LOG"
-                    exit 1
+                    else
+                        log_error "Failed to install droidrun even without extras"
+                        log_error "Installation log saved to: $INSTALL_LOG"
+                        exit 1
+                    fi
                 fi
             fi
         else
