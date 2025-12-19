@@ -14,7 +14,7 @@ NC='\033[0m'
 # Package name (can be changed for different Termux variants)
 PACKAGE_NAME="com.termux"
 
-# Logging functions
+# Logging functions - basic implementation (will be enhanced after log files are initialized)
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -462,6 +462,17 @@ build_package() {
     if ! python3 -m pip wheel "$source_arg" --no-deps $build_opts --wheel-dir "$wheels_dir_abs" > "$temp_log_file" 2>&1; then
         pip_wheel_exit=$?
         log_error "Failed to build $pkg_name wheel (exit code: $pip_wheel_exit)"
+        # Write full error to error log file
+        echo "=== Build Error for $pkg_name at $(date) ===" >> "$ERROR_LOG_FILE"
+        echo "Exit code: $pip_wheel_exit" >> "$ERROR_LOG_FILE"
+        echo "Command: python3 -m pip wheel $source_arg --no-deps $build_opts --wheel-dir $wheels_dir_abs" >> "$ERROR_LOG_FILE"
+        echo "--- Error lines ---" >> "$ERROR_LOG_FILE"
+        grep -iE "error|failed|exception|traceback" "$temp_log_file" >> "$ERROR_LOG_FILE" || true
+        echo "--- Last 20 lines of output ---" >> "$ERROR_LOG_FILE"
+        tail -20 "$temp_log_file" >> "$ERROR_LOG_FILE" || true
+        echo "=== End of error for $pkg_name ===" >> "$ERROR_LOG_FILE"
+        echo "" >> "$ERROR_LOG_FILE"
+        
         # Show error lines from output
         grep -iE "error|failed|exception|traceback" "$temp_log_file" | head -30 | while read line; do 
             log_error "  $line"
@@ -471,6 +482,7 @@ build_package() {
         tail -10 "$temp_log_file" | while read line; do 
             log_error "  $line"
         done || true
+        log_error "Full error details saved to: $ERROR_LOG_FILE"
         rm -f "$temp_log_file"
         [ -n "$temp_dir" ] && rm -rf "$temp_dir"
         return 1
@@ -619,10 +631,40 @@ log_info "PREFIX: $PREFIX"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ============================================
-# Progress tracking
+# Progress tracking and logging
 # ============================================
 PROGRESS_FILE="${HOME}/.droidrun_install_progress"
 ENV_FILE="${HOME}/.droidrun_install_env"
+LOG_FILE="${HOME}/.droidrun_install.log"
+ERROR_LOG_FILE="${HOME}/.droidrun_install_errors.log"
+
+# Initialize log files
+touch "$LOG_FILE"
+touch "$ERROR_LOG_FILE"
+echo "=== droidrun Installation Log - Started at $(date) ===" >> "$LOG_FILE"
+echo "=== Error Log - Started at $(date) ===" >> "$ERROR_LOG_FILE"
+
+# Enhanced logging functions that also write to log file
+# Override the basic functions with enhanced versions
+log_info() {
+    local msg="$1"
+    echo -e "${BLUE}[INFO]${NC} $msg" | tee -a "$LOG_FILE"
+}
+
+log_success() {
+    local msg="$1"
+    echo -e "${GREEN}[✓]${NC} $msg" | tee -a "$LOG_FILE"
+}
+
+log_warning() {
+    local msg="$1"
+    echo -e "${YELLOW}[⚠]${NC} $msg" | tee -a "$LOG_FILE" | tee -a "$ERROR_LOG_FILE"
+}
+
+log_error() {
+    local msg="$1"
+    echo -e "${RED}[✗]${NC} $msg" | tee -a "$LOG_FILE" | tee -a "$ERROR_LOG_FILE" >&2
+}
 
 # Function to mark phase as complete
 mark_phase_complete() {
@@ -1296,7 +1338,13 @@ else
         built_packages=()
         
         # Build each missing package (continue on failure)
+        log_info "Processing ${#packages_to_install[@]} package(s): ${packages_to_install[*]}"
+        local pkg_count=0
         for pkg in "${packages_to_install[@]}"; do
+            pkg_count=$((pkg_count + 1))
+            log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            log_info "Processing package $pkg_count/${#packages_to_install[@]}: $pkg"
+            log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             # Special handling for tokenizers - prefer pre-built wheel due to Android pthread limitations
             if [ "$pkg" = "tokenizers" ]; then
                 # First try to install from pre-built wheel
@@ -1313,14 +1361,20 @@ else
                 fi
                 # If wheel installation failed, try building with special flags
                 log_info "Building $pkg with special compiler flags for Android/Termux compatibility..."
+                log_warning "NOTE: tokenizers build will likely fail on Android due to missing pthread_cond_clockwait"
+                log_warning "This is expected - use pre-built wheel from dependencies folder instead"
                 # Note: pthread_cond_clockwait is not available on Android, so building may fail
                 # The pre-built wheel is strongly recommended
                 if build_package "$pkg" "$pkg" --env-var="CXXFLAGS=-D_GNU_SOURCE"; then
                     built_packages+=("$pkg")
                 else
+                    log_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
                     log_warning "Skipping $pkg (build failed - pthread_cond_clockwait not available on Android)"
-                    log_info "Recommendation: Use pre-built wheel from dependencies folder"
-                    log_info "Error details should be shown above. Continuing with next package..."
+                    log_warning "This is EXPECTED behavior on Android/Termux"
+                    log_warning "Solution: Use pre-built wheel from depedencies/wheels/_x86_64_wheels/tokenizers*.whl"
+                    log_warning "The script will continue with remaining packages..."
+                    log_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                    echo "Error details logged to: $ERROR_LOG_FILE" | tee -a "$LOG_FILE"
                 fi
             else
                 if build_package "$pkg" "$pkg"; then
@@ -1431,8 +1485,27 @@ echo "  - LD_LIBRARY_PATH has been configured for grpcio"
 echo "  - Restart your terminal or run: source ~/.bashrc"
 echo "  - Wheels are available in: $WHEELS_DIR"
 echo
+echo "Log files (for troubleshooting):"
+echo "  - Full installation log: $LOG_FILE"
+echo "  - Error log: $ERROR_LOG_FILE"
+echo "  - Progress file: $PROGRESS_FILE"
+echo "  - Environment file: $ENV_FILE"
+echo
+if [ -f "$ERROR_LOG_FILE" ] && [ -s "$ERROR_LOG_FILE" ]; then
+    error_count=$(grep -c "===" "$ERROR_LOG_FILE" 2>/dev/null || echo "0")
+    if [ "$error_count" -gt 0 ]; then
+        log_warning "Some packages failed to build (this may be expected)"
+        log_info "Check $ERROR_LOG_FILE for detailed error information"
+        log_info "Common issue: tokenizers requires pre-built wheel on Android"
+    fi
+fi
+echo
 echo "To verify installation:"
 echo "  python3 -c 'import droidrun; print(\"droidrun installed successfully\")'"
+echo
+echo "To view logs:"
+echo "  cat $LOG_FILE"
+echo "  cat $ERROR_LOG_FILE"
 echo
 
 exit 0
