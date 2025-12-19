@@ -607,8 +607,17 @@ ENV_FILE="${HOME}/.droidrun_install_env"
 # Function to mark phase as complete
 mark_phase_complete() {
     local phase=$1
-    echo "PHASE_${phase}_COMPLETE=$(date +%s)" >> "$PROGRESS_FILE"
-    log_info "Progress saved: Phase $phase completed"
+    local timestamp=$(date +%s)
+    # Create progress file if it doesn't exist
+    touch "$PROGRESS_FILE"
+    # Remove existing entry for this phase if it exists, then add new one
+    if grep -q "PHASE_${phase}_COMPLETE=" "$PROGRESS_FILE" 2>/dev/null; then
+        sed -i "/^PHASE_${phase}_COMPLETE=/d" "$PROGRESS_FILE"
+    fi
+    echo "PHASE_${phase}_COMPLETE=$timestamp" >> "$PROGRESS_FILE"
+    # Try to format timestamp (works on Linux/Android)
+    formatted_date=$(date -d "@$timestamp" 2>/dev/null || date -r "$timestamp" 2>/dev/null || echo "$timestamp")
+    log_info "Progress saved: Phase $phase completed at $formatted_date"
 }
 
 # Function to check if phase is complete
@@ -658,7 +667,19 @@ load_env_vars() {
 # Load progress and environment at start
 if [ -f "$PROGRESS_FILE" ]; then
     log_info "Found existing progress file: $PROGRESS_FILE"
-    log_info "Script will resume from last completed phase"
+    # Determine which phases are complete
+    completed_phases=()
+    for phase in 1 2 3 4 5 6 7; do
+        if is_phase_complete "$phase"; then
+            completed_phases+=("$phase")
+        fi
+    done
+    if [ ${#completed_phases[@]} -gt 0 ]; then
+        log_info "Completed phases: ${completed_phases[*]}"
+        log_info "Script will resume from last completed phase"
+    else
+        log_info "No completed phases found, starting from beginning"
+    fi
     load_env_vars
 fi
 
@@ -783,6 +804,7 @@ log_success "Python $PYTHON_VERSION found"
 # ============================================
 if is_phase_complete "1"; then
     log_success "Phase 1 already completed (skipping)"
+    save_env_vars
 else
     log_info "Phase 1: Installing build tools..."
     cd "$WHEELS_DIR"
@@ -830,6 +852,7 @@ fi
 # ============================================
 if is_phase_complete "2"; then
     log_success "Phase 2 already completed (skipping)"
+    save_env_vars
 else
     log_info "Phase 2: Building numpy..."
     if ! build_package "numpy" "numpy"; then
@@ -845,6 +868,7 @@ fi
 # ============================================
 if is_phase_complete "3"; then
     log_success "Phase 3 already completed (skipping)"
+    save_env_vars
 else
     log_info "Phase 3: Building scientific stack..."
 
@@ -1000,6 +1024,7 @@ fi
 # ============================================
 if is_phase_complete "4"; then
     log_success "Phase 4 already completed (skipping)"
+    save_env_vars
 else
     log_info "Phase 4: Building jiter..."
 JITER_BUILT=false
@@ -1037,6 +1062,7 @@ fi
 # ============================================
 if is_phase_complete "5"; then
     log_success "Phase 5 already completed (skipping)"
+    save_env_vars
 else
     log_info "Phase 5: Building other compiled packages..."
 
@@ -1174,6 +1200,7 @@ fi
 # ============================================
 if is_phase_complete "6"; then
     log_success "Phase 6 already completed (skipping)"
+    save_env_vars
 else
     log_info "Phase 6: Checking optional compiled packages..."
 
@@ -1266,7 +1293,10 @@ else
                 log_info "Building $pkg with special compiler flags for Android/Termux compatibility..."
                 # Note: pthread_cond_clockwait is not available on Android, so building may fail
                 # The pre-built wheel is strongly recommended
-                if build_package "$pkg" "$pkg" --env-var="CXXFLAGS=-D_GNU_SOURCE" 2>&1 | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done; then
+                build_output=$(build_package "$pkg" "$pkg" --env-var="CXXFLAGS=-D_GNU_SOURCE" 2>&1)
+                build_exit=$?
+                echo "$build_output" | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done || true
+                if [ $build_exit -eq 0 ]; then
                     built_packages+=("$pkg")
                 else
                     log_warning "Skipping $pkg (build failed - pthread_cond_clockwait not available on Android)"
@@ -1299,6 +1329,7 @@ else
         
         log_success "Phase 6 complete: Optional packages processed"
     fi
+fi
     mark_phase_complete "6"
     save_env_vars
 fi
@@ -1308,6 +1339,7 @@ fi
 # ============================================
 if is_phase_complete "7"; then
     log_success "Phase 7 already completed (skipping)"
+    save_env_vars
 else
     log_info "Phase 7: Installing droidrun and LLM providers..."
 
