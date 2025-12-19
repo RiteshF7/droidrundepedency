@@ -791,9 +791,8 @@ else
         dep_name=$(echo "$dep" | sed 's/[<>=].*//')
         if ! python_pkg_installed "$dep_name" "$dep"; then
             log_info "Installing $dep..."
-            local pip_output
             pip_output=$(python3 -m pip install "$dep" 2>&1)
-            local pip_exit=$?
+            pip_exit=$?
             
             # Display output (filtering out noise)
             echo "$pip_output" | grep -v "Looking in indexes" | grep -v "Collecting" | grep -v "The folder you are executing pip from" | while read line; do log_info "  $line"; done || true
