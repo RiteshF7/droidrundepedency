@@ -597,6 +597,71 @@ log_info "PREFIX: $PREFIX"
 # Setup script directory
 # ============================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ============================================
+# Progress tracking
+# ============================================
+PROGRESS_FILE="${HOME}/.droidrun_install_progress"
+ENV_FILE="${HOME}/.droidrun_install_env"
+
+# Function to mark phase as complete
+mark_phase_complete() {
+    local phase=$1
+    echo "PHASE_${phase}_COMPLETE=$(date +%s)" >> "$PROGRESS_FILE"
+    log_info "Progress saved: Phase $phase completed"
+}
+
+# Function to check if phase is complete
+is_phase_complete() {
+    local phase=$1
+    if [ -f "$PROGRESS_FILE" ]; then
+        grep -q "PHASE_${phase}_COMPLETE=" "$PROGRESS_FILE" && return 0
+    fi
+    return 1
+}
+
+# Function to save environment variables
+save_env_vars() {
+    cat > "$ENV_FILE" <<EOF
+export PREFIX="${PREFIX}"
+export WHEELS_DIR="${WHEELS_DIR}"
+export SCRIPT_DIR="${SCRIPT_DIR}"
+export PACKAGE_NAME="${PACKAGE_NAME}"
+export CC="${CC:-}"
+export CXX="${CXX:-}"
+export CMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH:-}"
+export CMAKE_INCLUDE_PATH="${CMAKE_INCLUDE_PATH:-}"
+export TMPDIR="${TMPDIR:-}"
+export NINJAFLAGS="${NINJAFLAGS:-}"
+export MAKEFLAGS="${MAKEFLAGS:-}"
+export MAX_JOBS="${MAX_JOBS:-}"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
+export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL="${GRPC_PYTHON_BUILD_SYSTEM_OPENSSL:-}"
+export GRPC_PYTHON_BUILD_SYSTEM_ZLIB="${GRPC_PYTHON_BUILD_SYSTEM_ZLIB:-}"
+export GRPC_PYTHON_BUILD_SYSTEM_CARES="${GRPC_PYTHON_BUILD_SYSTEM_CARES:-}"
+export GRPC_PYTHON_BUILD_SYSTEM_RE2="${GRPC_PYTHON_BUILD_SYSTEM_RE2:-}"
+export GRPC_PYTHON_BUILD_SYSTEM_ABSL="${GRPC_PYTHON_BUILD_SYSTEM_ABSL:-}"
+export GRPC_PYTHON_BUILD_WITH_CYTHON="${GRPC_PYTHON_BUILD_WITH_CYTHON:-}"
+EOF
+    log_info "Environment variables saved to $ENV_FILE"
+}
+
+# Function to load environment variables
+load_env_vars() {
+    if [ -f "$ENV_FILE" ]; then
+        log_info "Loading environment variables from $ENV_FILE"
+        source "$ENV_FILE"
+        log_success "Environment variables loaded"
+    fi
+}
+
+# Load progress and environment at start
+if [ -f "$PROGRESS_FILE" ]; then
+    log_info "Found existing progress file: $PROGRESS_FILE"
+    log_info "Script will resume from last completed phase"
+    load_env_vars
+fi
+
 echo
 
 # ============================================
@@ -686,6 +751,7 @@ WHEELS_DIR="${HOME}/wheels"
 mkdir -p "$WHEELS_DIR"
 
 log_success "Build environment configured"
+save_env_vars
 
 # ============================================
 # Create gfortran symlink for scipy compatibility
@@ -715,8 +781,11 @@ log_success "Python $PYTHON_VERSION found"
 # ============================================
 # Phase 1: Build Tools (Pure Python)
 # ============================================
-log_info "Phase 1: Installing build tools..."
-cd "$WHEELS_DIR"
+if is_phase_complete "1"; then
+    log_success "Phase 1 already completed (skipping)"
+else
+    log_info "Phase 1: Installing build tools..."
+    cd "$WHEELS_DIR"
 
 # Check and install build tools only if needed
 build_tools_needed=false
@@ -752,20 +821,32 @@ if [ "$build_tools_needed" = true ]; then
 else
     log_success "Phase 1 complete: Build tools already installed"
 fi
+    mark_phase_complete "1"
+    save_env_vars
+fi
 
 # ============================================
 # Phase 2: Foundation (numpy)
 # ============================================
-log_info "Phase 2: Building numpy..."
-if ! build_package "numpy" "numpy"; then
-    exit 1
+if is_phase_complete "2"; then
+    log_success "Phase 2 already completed (skipping)"
+else
+    log_info "Phase 2: Building numpy..."
+    if ! build_package "numpy" "numpy"; then
+        exit 1
+    fi
+    log_success "Phase 2 complete: numpy installed"
+    mark_phase_complete "2"
+    save_env_vars
 fi
-log_success "Phase 2 complete: numpy installed"
 
 # ============================================
 # Phase 3: Scientific Stack
 # ============================================
-log_info "Phase 3: Building scientific stack..."
+if is_phase_complete "3"; then
+    log_success "Phase 3 already completed (skipping)"
+else
+    log_info "Phase 3: Building scientific stack..."
 
 # Build scipy
 if ! build_package "scipy" "scipy>=1.8.0,<1.17.0"; then
@@ -910,11 +991,17 @@ else
 fi
 
 log_success "Phase 3 complete: Scientific stack installed"
+    mark_phase_complete "3"
+    save_env_vars
+fi
 
 # ============================================
 # Phase 4: Rust Packages (jiter)
 # ============================================
-log_info "Phase 4: Building jiter..."
+if is_phase_complete "4"; then
+    log_success "Phase 4 already completed (skipping)"
+else
+    log_info "Phase 4: Building jiter..."
 JITER_BUILT=false
 for attempt in 1 2; do
     if [ $attempt -gt 1 ]; then
@@ -941,11 +1028,17 @@ else
     log_success "jiter installed successfully"
 fi
 log_success "Phase 4 complete: jiter processed"
+    mark_phase_complete "4"
+    save_env_vars
+fi
 
 # ============================================
 # Phase 5: Other Compiled Packages
 # ============================================
-log_info "Phase 5: Building other compiled packages..."
+if is_phase_complete "5"; then
+    log_success "Phase 5 already completed (skipping)"
+else
+    log_info "Phase 5: Building other compiled packages..."
 
 # Build pyarrow (optional - continue on failure)
 if ! build_package "pyarrow" "pyarrow" --pre-check --env-var="ARROW_HOME=$PREFIX"; then
@@ -1072,11 +1165,17 @@ if ! build_package "pillow" "pillow" --env-var="PKG_CONFIG_PATH=$PREFIX/lib/pkgc
 fi
 
 log_success "Phase 5 complete: Other compiled packages processed"
+    mark_phase_complete "5"
+    save_env_vars
+fi
 
 # ============================================
 # Phase 6: Additional Compiled (optional)
 # ============================================
-log_info "Phase 6: Checking optional compiled packages..."
+if is_phase_complete "6"; then
+    log_success "Phase 6 already completed (skipping)"
+else
+    log_info "Phase 6: Checking optional compiled packages..."
 
 # List of optional packages
 optional_packages=("tokenizers" "safetensors" "cryptography" "pydantic-core" "orjson")
@@ -1193,21 +1292,26 @@ else
                 fi
             done
             if [ ${#wheel_files[@]} -gt 0 ]; then
-                local wheels_dir_abs=$(cd "$WHEELS_DIR" && pwd)
+                wheels_dir_abs=$(cd "$WHEELS_DIR" && pwd)
                 cd "$HOME" && python3 -m pip install --find-links "$wheels_dir_abs" --no-index "${wheel_files[@]}" 2>/dev/null || true
             fi
         fi
         
         log_success "Phase 6 complete: Optional packages processed"
     fi
+    mark_phase_complete "6"
+    save_env_vars
 fi
 
 # ============================================
 # Phase 7: Main Package + LLM Providers
 # ============================================
-log_info "Phase 7: Installing droidrun and LLM providers..."
+if is_phase_complete "7"; then
+    log_success "Phase 7 already completed (skipping)"
+else
+    log_info "Phase 7: Installing droidrun and LLM providers..."
 
-cd "$HOME"
+    cd "$HOME"
 
 # Find install_droidrun_providers.sh script
 PROVIDERS_SCRIPT=""
@@ -1254,6 +1358,9 @@ else
         fi
     fi
     log_success "Phase 7 complete: droidrun core installed"
+fi
+    mark_phase_complete "7"
+    save_env_vars
 fi
 
 # ============================================
