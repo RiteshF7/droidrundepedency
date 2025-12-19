@@ -1329,24 +1329,43 @@ else
     # If all packages are already installed, skip installation
     if [ ${#packages_to_install[@]} -eq 0 ]; then
         log_success "Phase 6 complete: All optional packages already installed"
-    # Try installing with pre-built wheels first
-    elif python3 -m pip install "${packages_to_install[@]}" --find-links "$WHEELS_DIR"; then
-        log_success "Phase 6 complete: Optional packages installed (pre-built wheels)"
     else
-        log_info "Some packages need building from source..."
+        # Try installing packages individually to handle failures gracefully
+        log_info "Attempting to install ${#packages_to_install[@]} package(s) individually..."
+        local installed_count=0
+        local failed_packages=()
         
-        built_packages=()
-        
-        # Build each missing package (continue on failure)
-        log_info "Processing ${#packages_to_install[@]} package(s): ${packages_to_install[*]}"
-        local pkg_count=0
         for pkg in "${packages_to_install[@]}"; do
-            pkg_count=$((pkg_count + 1))
-            log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            log_info "Processing package $pkg_count/${#packages_to_install[@]}: $pkg"
-            log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            # Special handling for tokenizers - prefer pre-built wheel due to Android pthread limitations
-            if [ "$pkg" = "tokenizers" ]; then
+            log_info "Attempting to install $pkg..."
+            if python3 -m pip install --find-links "$WHEELS_DIR" "$pkg" 2>&1 | tee -a "$LOG_FILE"; then
+                if python_pkg_installed "$pkg" "$pkg"; then
+                    log_success "$pkg installed successfully"
+                    installed_count=$((installed_count + 1))
+                    continue
+                fi
+            fi
+            log_warning "$pkg installation failed, will try building from source"
+            failed_packages+=("$pkg")
+        done
+        
+        if [ $installed_count -eq ${#packages_to_install[@]} ]; then
+            log_success "Phase 6 complete: All optional packages installed (pre-built wheels)"
+        elif [ ${#failed_packages[@]} -gt 0 ]; then
+            log_info "Some packages need building from source: ${failed_packages[*]}"
+            packages_to_install=("${failed_packages[@]}")
+            
+            built_packages=()
+            
+            # Build each missing package (continue on failure)
+            log_info "Processing ${#packages_to_install[@]} package(s) to build from source: ${packages_to_install[*]}"
+            local pkg_count=0
+            for pkg in "${packages_to_install[@]}"; do
+                pkg_count=$((pkg_count + 1))
+                log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                log_info "Processing package $pkg_count/${#packages_to_install[@]}: $pkg"
+                log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                # Special handling for tokenizers - prefer pre-built wheel due to Android pthread limitations
+                if [ "$pkg" = "tokenizers" ]; then
                 # First try to install from pre-built wheel
                 tokenizers_wheel=$(find "$WHEELS_DIR" -name "tokenizers*.whl" 2>/dev/null | head -1)
                 if [ -n "$tokenizers_wheel" ] && [ -f "$tokenizers_wheel" ]; then
@@ -1402,7 +1421,8 @@ else
             fi
         fi
         
-        log_success "Phase 6 complete: Optional packages processed"
+            log_success "Phase 6 complete: Optional packages processed"
+        fi
     fi
 fi
     mark_phase_complete "6"
