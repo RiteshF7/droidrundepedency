@@ -455,14 +455,34 @@ build_package() {
     cd "$WHEELS_DIR"
     local wheels_dir_abs=$(cd "$WHEELS_DIR" && pwd)
     local pip_wheel_output
-    pip_wheel_output=$(python3 -m pip wheel "$source_arg" --no-deps $build_opts --wheel-dir "$wheels_dir_abs" 2>&1) || {
-        log_error "Failed to build $pkg_name wheel"
-        echo "$pip_wheel_output" | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_error "  $line"; done
+    local pip_wheel_exit
+    local temp_log_file=$(mktemp)
+    
+    # Build and capture output to temp file, but also show errors in real-time
+    if ! python3 -m pip wheel "$source_arg" --no-deps $build_opts --wheel-dir "$wheels_dir_abs" > "$temp_log_file" 2>&1; then
+        pip_wheel_exit=$?
+        log_error "Failed to build $pkg_name wheel (exit code: $pip_wheel_exit)"
+        # Show error lines from output
+        grep -iE "error|failed|exception|traceback" "$temp_log_file" | head -30 | while read line; do 
+            log_error "  $line"
+        done || true
+        # Also show last 10 lines for context
+        log_error "Last 10 lines of build output:"
+        tail -10 "$temp_log_file" | while read line; do 
+            log_error "  $line"
+        done || true
+        rm -f "$temp_log_file"
         [ -n "$temp_dir" ] && rm -rf "$temp_dir"
         return 1
-    }
-    # Display output (filtering out noise)
-    echo "$pip_wheel_output" | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done || true
+    fi
+    
+    # Display relevant output (filtering out noise)
+    grep -vE "(Looking in indexes|Collecting|^$)" "$temp_log_file" | tail -30 | while read line; do 
+        if ! echo "$line" | grep -qiE "error|failed|exception"; then
+            log_info "  $line"
+        fi
+    done || true
+    rm -f "$temp_log_file"
     
     # Find the wheel file - check WHEELS_DIR first, then extract from pip output if needed
     local wheel_file=""
@@ -1268,7 +1288,7 @@ else
     if [ ${#packages_to_install[@]} -eq 0 ]; then
         log_success "Phase 6 complete: All optional packages already installed"
     # Try installing with pre-built wheels first
-    elif python3 -m pip install "${packages_to_install[@]}" --find-links "$WHEELS_DIR" 2>/dev/null; then
+    elif python3 -m pip install "${packages_to_install[@]}" --find-links "$WHEELS_DIR"; then
         log_success "Phase 6 complete: Optional packages installed (pre-built wheels)"
     else
         log_info "Some packages need building from source..."
@@ -1283,30 +1303,31 @@ else
                 tokenizers_wheel=$(find "$WHEELS_DIR" -name "tokenizers*.whl" 2>/dev/null | head -1)
                 if [ -n "$tokenizers_wheel" ] && [ -f "$tokenizers_wheel" ]; then
                     log_info "Installing $pkg from pre-built wheel: $(basename "$tokenizers_wheel")"
-                    if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel" 2>/dev/null; then
+                    if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$tokenizers_wheel"; then
                         log_success "$pkg installed from pre-built wheel"
                         built_packages+=("$pkg")
                         continue
+                    else
+                        log_warning "Failed to install $pkg from pre-built wheel, will try building from source"
                     fi
                 fi
                 # If wheel installation failed, try building with special flags
                 log_info "Building $pkg with special compiler flags for Android/Termux compatibility..."
                 # Note: pthread_cond_clockwait is not available on Android, so building may fail
                 # The pre-built wheel is strongly recommended
-                build_output=$(build_package "$pkg" "$pkg" --env-var="CXXFLAGS=-D_GNU_SOURCE" 2>&1)
-                build_exit=$?
-                echo "$build_output" | grep -v "Looking in indexes" | grep -v "Collecting" | while read line; do log_info "  $line"; done || true
-                if [ $build_exit -eq 0 ]; then
+                if build_package "$pkg" "$pkg" --env-var="CXXFLAGS=-D_GNU_SOURCE"; then
                     built_packages+=("$pkg")
                 else
                     log_warning "Skipping $pkg (build failed - pthread_cond_clockwait not available on Android)"
                     log_info "Recommendation: Use pre-built wheel from dependencies folder"
+                    log_info "Error details should be shown above. Continuing with next package..."
                 fi
             else
-                if build_package "$pkg" "$pkg" 2>/dev/null; then
+                if build_package "$pkg" "$pkg"; then
                     built_packages+=("$pkg")
                 else
                     log_warning "Skipping $pkg (build failed)"
+                    log_info "Error details should be shown above. Continuing with next package..."
                 fi
             fi
         done
