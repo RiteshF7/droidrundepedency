@@ -60,15 +60,56 @@ log_info "=========================================="
 # Ensure droidrun core is installed/importable
 if ! python_pkg_installed "droidrun"; then
     log_warning "droidrun is not installed. Attempting to install..."
-    if $PIP_BIN install --find-links "$WHEELS_DIR" droidrun; then
+    
+    # Try multiple installation methods
+    DROIDRUN_INSTALLED=false
+    
+    # Method 1: Try installing from wheels directory
+    log_info "Attempting to install droidrun from wheels directory..."
+    if $PIP_BIN install --find-links "$WHEELS_DIR" droidrun 2>&1 | tee -a "${HOME}/.droidrun_install.log"; then
         if python_pkg_installed "droidrun"; then
-            log_success "droidrun installed successfully"
-        else
-            log_error "droidrun install reported success but import failed"
-            exit 1
+            log_success "droidrun installed successfully from wheels"
+            DROIDRUN_INSTALLED=true
         fi
-    else
-        log_error "Failed to install droidrun. Please install manually and retry."
+    fi
+    
+    # Method 2: If that failed, try from PyPI
+    if [ "$DROIDRUN_INSTALLED" = false ]; then
+        log_info "Wheel installation failed, trying PyPI..."
+        if $PIP_BIN install droidrun 2>&1 | tee -a "${HOME}/.droidrun_install.log"; then
+            if python_pkg_installed "droidrun"; then
+                log_success "droidrun installed successfully from PyPI"
+                DROIDRUN_INSTALLED=true
+            fi
+        fi
+    fi
+    
+    # Method 3: If still failed, try with --no-deps and install dependencies separately
+    if [ "$DROIDRUN_INSTALLED" = false ]; then
+        log_info "PyPI installation failed, trying with --no-deps..."
+        if $PIP_BIN install --no-deps droidrun 2>&1 | tee -a "${HOME}/.droidrun_install.log"; then
+            # Try to install common dependencies
+            log_info "Installing droidrun dependencies..."
+            $PIP_BIN install aiohttp pydantic pyyaml 2>&1 | tee -a "${HOME}/.droidrun_install.log" || true
+            if python_pkg_installed "droidrun"; then
+                log_success "droidrun installed successfully (with manual dependency installation)"
+                DROIDRUN_INSTALLED=true
+            fi
+        fi
+    fi
+    
+    if [ "$DROIDRUN_INSTALLED" = false ]; then
+        log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        log_error "Failed to install droidrun after multiple attempts"
+        log_error "This may be due to missing dependencies or build failures"
+        log_error "Check ${HOME}/.droidrun_install.log for detailed error information"
+        log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        log_error "Common issues:"
+        log_error "  - Missing dependencies (aiohttp, pydantic, pyyaml, etc.)"
+        log_error "  - jiter build failure (if jiter is required)"
+        log_error "  - Network connectivity issues"
+        log_error ""
+        log_error "Please check the error log and fix the underlying issue, then retry."
         exit 1
     fi
 else
