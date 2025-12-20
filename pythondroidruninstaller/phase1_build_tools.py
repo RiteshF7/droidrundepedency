@@ -47,10 +47,17 @@ def main() -> int:
         if not pkg_installed("python-pip"):
             subprocess.run(["pkg", "install", "-y", "python-pip"], check=False)
     
-    # Install Rust using pkg (as per documentation)
-    if IS_TERMUX and command_exists("pkg"):
-        if not pkg_installed("rust"):
-            subprocess.run(["pkg", "install", "-y", "rust"], check=False)
+    # Install Rust and maturin first (required for Phase 4)
+    log_info("Installing Rust and maturin...")
+    rust_maturin_script = Path(__file__).parent / "install_rust_maturin.py"
+    if rust_maturin_script.exists():
+        result = subprocess.run([sys.executable, str(rust_maturin_script)], check=False)
+        if result.returncode != 0:
+            log_error("Failed to install Rust and maturin")
+            return 1
+    else:
+        log_error(f"install_rust_maturin.py not found at {rust_maturin_script}")
+        return 1
     
     # Essential tools
     essential = [
