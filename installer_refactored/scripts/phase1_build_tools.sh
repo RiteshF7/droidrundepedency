@@ -46,6 +46,24 @@ else
     log_success "python-pip is already installed"
 fi
 
+# Check and install Rust using pkg if not already installed (required for maturin)
+if ! pkg_installed "rust"; then
+    if [ "$IS_TERMUX" = true ] && command_exists pkg; then
+        log_info "Installing Rust using pkg (required for maturin)..."
+        pkg install -y rust
+        log_success "Rust installed"
+    else
+        if [ "$IS_TERMUX" = false ]; then
+            log_warning "Rust check skipped (non-Termux environment)"
+            log_info "Ensure Rust is available for maturin installation"
+        else
+            log_error "pkg command not found - cannot install Rust"
+        fi
+    fi
+else
+    log_success "Rust is already installed"
+fi
+
 # Define essential and optional tools
 ESSENTIAL_TOOLS=("wheel" "setuptools" "Cython" "meson-python")
 OPTIONAL_TOOLS=("maturin")
