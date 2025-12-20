@@ -64,14 +64,21 @@ def main() -> int:
     
     # Install remaining packages directly from source using pip
     # This is simpler and more reliable than the build_package approach
-    # Note: Direct pip install works better than setting CXXFLAGS which can cause build issues
+    # For some packages like tokenizers, we need a clean environment without CC/CXX overrides
     for pkg in missing:
         log_info(f"Installing {pkg} from source...")
         
+        # Create a clean environment for pip install
+        # Some packages (like tokenizers) build better without CC/CXX overrides
+        clean_env = os.environ.copy()
+        # Remove compiler overrides that might interfere with Rust/maturin builds
+        clean_env.pop("CC", None)
+        clean_env.pop("CXX", None)
+        
         # Use direct pip install - it will build from source automatically
-        # Don't set CXXFLAGS as it can interfere with the build process
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", "--no-cache-dir", pkg],
+            env=clean_env,
             check=False
         )
         
