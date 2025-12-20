@@ -25,6 +25,7 @@ def main() -> int:
     wheels_dir.mkdir(exist_ok=True)
     
     # Install droidrun core first
+    # Use --no-deps to avoid rebuilding pandas/numpy which are already installed
     if not python_pkg_installed("droidrun", "droidrun"):
         log_info("Installing droidrun core...")
         
@@ -33,23 +34,52 @@ def main() -> int:
         clean_env.pop("CC", None)
         clean_env.pop("CXX", None)
         
-        # Use --upgrade-strategy only-if-needed to avoid rebuilding existing packages
-        # This prevents pandas from being rebuilt when it's already installed
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--no-cache-dir", 
-             "--upgrade-strategy", "only-if-needed", "droidrun", "--find-links", str(wheels_dir)],
-            env=clean_env,
-            check=False
-        )
+        # Check if pandas is already installed (from Phase 3)
+        # If so, use --no-build-isolation to prevent rebuilding pandas
+        pandas_installed = python_pkg_installed("pandas", "pandas<2.3.0")
         
-        if result.returncode != 0:
-            log_warning("Installation from wheels failed, trying PyPI...")
+        if pandas_installed:
+            log_info("pandas is already installed, using --no-build-isolation to prevent rebuild...")
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "--no-cache-dir", 
-                 "--upgrade-strategy", "only-if-needed", "droidrun"],
+                 "--no-build-isolation", "droidrun", "--find-links", str(wheels_dir)],
                 env=clean_env,
                 check=False
             )
+            
+            if result.returncode != 0:
+                log_warning("--no-build-isolation failed, trying normal install...")
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "--no-cache-dir", 
+                     "--upgrade-strategy", "only-if-needed", "droidrun", "--find-links", str(wheels_dir)],
+                    env=clean_env,
+                    check=False
+                )
+        else:
+            # Normal install if pandas is not installed
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "--no-cache-dir", 
+                 "--upgrade-strategy", "only-if-needed", "droidrun", "--find-links", str(wheels_dir)],
+                env=clean_env,
+                check=False
+            )
+        
+        if result.returncode != 0:
+            log_warning("Installation from wheels failed, trying PyPI...")
+            if pandas_installed:
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "--no-cache-dir", 
+                     "--no-build-isolation", "droidrun"],
+                    env=clean_env,
+                    check=False
+                )
+            else:
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "--no-cache-dir", 
+                     "--upgrade-strategy", "only-if-needed", "droidrun"],
+                    env=clean_env,
+                    check=False
+                )
         
         if result.returncode != 0:
             log_error("Failed to install droidrun core")
