@@ -10,11 +10,9 @@ current_dir = Path(__file__).parent.absolute()
 sys.path.insert(0, str(current_dir))
 
 try:
-    from .common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME
-    from .build_utils import build_package
+    from .common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME, get_clean_env, log_info, log_success, log_error
 except ImportError:
-    from common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME
-    from build_utils import build_package
+    from common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME, get_clean_env, log_info, log_success, log_error
 
 
 def find_wheel(name: str) -> Path:
@@ -57,14 +55,25 @@ def main() -> int:
             mark_phase_complete(4)
             return 0
     
-    # Build from source
+    # Build from source - jiter is Rust-based, doesn't need CC/CXX
     if not python_pkg_installed("maturin", "maturin"):
+        log_error("maturin is required but not installed")
         return 1
     
-    if build_package("jiter", "jiter==0.12.0"):
+    log_info("Installing jiter from source...")
+    clean_env = get_clean_env()
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--no-cache-dir", "jiter==0.12.0"],
+        env=clean_env,
+        check=False
+    )
+    
+    if result.returncode == 0 and python_pkg_installed("jiter", "jiter==0.12.0"):
+        log_success("jiter installed successfully")
         mark_phase_complete(4)
         return 0
     
+    log_error("Failed to install jiter")
     return 1
 
 

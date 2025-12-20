@@ -396,9 +396,9 @@ def setup_build_environment() -> None:
     os.environ["CMAKE_PREFIX_PATH"] = PREFIX
     os.environ["CMAKE_INCLUDE_PATH"] = f"{PREFIX}/include"
     
-    # Compiler environment variables
-    os.environ["CC"] = f"{PREFIX}/bin/clang"
-    os.environ["CXX"] = f"{PREFIX}/bin/clang++"
+    # Note: CC and CXX are NOT set by default
+    # Only set them for packages that specifically need compiler overrides
+    # Most packages work better with system defaults
     
     # Temporary directory
     tmpdir = HOME / "tmp"
@@ -412,6 +412,26 @@ def setup_build_environment() -> None:
     
     log_success("Build environment configured")
     save_env_vars()
+
+
+def get_clean_env() -> dict:
+    """Get clean environment without CC/CXX overrides for packages that don't need them."""
+    import os
+    clean_env = os.environ.copy()
+    # Remove compiler overrides that can interfere with builds
+    clean_env.pop("CC", None)
+    clean_env.pop("CXX", None)
+    return clean_env
+
+
+def get_build_env_with_compilers() -> dict:
+    """Get build environment with CC/CXX overrides for packages that need them."""
+    import os
+    build_env = os.environ.copy()
+    # Set compiler overrides for packages that need them
+    build_env["CC"] = f"{PREFIX}/bin/clang"
+    build_env["CXX"] = f"{PREFIX}/bin/clang++"
+    return build_env
 
 
 def init_logging() -> None:
