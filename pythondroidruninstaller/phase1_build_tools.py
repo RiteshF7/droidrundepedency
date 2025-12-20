@@ -46,8 +46,15 @@ def main() -> int:
     if IS_TERMUX and command_exists("pkg"):
         if not pkg_installed("python-pip"):
             subprocess.run(["pkg", "install", "-y", "python-pip"], check=False)
-        if not pkg_installed("rust"):
-            subprocess.run(["pkg", "install", "-y", "rust"], check=False)
+    
+    # Install Rust via rustup instead of pkg (more reliable)
+    if not command_exists("rustc"):
+        subprocess.run(["curl", "--proto", "=https", "--tlsv1.2", "-sSf", "https://sh.rustup.rs", "-o", "/tmp/rustup-init.sh"], check=False)
+        subprocess.run(["sh", "/tmp/rustup-init.sh", "-y", "--default-toolchain", "stable"], check=False)
+        # Add rust to PATH
+        rust_env = Path.home() / ".cargo" / "env"
+        if rust_env.exists():
+            os.environ["PATH"] = f"{Path.home() / '.cargo' / 'bin'}:{os.environ.get('PATH', '')}"
     
     # Essential tools
     essential = [
