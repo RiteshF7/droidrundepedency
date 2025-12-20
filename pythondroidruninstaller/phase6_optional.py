@@ -64,18 +64,14 @@ def main() -> int:
     
     # Install remaining packages directly from source using pip
     # This is simpler and more reliable than the build_package approach
+    # Note: Direct pip install works better than setting CXXFLAGS which can cause build issues
     for pkg in missing:
         log_info(f"Installing {pkg} from source...")
         
-        # Set environment variables if needed
-        env = os.environ.copy()
-        if pkg == "tokenizers":
-            env["CXXFLAGS"] = "-D_GNU_SOURCE"
-        
         # Use direct pip install - it will build from source automatically
+        # Don't set CXXFLAGS as it can interfere with the build process
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", "--no-cache-dir", pkg],
-            env=env,
             check=False
         )
         
