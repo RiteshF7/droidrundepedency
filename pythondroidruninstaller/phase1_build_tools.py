@@ -8,16 +8,33 @@ import os
 from pathlib import Path
 from typing import Optional
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add current directory to path for imports (works when running from within the package)
+current_dir = Path(__file__).parent.absolute()
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+# Also add parent directory (works when running as module)
+parent_dir = current_dir.parent
+if str(parent_dir) not in sys.path:
+    sys.path.insert(0, str(parent_dir))
 
-from pythondroidruninstaller.common import (
-    log_info, log_success, log_warning, log_error,
-    command_exists, pkg_installed, python_pkg_installed,
-    should_skip_phase, mark_phase_complete, save_env_vars,
-    load_env_vars, setup_build_environment, init_logging,
-    run_command, IS_TERMUX, HOME
-)
+# Try relative import first, then absolute
+try:
+    from .common import (
+        log_info, log_success, log_warning, log_error,
+        command_exists, pkg_installed, python_pkg_installed,
+        should_skip_phase, mark_phase_complete, save_env_vars,
+        load_env_vars, setup_build_environment, init_logging,
+        run_command, IS_TERMUX, HOME
+    )
+except ImportError:
+    # Fallback to direct import when running as script
+    from common import (
+        log_info, log_success, log_warning, log_error,
+        command_exists, pkg_installed, python_pkg_installed,
+        should_skip_phase, mark_phase_complete, save_env_vars,
+        load_env_vars, setup_build_environment, init_logging,
+        run_command, IS_TERMUX, HOME
+    )
 
 # Get script directory (parent of this file)
 SCRIPT_DIR = Path(__file__).parent.absolute()

@@ -24,13 +24,27 @@ pip install -r requirements.txt
 
 ### Run Phase 1 (Build Tools)
 
+**Option 1: Run directly from package directory (Recommended)**
 ```bash
-python3 -m pythondroidruninstaller.phase1_build_tools
+cd pythondroidruninstaller
+python3 phase1_build_tools.py
 ```
 
-Or directly:
+**Option 2: Use the entry point script**
+```bash
+cd pythondroidruninstaller
+python3 run_phase1.py
+```
+
+**Option 3: Run from parent directory**
 ```bash
 python3 pythondroidruninstaller/phase1_build_tools.py
+```
+
+**Option 4: Install as package (for module import)**
+```bash
+pip install -e .
+python3 -m pythondroidruninstaller.phase1_build_tools
 ```
 
 ### Force Rerun
