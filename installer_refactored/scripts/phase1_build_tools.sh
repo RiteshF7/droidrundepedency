@@ -151,12 +151,27 @@ if [ "$build_tools_needed" = true ]; then
     else
         log_success "maturin is already installed"
     fi
-    
-    log_success "Phase 1 complete: Build tools installed"
-else
-    log_success "Phase 1 complete: Build tools already installed"
 fi
 
+# Verify required build tools are actually installed before marking complete
+REQUIRED_TOOLS=("wheel" "setuptools" "Cython" "meson-python")
+MISSING_REQUIRED=()
+for tool in "${REQUIRED_TOOLS[@]}"; do
+    if ! python_pkg_installed "$tool" "$tool"; then
+        MISSING_REQUIRED+=("$tool")
+    fi
+done
+
+if [ ${#MISSING_REQUIRED[@]} -gt 0 ]; then
+    log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log_error "Phase 1 FAILED: Required build tools are not installed: ${MISSING_REQUIRED[*]}"
+    log_error "Phase will not be marked as complete"
+    log_error "Please fix the installation errors and rerun Phase 1"
+    log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    exit 1
+fi
+
+log_success "Phase 1 complete: All required build tools installed"
 mark_phase_complete "1"
 save_env_vars
 
