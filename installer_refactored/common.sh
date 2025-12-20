@@ -16,7 +16,11 @@ PACKAGE_NAME="${PACKAGE_NAME:-com.termux}"
 
 # Detect environment (Termux, WSL, or other)
 IS_TERMUX=false
-if [ -d "/data/data/com.termux/files/usr" ] || [ -n "${TERMUX_VERSION:-}" ]; then
+# Check for TERMUX_VERSION environment variable (most reliable indicator)
+if [ -n "${TERMUX_VERSION:-}" ]; then
+    IS_TERMUX=true
+# Also check for Termux PREFIX directory and verify it's actually Termux
+elif [ -d "/data/data/com.termux/files/usr" ] && [ -f "/data/data/com.termux/files/usr/bin/pkg" ]; then
     IS_TERMUX=true
 fi
 
