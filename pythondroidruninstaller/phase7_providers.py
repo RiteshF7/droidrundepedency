@@ -33,9 +33,11 @@ def main() -> int:
         clean_env.pop("CC", None)
         clean_env.pop("CXX", None)
         
-        # Try installing from wheels first, then PyPI
+        # Use --upgrade-strategy only-if-needed to avoid rebuilding existing packages
+        # This prevents pandas from being rebuilt when it's already installed
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--no-cache-dir", "droidrun", "--find-links", str(wheels_dir)],
+            [sys.executable, "-m", "pip", "install", "--no-cache-dir", 
+             "--upgrade-strategy", "only-if-needed", "droidrun", "--find-links", str(wheels_dir)],
             env=clean_env,
             check=False
         )
@@ -43,7 +45,8 @@ def main() -> int:
         if result.returncode != 0:
             log_warning("Installation from wheels failed, trying PyPI...")
             result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "--no-cache-dir", "droidrun"],
+                [sys.executable, "-m", "pip", "install", "--no-cache-dir", 
+                 "--upgrade-strategy", "only-if-needed", "droidrun"],
                 env=clean_env,
                 check=False
             )
@@ -87,7 +90,8 @@ def main() -> int:
         clean_env.pop("CXX", None)
         
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--no-cache-dir", f"droidrun[{provider}]", "--find-links", str(wheels_dir)],
+            [sys.executable, "-m", "pip", "install", "--no-cache-dir", 
+             "--upgrade-strategy", "only-if-needed", f"droidrun[{provider}]", "--find-links", str(wheels_dir)],
             env=clean_env,
             check=False
         )
