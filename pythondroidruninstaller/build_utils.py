@@ -10,10 +10,17 @@ import re
 from pathlib import Path
 from typing import Optional, List, Dict
 
-from .common import (
-    log_info, log_success, log_warning, log_error,
-    python_pkg_installed, run_command, HOME, ERROR_LOG_FILE
-)
+# Try relative import first, then absolute
+try:
+    from .common import (
+        log_info, log_success, log_warning, log_error,
+        python_pkg_installed, run_command, HOME, ERROR_LOG_FILE
+    )
+except ImportError:
+    from common import (
+        log_info, log_success, log_warning, log_error,
+        python_pkg_installed, run_command, HOME, ERROR_LOG_FILE
+    )
 
 
 def download_and_fix_source(pkg_name: str, version_spec: str, fix_type: str) -> Optional[Path]:
