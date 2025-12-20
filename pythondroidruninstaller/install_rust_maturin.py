@@ -68,55 +68,50 @@ def install_rust() -> bool:
 
 
 def install_maturin() -> bool:
-    """Install maturin - try pre-built wheel first, then pip."""
+    """Install maturin - REQUIRES pre-built wheel due to pkg rust LLVM issues."""
     if python_pkg_installed("maturin", "maturin<2,>=1.9.4"):
         log_success("maturin is already installed")
         return True
     
-    # Try pre-built wheel first
+    # CRITICAL: pkg rust has LLVM symbol linking issues, so maturin MUST use pre-built wheel
+    log_info("Searching for pre-built maturin wheel (required due to rust LLVM issues)...")
     maturin_wheel = find_wheel("maturin")
-    if maturin_wheel:
-        log_info(f"Found pre-built maturin wheel: {maturin_wheel.name}")
-        wheels_dir = Path(os.environ.get("WHEELS_DIR", str(HOME / "wheels")))
-        wheels_dir.mkdir(exist_ok=True)
-        shutil.copy2(maturin_wheel, wheels_dir / maturin_wheel.name)
-        
-        log_info("Installing maturin from pre-built wheel...")
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--find-links", str(wheels_dir), 
-             "--no-index", str(maturin_wheel)],
-            capture_output=True,
-            check=False
-        )
-        
-        if result.returncode == 0 and python_pkg_installed("maturin", "maturin<2,>=1.9.4"):
-            log_success("maturin installed from pre-built wheel")
-            return True
-        else:
-            log_warning("Pre-built wheel installation failed, trying pip install...")
     
-    # Try pip install
-    log_info("Installing maturin via pip (this may take a while)...")
+    if not maturin_wheel:
+        log_error("=" * 60)
+        log_error("CRITICAL: Pre-built maturin wheel not found!")
+        log_error("=" * 60)
+        log_error("Due to pkg rust LLVM symbol linking issues, maturin cannot be built from source.")
+        log_error("You MUST provide a pre-built maturin wheel in one of these locations:")
+        log_error(f"  - {Path(__file__).parent.parent.parent / 'depedencies' / 'wheels' / '_x86_64_wheels'}")
+        log_error(f"  - {HOME / 'droidrundepedency' / 'depedencies' / 'wheels' / '_x86_64_wheels'}")
+        log_error(f"  - {HOME / 'depedencies' / 'wheels' / '_x86_64_wheels'}")
+        log_error("=" * 60)
+        return False
+    
+    log_info(f"Found pre-built maturin wheel: {maturin_wheel.name}")
+    wheels_dir = Path(os.environ.get("WHEELS_DIR", str(HOME / "wheels")))
+    wheels_dir.mkdir(exist_ok=True)
+    shutil.copy2(maturin_wheel, wheels_dir / maturin_wheel.name)
+    
+    log_info("Installing maturin from pre-built wheel...")
     result = subprocess.run(
-        [sys.executable, "-m", "pip", "install", "maturin<2,>=1.9.4"],
+        [sys.executable, "-m", "pip", "install", "--find-links", str(wheels_dir), 
+         "--no-index", str(maturin_wheel)],
         capture_output=True,
         check=False
     )
     
-    if result.returncode == 0:
-        if python_pkg_installed("maturin", "maturin<2,>=1.9.4"):
-            log_success("maturin installed successfully via pip")
-            return True
-        else:
-            log_error("maturin pip install succeeded but package not importable")
-            return False
+    if result.returncode == 0 and python_pkg_installed("maturin", "maturin<2,>=1.9.4"):
+        log_success("maturin installed from pre-built wheel")
+        return True
     else:
-        log_error("Failed to install maturin via pip")
-        # Show error output
-        error_lines = result.stderr.decode('utf-8', errors='ignore').split('\n')
-        for line in error_lines[-20:]:
-            if line.strip() and any(x in line.lower() for x in ['error', 'failed', 'exception']):
-                log_error(f"  {line}")
+        log_error("Failed to install maturin from pre-built wheel")
+        if result.stderr:
+            error_output = result.stderr.decode('utf-8', errors='ignore')
+            for line in error_output.split('\n')[-10:]:
+                if line.strip():
+                    log_error(f"  {line}")
         return False
 
 
