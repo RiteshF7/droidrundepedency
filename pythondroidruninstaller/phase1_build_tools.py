@@ -12,12 +12,14 @@ sys.path.insert(0, str(current_dir))
 try:
     from .common import (
         should_skip_phase, mark_phase_complete, setup_build_environment,
-        python_pkg_installed, pkg_installed, command_exists, IS_TERMUX, HOME
+        python_pkg_installed, pkg_installed, command_exists, IS_TERMUX, HOME,
+        log_info, log_error
     )
 except ImportError:
     from common import (
         should_skip_phase, mark_phase_complete, setup_build_environment,
-        python_pkg_installed, pkg_installed, command_exists, IS_TERMUX, HOME
+        python_pkg_installed, pkg_installed, command_exists, IS_TERMUX, HOME,
+        log_info, log_error
     )
 
 
