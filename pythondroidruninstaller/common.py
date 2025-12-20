@@ -6,7 +6,7 @@ import subprocess
 import shutil
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 # Color codes for terminal output
 class Colors:
