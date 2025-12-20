@@ -27,6 +27,15 @@ load_env_vars
 # Setup build environment
 setup_build_environment
 
+# Check and install python-pip using pkg if not already installed
+if ! pkg_installed "python-pip"; then
+    log_info "Installing python-pip using pkg..."
+    pkg install -y python-pip
+    log_success "python-pip installed"
+else
+    log_success "python-pip is already installed"
+fi
+
 # Check and install build tools only if needed
 build_tools_needed=false
 for tool in "wheel" "setuptools" "Cython" "meson-python" "maturin"; do
