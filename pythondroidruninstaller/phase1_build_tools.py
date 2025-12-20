@@ -98,7 +98,14 @@ def main() -> int:
         if not python_pkg_installed(name, spec):
             subprocess.run([sys.executable, "-m", "pip", "install", spec], capture_output=True, check=False)
     
-    # maturin (optional)
+    # maturin (optional) - ensure rustup PATH is set before installing
+    cargo_bin = Path.home() / ".cargo" / "bin"
+    if cargo_bin.exists():
+        os.environ["PATH"] = f"{cargo_bin}:{os.environ.get('PATH', '')}"
+        # Ensure default toolchain is set
+        if (cargo_bin / "rustup").exists():
+            subprocess.run([str(cargo_bin / "rustup"), "default", "stable"], capture_output=True, check=False)
+    
     if not python_pkg_installed("maturin", "maturin<2,>=1.9.4"):
         maturin_wheel = find_wheel("maturin")
         if maturin_wheel:
@@ -107,10 +114,15 @@ def main() -> int:
             subprocess.run(
                 [sys.executable, "-m", "pip", "install", "--find-links", str(wheels_dir), 
                  "--no-index", str(maturin_wheel)],
-                check=False
+                check=False,
+                env=os.environ.copy()
             )
         else:
-            subprocess.run([sys.executable, "-m", "pip", "install", "maturin<2,>=1.9.4"], check=False)
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "maturin<2,>=1.9.4"],
+                check=False,
+                env=os.environ.copy()
+            )
     
     # Verify required tools
     for name, spec in essential:
