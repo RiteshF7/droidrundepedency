@@ -16,11 +16,25 @@ echo -e "${BLUE}droidrun Installation Script${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo
 
-# Check Termux environment
+# Check Termux environment (allow testing in other environments)
+if [ "$IS_TERMUX" = false ]; then
+    log_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log_warning "Warning: Not running in Termux environment"
+    log_warning "This script is designed for Termux on Android"
+    log_warning "Running in test mode - some features may not work correctly"
+    log_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+fi
+
+# Check PREFIX directory exists (or create it for testing)
 if [ ! -d "$PREFIX" ]; then
-    log_error "Termux PREFIX directory not found: $PREFIX"
-    log_error "This script must be run in Termux environment"
-    exit 1
+    if [ "$IS_TERMUX" = true ]; then
+        log_error "Termux PREFIX directory not found: $PREFIX"
+        log_error "This script must be run in Termux environment"
+        exit 1
+    else
+        log_warning "PREFIX directory not found: $PREFIX (non-Termux environment)"
+        log_info "For testing purposes, using PREFIX: $PREFIX"
+    fi
 fi
 
 log_info "PREFIX: $PREFIX"
@@ -72,11 +86,22 @@ for pkg in "${REQUIRED_PKGS[@]}"; do
 done
 
 if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
-    log_warning "Missing system packages: ${MISSING_PKGS[*]}"
-    log_info "Installing missing packages..."
-    pkg update -y
-    pkg install -y "${MISSING_PKGS[@]}"
-    log_success "System packages installed"
+    if [ "$IS_TERMUX" = true ]; then
+        log_warning "Missing system packages: ${MISSING_PKGS[*]}"
+        log_info "Installing missing packages..."
+        if command_exists pkg; then
+            pkg update -y
+            pkg install -y "${MISSING_PKGS[@]}"
+            log_success "System packages installed"
+        else
+            log_error "pkg command not found - cannot install packages"
+            exit 1
+        fi
+    else
+        log_warning "Missing system packages detected in non-Termux environment: ${MISSING_PKGS[*]}"
+        log_warning "Package installation skipped (test mode)"
+        log_info "In Termux, these would be installed with: pkg install ${MISSING_PKGS[*]}"
+    fi
 else
     log_success "All system dependencies are installed"
 fi

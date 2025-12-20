@@ -29,9 +29,18 @@ setup_build_environment
 
 # Check and install python-pip using pkg if not already installed
 if ! pkg_installed "python-pip"; then
-    log_info "Installing python-pip using pkg..."
-    pkg install -y python-pip
-    log_success "python-pip installed"
+    if [ "$IS_TERMUX" = true ] && command_exists pkg; then
+        log_info "Installing python-pip using pkg..."
+        pkg install -y python-pip
+        log_success "python-pip installed"
+    else
+        if [ "$IS_TERMUX" = false ]; then
+            log_warning "python-pip check skipped (non-Termux environment)"
+            log_info "Ensure pip is available: python3 -m ensurepip --upgrade"
+        else
+            log_error "pkg command not found - cannot install python-pip"
+        fi
+    fi
 else
     log_success "python-pip is already installed"
 fi

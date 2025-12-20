@@ -14,9 +14,20 @@ NC='\033[0m'
 # Package name (can be changed for different Termux variants)
 PACKAGE_NAME="${PACKAGE_NAME:-com.termux}"
 
+# Detect environment (Termux, WSL, or other)
+IS_TERMUX=false
+if [ -d "/data/data/com.termux/files/usr" ] || [ -n "${TERMUX_VERSION:-}" ]; then
+    IS_TERMUX=true
+fi
+
 # Setup PREFIX
 if [ -z "${PREFIX:-}" ]; then
-    export PREFIX="/data/data/${PACKAGE_NAME}/files/usr"
+    if [ "$IS_TERMUX" = true ]; then
+        export PREFIX="/data/data/${PACKAGE_NAME}/files/usr"
+    else
+        # For non-Termux environments (WSL/testing), use standard prefix
+        export PREFIX="${PREFIX:-/usr}"
+    fi
 fi
 
 # Setup script directory
@@ -60,7 +71,39 @@ command_exists() {
 
 # Check if package is installed
 pkg_installed() {
-    pkg list-installed 2>/dev/null | grep -q "^$1 " || return 1
+    local pkg_name=$1
+    if [ "$IS_TERMUX" = true ]; then
+        # Termux: use pkg command
+        if command_exists pkg; then
+            pkg list-installed 2>/dev/null | grep -q "^$pkg_name " || return 1
+        else
+            return 1
+        fi
+    else
+        # Non-Termux environments: try to detect package using system package manager
+        # For testing purposes, we'll check if common commands exist
+        case "$pkg_name" in
+            python|python-pip)
+                command_exists python3 && return 0 || return 1
+                ;;
+            rust)
+                command_exists rustc && return 0 || return 1
+                ;;
+            clang)
+                command_exists clang && return 0 || return 1
+                ;;
+            cmake)
+                command_exists cmake && return 0 || return 1
+                ;;
+            make)
+                command_exists make && return 0 || return 1
+                ;;
+            *)
+                # For other packages, assume not installed in non-Termux (for testing)
+                return 1
+                ;;
+        esac
+    fi
 }
 
 # Check if Python package is already installed and satisfies version requirement
@@ -520,7 +563,14 @@ load_env_vars() {
 setup_build_environment() {
     log_info "Setting up build environment..."
     
-    export PREFIX=${PREFIX:-/data/data/${PACKAGE_NAME}/files/usr}
+    # PREFIX should already be set, but ensure it has a default
+    if [ -z "${PREFIX:-}" ]; then
+        if [ "$IS_TERMUX" = true ]; then
+            export PREFIX="/data/data/${PACKAGE_NAME}/files/usr"
+        else
+            export PREFIX="/usr"
+        fi
+    fi
     
     # Set build parallelization based on available system memory
     get_total_mem_mb() {
