@@ -13,13 +13,13 @@ try:
     from .common import (
         should_skip_phase, mark_phase_complete, setup_build_environment,
         python_pkg_installed, pkg_installed, command_exists, IS_TERMUX, HOME,
-        log_info, log_error
+        log_info, log_error, log_success, log_warning
     )
 except ImportError:
     from common import (
         should_skip_phase, mark_phase_complete, setup_build_environment,
         python_pkg_installed, pkg_installed, command_exists, IS_TERMUX, HOME,
-        log_info, log_error
+        log_info, log_error, log_success, log_warning
     )
 
 
@@ -89,11 +89,40 @@ def main() -> int:
             # Try pip install - may fail if rust has linking issues, that's acceptable
             subprocess.run([sys.executable, "-m", "pip", "install", "maturin<2,>=1.9.4"], check=False)
     
-    # Verify required tools
+    # Verify required tools are installed and can be imported
+    missing = []
     for name, spec in essential:
         if not python_pkg_installed(name, spec):
-            return 1
+            missing.append(name)
     
+    if missing:
+        log_error(f"Phase 1 incomplete: missing packages: {', '.join(missing)}")
+        return 1
+    
+    # Verify packages can be imported
+    import_errors = []
+    for name, spec in essential:
+        import_name = name.replace('-', '_')
+        try:
+            __import__(import_name)
+        except ImportError as e:
+            import_errors.append(f"{name}: {e}")
+    
+    if import_errors:
+        log_error(f"Phase 1 verification failed - import errors: {import_errors}")
+        return 1
+    
+    # Verify maturin is installed (required for Phase 4)
+    if not python_pkg_installed("maturin", "maturin<2,>=1.9.4"):
+        log_warning("maturin not installed - Phase 4 (jiter) will fail")
+        # Don't fail Phase 1, but warn
+    
+    # Verify Rust is available (required for Phase 4)
+    if not command_exists("rustc"):
+        log_warning("rustc not found - Phase 4 (jiter) will fail")
+        # Don't fail Phase 1, but warn
+    
+    log_success("All Phase 1 packages verified and working")
     mark_phase_complete(1)
     return 0
 
