@@ -72,7 +72,19 @@ def main() -> int:
     
     for name, spec in essential:
         if not python_pkg_installed(name, spec):
-            subprocess.run([sys.executable, "-m", "pip", "install", spec], capture_output=True, check=False)
+            log_info(f"Installing {name}...")
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "--no-cache-dir", spec],
+                check=False
+            )
+            if result.returncode != 0:
+                log_error(f"Failed to install {name}")
+                return 1
+            # Verify it was actually installed
+            if not python_pkg_installed(name, spec):
+                log_error(f"{name} installation reported success but package not found")
+                return 1
+            log_success(f"{name} installed successfully")
     
     # maturin (optional - needed for Phase 4 jiter, but not critical for Phase 1)
     # Try pre-built wheel first, then pip install (may fail if rust has issues, that's OK)
