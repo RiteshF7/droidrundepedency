@@ -51,10 +51,17 @@ def main() -> int:
         mark_phase_complete(2)
         return 0
     
-    # Check for patchelf system package (recommended but not required)
+    # Install patchelf system package (required to avoid building Python patchelf)
     if not pkg_installed("patchelf"):
-        log_warning("patchelf system package not installed (recommended for numpy builds)")
-        log_info("You can install it with: pkg install -y patchelf")
+        log_info("Installing patchelf system package (required for numpy builds)...")
+        if IS_TERMUX and command_exists("pkg"):
+            result = subprocess.run(["pkg", "install", "-y", "patchelf"], check=False)
+            if result.returncode != 0:
+                log_warning("Failed to install patchelf system package - numpy build may fail")
+            else:
+                log_success("patchelf system package installed")
+        else:
+            log_warning("Cannot install patchelf - pkg command not available")
     
     log_info("Installing numpy...")
     # numpy needs CC/CXX overrides for C/Fortran extensions
