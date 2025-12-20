@@ -11,11 +11,9 @@ current_dir = Path(__file__).parent.absolute()
 sys.path.insert(0, str(current_dir))
 
 try:
-    from .common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME, log_error
-    from .build_utils import build_package
+    from .common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME, log_error, log_info, log_success
 except ImportError:
-    from common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME, log_error
-    from build_utils import build_package
+    from common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME, log_error, log_info, log_success
 
 
 def find_wheels(pkg_name: str) -> Path:
@@ -64,11 +62,33 @@ def main() -> int:
                 installed_from_wheels.append(pkg)
                 missing.remove(pkg)
     
-    # Build remaining from source
+    # Install remaining packages directly from source using pip
+    # This is simpler and more reliable than the build_package approach
     for pkg in missing:
-        env_vars = {"CXXFLAGS": "-D_GNU_SOURCE"} if pkg == "tokenizers" else None
-        if not build_package(pkg, pkg, env_vars=env_vars):
-            return 1  # Build failed
+        log_info(f"Installing {pkg} from source...")
+        
+        # Set environment variables if needed
+        env = os.environ.copy()
+        if pkg == "tokenizers":
+            env["CXXFLAGS"] = "-D_GNU_SOURCE"
+        
+        # Use direct pip install - it will build from source automatically
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--no-cache-dir", pkg],
+            env=env,
+            check=False
+        )
+        
+        if result.returncode != 0:
+            log_error(f"Failed to install {pkg}")
+            return 1
+        
+        # Verify installation
+        if not python_pkg_installed(pkg, pkg):
+            log_error(f"{pkg} installation completed but package not found")
+            return 1
+        
+        log_success(f"{pkg} installed successfully")
     
     # Verify all packages are installed
     still_missing = [pkg for pkg in packages if not python_pkg_installed(pkg, pkg)]
