@@ -47,45 +47,10 @@ def main() -> int:
         if not pkg_installed("python-pip"):
             subprocess.run(["pkg", "install", "-y", "python-pip"], check=False)
     
-    # Install Rust via rustup instead of pkg (more reliable for maturin)
-    # Check if rustup is installed, if not install it
-    if not command_exists("rustup"):
-        # Download and install rustup to home directory (more reliable than /tmp)
-        rustup_script = Path.home() / "rustup-init.sh"
-        result = subprocess.run(
-            ["curl", "--proto", "=https", "--tlsv1.2", "-sSf", "https://sh.rustup.rs", "-o", str(rustup_script)],
-            capture_output=True,
-            check=False
-        )
-        if result.returncode == 0 and rustup_script.exists():
-            subprocess.run(["sh", str(rustup_script), "-y", "--default-toolchain", "stable"], check=False)
-            rustup_script.unlink(missing_ok=True)
-    
-    # Ensure rustup default toolchain is set (needed for rustc to work)
-    cargo_bin = Path.home() / ".cargo" / "bin"
-    if cargo_bin.exists() and (cargo_bin / "rustup").exists():
-        os.environ["PATH"] = f"{cargo_bin}:{os.environ.get('PATH', '')}"
-        # Install stable toolchain first, then set as default
-        subprocess.run([str(cargo_bin / "rustup"), "toolchain", "install", "stable"], capture_output=True, check=False)
-        subprocess.run([str(cargo_bin / "rustup"), "default", "stable"], capture_output=True, check=False)
-    
-    # Add rustup cargo to PATH (takes precedence over pkg rust)
-    cargo_bin = Path.home() / ".cargo" / "bin"
-    if cargo_bin.exists():
-        os.environ["PATH"] = f"{cargo_bin}:{os.environ.get('PATH', '')}"
-        # Also source the env file if it exists
-        cargo_env = Path.home() / ".cargo" / "env"
-        if cargo_env.exists():
-            # Read and apply environment variables from cargo env
-            try:
-                with open(cargo_env, 'r') as f:
-                    for line in f:
-                        if line.startswith('export PATH='):
-                            # Extract PATH value
-                            path_val = line.split('export PATH=')[1].strip().strip('"').strip("'")
-                            os.environ["PATH"] = f"{path_val}:{os.environ.get('PATH', '')}"
-            except Exception:
-                pass
+    # Install Rust using pkg (as per documentation)
+    if IS_TERMUX and command_exists("pkg"):
+        if not pkg_installed("rust"):
+            subprocess.run(["pkg", "install", "-y", "rust"], check=False)
     
     # Essential tools
     essential = [
@@ -99,14 +64,8 @@ def main() -> int:
         if not python_pkg_installed(name, spec):
             subprocess.run([sys.executable, "-m", "pip", "install", spec], capture_output=True, check=False)
     
-    # maturin (optional) - ensure rustup PATH is set before installing
-    cargo_bin = Path.home() / ".cargo" / "bin"
-    if cargo_bin.exists():
-        os.environ["PATH"] = f"{cargo_bin}:{os.environ.get('PATH', '')}"
-        # Ensure default toolchain is set
-        if (cargo_bin / "rustup").exists():
-            subprocess.run([str(cargo_bin / "rustup"), "default", "stable"], capture_output=True, check=False)
-    
+    # maturin (optional - needed for Phase 4 jiter, but not critical for Phase 1)
+    # Try pre-built wheel first, then pip install (may fail if rust has issues, that's OK)
     if not python_pkg_installed("maturin", "maturin<2,>=1.9.4"):
         maturin_wheel = find_wheel("maturin")
         if maturin_wheel:
@@ -115,15 +74,11 @@ def main() -> int:
             subprocess.run(
                 [sys.executable, "-m", "pip", "install", "--find-links", str(wheels_dir), 
                  "--no-index", str(maturin_wheel)],
-                check=False,
-                env=os.environ.copy()
+                check=False
             )
         else:
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", "maturin<2,>=1.9.4"],
-                check=False,
-                env=os.environ.copy()
-            )
+            # Try pip install - may fail if rust has linking issues, that's acceptable
+            subprocess.run([sys.executable, "-m", "pip", "install", "maturin<2,>=1.9.4"], check=False)
     
     # Verify required tools
     for name, spec in essential:
