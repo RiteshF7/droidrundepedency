@@ -65,7 +65,8 @@ def main() -> int:
     cargo_bin = Path.home() / ".cargo" / "bin"
     if cargo_bin.exists() and (cargo_bin / "rustup").exists():
         os.environ["PATH"] = f"{cargo_bin}:{os.environ.get('PATH', '')}"
-        # Set default toolchain if rustup exists
+        # Install stable toolchain first, then set as default
+        subprocess.run([str(cargo_bin / "rustup"), "toolchain", "install", "stable"], capture_output=True, check=False)
         subprocess.run([str(cargo_bin / "rustup"), "default", "stable"], capture_output=True, check=False)
     
     # Add rustup cargo to PATH (takes precedence over pkg rust)
