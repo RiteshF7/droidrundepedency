@@ -50,9 +50,16 @@ def main() -> int:
     # Install Rust via rustup instead of pkg (more reliable for maturin)
     # Check if rustup is installed, if not install it
     if not command_exists("rustup"):
-        # Download and install rustup
-        subprocess.run(["curl", "--proto", "=https", "--tlsv1.2", "-sSf", "https://sh.rustup.rs", "-o", "/tmp/rustup-init.sh"], check=False)
-        subprocess.run(["sh", "/tmp/rustup-init.sh", "-y", "--default-toolchain", "stable"], check=False)
+        # Download and install rustup to home directory (more reliable than /tmp)
+        rustup_script = Path.home() / "rustup-init.sh"
+        result = subprocess.run(
+            ["curl", "--proto", "=https", "--tlsv1.2", "-sSf", "https://sh.rustup.rs", "-o", str(rustup_script)],
+            capture_output=True,
+            check=False
+        )
+        if result.returncode == 0 and rustup_script.exists():
+            subprocess.run(["sh", str(rustup_script), "-y", "--default-toolchain", "stable"], check=False)
+            rustup_script.unlink(missing_ok=True)
     
     # Add rustup cargo to PATH (takes precedence over pkg rust)
     cargo_bin = Path.home() / ".cargo" / "bin"
@@ -62,12 +69,15 @@ def main() -> int:
         cargo_env = Path.home() / ".cargo" / "env"
         if cargo_env.exists():
             # Read and apply environment variables from cargo env
-            with open(cargo_env, 'r') as f:
-                for line in f:
-                    if line.startswith('export PATH='):
-                        # Extract PATH value
-                        path_val = line.split('export PATH=')[1].strip().strip('"').strip("'")
-                        os.environ["PATH"] = f"{path_val}:{os.environ.get('PATH', '')}"
+            try:
+                with open(cargo_env, 'r') as f:
+                    for line in f:
+                        if line.startswith('export PATH='):
+                            # Extract PATH value
+                            path_val = line.split('export PATH=')[1].strip().strip('"').strip("'")
+                            os.environ["PATH"] = f"{path_val}:{os.environ.get('PATH', '')}"
+            except Exception:
+                pass
     
     # Essential tools
     essential = [
