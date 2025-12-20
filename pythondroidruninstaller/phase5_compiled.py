@@ -166,6 +166,34 @@ def main() -> int:
         else:
             log_warning("pillow installation failed, but continuing...")
     
+    # Verify required packages are installed (grpcio is required, others optional)
+    required_packages = [
+        ("grpcio", "grpcio"),
+    ]
+    
+    missing = []
+    for pkg_name, version_spec in required_packages:
+        if not python_pkg_installed(pkg_name, version_spec):
+            missing.append(pkg_name)
+    
+    if missing:
+        log_error(f"Phase 5 incomplete: missing required packages: {', '.join(missing)}")
+        return 1
+    
+    # Verify grpcio can be imported
+    try:
+        import grpc
+        log_success("grpcio verified and working")
+    except ImportError as e:
+        log_error(f"grpcio verification failed: {e}")
+        return 1
+    
+    # Optional packages status
+    optional_packages = ["pyarrow", "psutil", "pillow"]
+    installed_optional = [pkg for pkg in optional_packages if python_pkg_installed(pkg, pkg)]
+    if installed_optional:
+        log_info(f"Optional packages installed: {', '.join(installed_optional)}")
+    
     mark_phase_complete(5)
     return 0
 

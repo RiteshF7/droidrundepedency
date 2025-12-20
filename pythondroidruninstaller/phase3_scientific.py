@@ -118,6 +118,32 @@ def main() -> int:
             if result.returncode != 0:
                 log_warning("scikit-learn installation failed, but continuing...")
     
+    # Verify all required packages are installed before marking complete
+    required_packages = [
+        ("scipy", "scipy>=1.8.0,<1.17.0"),
+        ("pandas", "pandas<2.3.0"),
+        ("scikit-learn", "scikit-learn>=1.0.0"),
+    ]
+    
+    missing = []
+    for pkg_name, version_spec in required_packages:
+        if not python_pkg_installed(pkg_name, version_spec):
+            missing.append(pkg_name)
+    
+    if missing:
+        log_error(f"Phase 3 incomplete: missing packages: {', '.join(missing)}")
+        return 1
+    
+    # Verify packages can be imported
+    try:
+        import scipy
+        import pandas
+        import sklearn
+        log_success("All Phase 3 packages verified and working")
+    except ImportError as e:
+        log_error(f"Phase 3 verification failed: {e}")
+        return 1
+    
     mark_phase_complete(3)
     return 0
 

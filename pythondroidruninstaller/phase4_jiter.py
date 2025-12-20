@@ -37,8 +37,14 @@ def main() -> int:
     setup_build_environment()
     
     if python_pkg_installed("jiter", "jiter==0.12.0"):
-        mark_phase_complete(4)
-        return 0
+        # Verify jiter can be imported
+        try:
+            import jiter
+            log_success("jiter is already installed and verified")
+            mark_phase_complete(4)
+            return 0
+        except ImportError:
+            log_warning("jiter marked as installed but import failed, reinstalling...")
     
     # Try pre-built wheel
     jiter_wheel = find_wheel("jiter")
@@ -52,8 +58,13 @@ def main() -> int:
             check=False
         )
         if result.returncode == 0 and python_pkg_installed("jiter", "jiter==0.12.0"):
-            mark_phase_complete(4)
-            return 0
+            try:
+                import jiter
+                log_success("jiter installed from wheel and verified")
+                mark_phase_complete(4)
+                return 0
+            except ImportError:
+                log_warning("jiter wheel installed but import failed, trying source build...")
     
     # Build from source - jiter is Rust-based, doesn't need CC/CXX
     if not python_pkg_installed("maturin", "maturin"):
@@ -69,9 +80,15 @@ def main() -> int:
     )
     
     if result.returncode == 0 and python_pkg_installed("jiter", "jiter==0.12.0"):
-        log_success("jiter installed successfully")
-        mark_phase_complete(4)
-        return 0
+        # Verify jiter can be imported
+        try:
+            import jiter
+            log_success("jiter installed and verified successfully")
+            mark_phase_complete(4)
+            return 0
+        except ImportError as e:
+            log_error(f"jiter installed but import failed: {e}")
+            return 1
     
     log_error("Failed to install jiter")
     return 1

@@ -148,6 +148,18 @@ def main() -> int:
         log_warning("No providers were installed")
         return 1
     
+    # Verify droidrun core is installed and can be imported
+    if not python_pkg_installed("droidrun", "droidrun"):
+        log_error("droidrun core not installed - Phase 7 incomplete")
+        return 1
+    
+    try:
+        import droidrun
+        log_success("droidrun core verified and working")
+    except ImportError as e:
+        log_error(f"droidrun verification failed: {e}")
+        return 1
+    
     log_success(f"Phase 7 complete: Installed {len(installed_providers)} out of {len(providers)} providers")
     mark_phase_complete(7)
     return 0

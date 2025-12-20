@@ -93,12 +93,26 @@ def main() -> int:
         
         log_success(f"{pkg} installed successfully")
     
-    # Verify all packages are installed
+    # Verify all packages are installed and can be imported
     still_missing = [pkg for pkg in packages if not python_pkg_installed(pkg, pkg)]
     if still_missing:
         log_error(f"Phase 6 failed: packages still missing: {still_missing}")
         return 1
     
+    # Verify packages can be imported
+    import_errors = []
+    for pkg in packages:
+        import_name = pkg.replace('-', '_')
+        try:
+            __import__(import_name)
+        except ImportError as e:
+            import_errors.append(f"{pkg}: {e}")
+    
+    if import_errors:
+        log_error(f"Phase 6 verification failed - import errors: {import_errors}")
+        return 1
+    
+    log_success("All Phase 6 packages verified and working")
     mark_phase_complete(6)
     return 0
 
