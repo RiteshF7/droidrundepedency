@@ -10,9 +10,9 @@ current_dir = Path(__file__).parent.absolute()
 sys.path.insert(0, str(current_dir))
 
 try:
-    from .common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, get_build_env_with_compilers, log_info, log_success, log_error, log_warning, pkg_installed
+    from .common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, get_build_env_with_compilers, log_info, log_success, log_error, log_warning, pkg_installed, IS_TERMUX, command_exists
 except ImportError:
-    from common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, get_build_env_with_compilers, log_info, log_success, log_error, log_warning, pkg_installed
+    from common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, get_build_env_with_compilers, log_info, log_success, log_error, log_warning, pkg_installed, IS_TERMUX, command_exists
 
 
 def verify_numpy() -> bool:
