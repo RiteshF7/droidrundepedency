@@ -61,6 +61,13 @@ def main() -> int:
             subprocess.run(["sh", str(rustup_script), "-y", "--default-toolchain", "stable"], check=False)
             rustup_script.unlink(missing_ok=True)
     
+    # Ensure rustup default toolchain is set (needed for rustc to work)
+    cargo_bin = Path.home() / ".cargo" / "bin"
+    if cargo_bin.exists() and (cargo_bin / "rustup").exists():
+        os.environ["PATH"] = f"{cargo_bin}:{os.environ.get('PATH', '')}"
+        # Set default toolchain if rustup exists
+        subprocess.run([str(cargo_bin / "rustup"), "default", "stable"], capture_output=True, check=False)
+    
     # Add rustup cargo to PATH (takes precedence over pkg rust)
     cargo_bin = Path.home() / ".cargo" / "bin"
     if cargo_bin.exists():
