@@ -45,112 +45,137 @@ else
     log_success "python-pip is already installed"
 fi
 
-# Check and install build tools only if needed
-build_tools_needed=false
-for tool in "wheel" "setuptools" "Cython" "meson-python" "maturin"; do
+# Define essential and optional tools
+ESSENTIAL_TOOLS=("wheel" "setuptools" "Cython" "meson-python")
+OPTIONAL_TOOLS=("maturin")
+
+# Check if essential tools are needed
+essential_tools_needed=false
+for tool in "${ESSENTIAL_TOOLS[@]}"; do
     if ! python_pkg_installed "$tool" "$tool"; then
-        build_tools_needed=true
+        essential_tools_needed=true
         break
     fi
 done
 
-if [ "$build_tools_needed" = true ]; then
+# Install essential build tools first
+if [ "$essential_tools_needed" = true ]; then
+    log_info "Installing essential build tools..."
+    
     # Install wheel and setuptools only if needed
     if ! python_pkg_installed "wheel" "wheel" || ! python_pkg_installed "setuptools" "setuptools"; then
-        python3 -m pip install --upgrade wheel setuptools --quiet
+        log_info "Installing wheel and setuptools..."
+        if ! python3 -m pip install --upgrade wheel setuptools --quiet; then
+            log_error "Failed to install wheel and setuptools"
+            exit 1
+        fi
+        log_success "wheel and setuptools installed"
     fi
     
     # Install Cython only if needed
     if ! python_pkg_installed "Cython" "Cython"; then
-        python3 -m pip install Cython --quiet
+        log_info "Installing Cython..."
+        if ! python3 -m pip install Cython --quiet; then
+            log_error "Failed to install Cython"
+            exit 1
+        fi
+        log_success "Cython installed"
     fi
     
     # Install meson-python only if needed
     if ! python_pkg_installed "meson-python" "meson-python<0.19.0,>=0.16.0"; then
-        python3 -m pip install "meson-python<0.19.0,>=0.16.0" --quiet
+        log_info "Installing meson-python..."
+        if ! python3 -m pip install "meson-python<0.19.0,>=0.16.0" --quiet; then
+            log_error "Failed to install meson-python"
+            exit 1
+        fi
+        log_success "meson-python installed"
     fi
     
-    # Install maturin only if needed - try pre-built wheel first
-    # Note: maturin is optional for Phase 1, but required for Phase 4 (jiter)
-    if ! python_pkg_installed "maturin" "maturin<2,>=1.9.4"; then
-        log_info "Installing maturin (required for Phase 4: jiter)..."
-        MATURIN_INSTALLED=false
-        maturin_wheel=""
-        DEPENDENCIES_WHEELS_DIRS=(
-            "${SCRIPT_DIR}/../../depedencies/wheels"
-            "${SCRIPT_DIR}/../depedencies/wheels"
-            "${HOME}/droidrundepedency/depedencies/wheels"
-            "${HOME}/depedencies/wheels"
-        )
-        for DEPENDENCIES_WHEELS_DIR in "${DEPENDENCIES_WHEELS_DIRS[@]}"; do
-            if [ -d "$DEPENDENCIES_WHEELS_DIR" ]; then
-                ARCH_DIR=""
-                if [ -d "${DEPENDENCIES_WHEELS_DIR}/_x86_64_wheels" ]; then
-                    ARCH_DIR="${DEPENDENCIES_WHEELS_DIR}/_x86_64_wheels"
-                elif [ -d "${DEPENDENCIES_WHEELS_DIR}/arch64_wheels" ]; then
-                    ARCH_DIR="${DEPENDENCIES_WHEELS_DIR}/arch64_wheels"
-                fi
-                if [ -n "$ARCH_DIR" ]; then
-                    maturin_wheel=$(find "$ARCH_DIR" -name "maturin*.whl" 2>/dev/null | head -1)
-                    if [ -n "$maturin_wheel" ] && [ -f "$maturin_wheel" ]; then
-                        log_info "Found pre-built maturin wheel: $(basename "$maturin_wheel")"
-                        cp "$maturin_wheel" "$WHEELS_DIR/" 2>/dev/null || true
-                        break
-                    fi
-                fi
+    log_success "All essential build tools installed"
+else
+    log_success "All essential build tools are already installed"
+fi
+
+# Install optional tools (maturin) - only after essential tools are confirmed
+log_info "Checking optional build tools..."
+if ! python_pkg_installed "maturin" "maturin<2,>=1.9.4"; then
+    log_info "Attempting to install maturin (optional for Phase 1, required for Phase 4: jiter)..."
+    MATURIN_INSTALLED=false
+    maturin_wheel=""
+    DEPENDENCIES_WHEELS_DIRS=(
+        "${SCRIPT_DIR}/../../depedencies/wheels"
+        "${SCRIPT_DIR}/../depedencies/wheels"
+        "${HOME}/droidrundepedency/depedencies/wheels"
+        "${HOME}/depedencies/wheels"
+    )
+    for DEPENDENCIES_WHEELS_DIR in "${DEPENDENCIES_WHEELS_DIRS[@]}"; do
+        if [ -d "$DEPENDENCIES_WHEELS_DIR" ]; then
+            ARCH_DIR=""
+            if [ -d "${DEPENDENCIES_WHEELS_DIR}/_x86_64_wheels" ]; then
+                ARCH_DIR="${DEPENDENCIES_WHEELS_DIR}/_x86_64_wheels"
+            elif [ -d "${DEPENDENCIES_WHEELS_DIR}/arch64_wheels" ]; then
+                ARCH_DIR="${DEPENDENCIES_WHEELS_DIR}/arch64_wheels"
             fi
-        done
-        
-        # Try installing from pre-built wheel first
-        if [ -n "$maturin_wheel" ] && [ -f "$maturin_wheel" ]; then
-            if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$maturin_wheel" 2>&1 | tee -a "$LOG_FILE"; then
-                if python_pkg_installed "maturin" "maturin<2,>=1.9.4"; then
-                    log_success "maturin installed from pre-built wheel"
-                    MATURIN_INSTALLED=true
+            if [ -n "$ARCH_DIR" ]; then
+                maturin_wheel=$(find "$ARCH_DIR" -name "maturin*.whl" 2>/dev/null | head -1)
+                if [ -n "$maturin_wheel" ] && [ -f "$maturin_wheel" ]; then
+                    log_info "Found pre-built maturin wheel: $(basename "$maturin_wheel")"
+                    cp "$maturin_wheel" "$WHEELS_DIR/" 2>/dev/null || true
+                    break
                 fi
             fi
         fi
-        
-        # Try PyPI only if wheel installation failed
-        if [ "$MATURIN_INSTALLED" = false ]; then
-            # Check if Rust is available (required for building maturin from source)
-            if ! command_exists rustc; then
-                log_warning "Rust compiler not found - cannot build maturin from source"
-                log_warning "maturin installation skipped (will be needed for Phase 4: jiter)"
-                log_warning "Solution: Install Rust with 'pkg install rust' or provide pre-built maturin wheel"
-                echo "=== maturin installation skipped at $(date) ===" >> "$ERROR_LOG_FILE"
-                echo "Reason: Rust compiler not found (required for building from source)" >> "$ERROR_LOG_FILE"
-                echo "maturin is optional for Phase 1 but required for Phase 4 (jiter)" >> "$ERROR_LOG_FILE"
-                echo "" >> "$ERROR_LOG_FILE"
-            else
-                log_info "Attempting to install maturin from PyPI (Rust is available)..."
-                if python3 -m pip install "maturin<2,>=1.9.4" 2>&1 | tee -a "$LOG_FILE"; then
-                    if python_pkg_installed "maturin" "maturin<2,>=1.9.4"; then
-                        log_success "maturin installed from PyPI"
-                        MATURIN_INSTALLED=true
-                    fi
-                fi
-            fi
-            
-            # Final check - log warning if still not installed
-            if [ "$MATURIN_INSTALLED" = false ]; then
-                log_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                log_warning "Failed to install maturin - this is optional for Phase 1"
-                log_warning "maturin will be required for Phase 4 (jiter installation)"
-                log_warning "Possible solutions:"
-                log_warning "  1. Provide pre-built maturin wheel in dependencies/wheels directory"
-                log_warning "  2. Install Rust compiler: pkg install rust"
-                log_warning "  3. Phase 4 will attempt to use pre-built jiter wheel (recommended)"
-                log_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                echo "=== maturin installation error at $(date) ===" >> "$ERROR_LOG_FILE"
-                echo "Failed to install from both pre-built wheel and PyPI" >> "$ERROR_LOG_FILE"
-                echo "Platform may not support maturin compilation from source" >> "$ERROR_LOG_FILE"
-                echo "" >> "$ERROR_LOG_FILE"
+    done
+    
+    # Try installing from pre-built wheel first
+    if [ -n "$maturin_wheel" ] && [ -f "$maturin_wheel" ]; then
+        if python3 -m pip install --find-links "$WHEELS_DIR" --no-index "$maturin_wheel" 2>&1 | tee -a "$LOG_FILE"; then
+            if python_pkg_installed "maturin" "maturin<2,>=1.9.4"; then
+                log_success "maturin installed from pre-built wheel"
+                MATURIN_INSTALLED=true
             fi
         fi
-    else
-        log_success "maturin is already installed"
     fi
+    
+    # Try PyPI only if wheel installation failed
+    if [ "$MATURIN_INSTALLED" = false ]; then
+        # Check if Rust is available (required for building maturin from source)
+        if ! command_exists rustc; then
+            log_info "Rust compiler not found - skipping maturin installation (optional for Phase 1)"
+            log_info "Note: maturin will be needed for Phase 4 (jiter)"
+            log_info "Solution: Install Rust with 'pkg install rust' or provide pre-built maturin wheel"
+            echo "=== maturin installation skipped at $(date) ===" >> "$LOG_FILE"
+            echo "Reason: Rust compiler not found (optional tool)" >> "$LOG_FILE"
+            echo "" >> "$LOG_FILE"
+        else
+            log_info "Attempting to install maturin from PyPI (Rust is available)..."
+            if python3 -m pip install "maturin<2,>=1.9.4" 2>&1 | tee -a "$LOG_FILE"; then
+                if python_pkg_installed "maturin" "maturin<2,>=1.9.4"; then
+                    log_success "maturin installed from PyPI"
+                    MATURIN_INSTALLED=true
+                else
+                    log_info "maturin installation from PyPI completed but verification failed"
+                fi
+            else
+                log_info "maturin installation from PyPI failed (optional tool)"
+            fi
+        fi
+        
+        # Final check - log info if still not installed (not an error, it's optional)
+        if [ "$MATURIN_INSTALLED" = false ]; then
+            log_info "maturin installation skipped (optional for Phase 1)"
+            log_info "Note: maturin will be needed for Phase 4 (jiter). Solutions:"
+            log_info "  - Provide pre-built maturin wheel in dependencies/wheels directory"
+            log_info "  - Install Rust: pkg install rust (then rerun this phase)"
+            log_info "  - Phase 4 can use pre-built jiter wheel (recommended if available)"
+            echo "=== maturin installation skipped at $(date) ===" >> "$LOG_FILE"
+            echo "Optional tool - Phase 1 can complete without it" >> "$LOG_FILE"
+            echo "" >> "$LOG_FILE"
+        fi
+    fi
+else
+    log_success "maturin is already installed"
 fi
 
 # Verify required build tools are actually installed before marking complete
