@@ -67,13 +67,19 @@ def main() -> int:
         check=False
     )
     
+    # Check installation result
+    if result.returncode != 0:
+        log_error(f"numpy installation failed with exit code {result.returncode}")
+        log_error("Check the output above for detailed error messages")
+        return 1
+    
     # Verify installation worked
-    if result.returncode == 0 and verify_numpy():
+    if verify_numpy():
         log_success("numpy installed and verified successfully")
         mark_phase_complete(2)
         return 0
     
-    log_error("Failed to install or verify numpy")
+    log_error("numpy installation reported success but verification failed")
     return 1
 
 
