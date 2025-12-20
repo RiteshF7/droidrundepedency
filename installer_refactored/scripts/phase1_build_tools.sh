@@ -154,54 +154,26 @@ if ! python_pkg_installed "maturin" "maturin<2,>=1.9.4"; then
                 log_success "maturin installed from pre-built wheel"
                 MATURIN_INSTALLED=true
             fi
+        else
+            log_info "Failed to install maturin from pre-built wheel, trying PyPI..."
         fi
     fi
     
-    # Try PyPI only if wheel installation failed
+    # Try PyPI only if wheel installation failed (matching old script behavior)
     if [ "$MATURIN_INSTALLED" = false ]; then
-        # Check if Rust compiler actually works (not just if command exists)
-        # Test by trying to run rustc --version
-        RUST_WORKS=false
-        if command_exists rustc; then
-            if rustc --version >/dev/null 2>&1; then
-                RUST_WORKS=true
-            fi
-        fi
-        
-        if [ "$RUST_WORKS" = false ]; then
-            log_info "Rust compiler not working (rustc cannot execute) - skipping maturin installation (optional for Phase 1)"
-            log_info "Note: Rust is installed but rustc has library linking issues (known Termux issue)"
-            log_info "maturin will be needed for Phase 4 (jiter). Solutions:"
-            log_info "  - Provide pre-built maturin wheel in dependencies/wheels directory (recommended)"
-            log_info "  - Provide pre-built jiter wheel for Phase 4 (recommended)"
-            log_info "  - Rust installation in Termux may have compatibility issues"
-            echo "=== maturin installation skipped at $(date) ===" >> "$LOG_FILE"
-            echo "Reason: Rust compiler installed but cannot execute (library linking issue)" >> "$LOG_FILE"
-            echo "This is a known issue with Rust in Termux on Android" >> "$LOG_FILE"
-            echo "" >> "$LOG_FILE"
-        else
-            log_info "Attempting to install maturin from PyPI (Rust is available)..."
-            if python3 -m pip install "maturin<2,>=1.9.4" 2>&1 | tee -a "$LOG_FILE"; then
-                if python_pkg_installed "maturin" "maturin<2,>=1.9.4"; then
-                    log_success "maturin installed from PyPI"
-                    MATURIN_INSTALLED=true
-                else
-                    log_info "maturin installation from PyPI completed but verification failed"
-                fi
+        log_info "No pre-built maturin wheel found, installing from PyPI..."
+        if python3 -m pip install "maturin<2,>=1.9.4" 2>&1 | tee -a "$LOG_FILE"; then
+            if python_pkg_installed "maturin" "maturin<2,>=1.9.4"; then
+                log_success "maturin installed from PyPI"
+                MATURIN_INSTALLED=true
             else
-                log_info "maturin installation from PyPI failed (optional tool)"
+                log_info "maturin installation from PyPI completed but verification failed"
             fi
-        fi
-        
-        # Final check - log info if still not installed (not an error, it's optional)
-        if [ "$MATURIN_INSTALLED" = false ]; then
-            log_info "maturin installation skipped (optional for Phase 1)"
-            log_info "Note: maturin will be needed for Phase 4 (jiter). Solutions:"
-            log_info "  - Provide pre-built maturin wheel in dependencies/wheels directory"
-            log_info "  - Install Rust: pkg install rust (then rerun this phase)"
-            log_info "  - Phase 4 can use pre-built jiter wheel (recommended if available)"
-            echo "=== maturin installation skipped at $(date) ===" >> "$LOG_FILE"
-            echo "Optional tool - Phase 1 can complete without it" >> "$LOG_FILE"
+        else
+            log_info "maturin installation from PyPI failed (optional for Phase 1, required for Phase 4: jiter)"
+            log_info "Note: This may cause jiter build to fail in Phase 4 if no pre-built wheel is available"
+            echo "=== maturin installation failed at $(date) ===" >> "$LOG_FILE"
+            echo "Failed to install from PyPI (optional tool)" >> "$LOG_FILE"
             echo "" >> "$LOG_FILE"
         fi
     fi
