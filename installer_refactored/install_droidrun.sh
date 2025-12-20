@@ -147,7 +147,7 @@ for phase_entry in "${PHASES[@]}"; do
     fi
     
     # Run phase script
-    phase_script_path="$SCRIPT_DIR/$phase_script"
+    phase_script_path="$SCRIPT_DIR/scripts/$phase_script"
     if [ ! -f "$phase_script_path" ]; then
         log_error "Phase script not found: $phase_script_path"
         FAILED_PHASES+=("$phase_name (script not found)")
@@ -235,7 +235,7 @@ echo "  cat $LOG_FILE"
 echo "  cat $ERROR_LOG_FILE"
 echo
 echo "To rerun a specific phase:"
-echo "  bash $SCRIPT_DIR/phase<N>_<name>.sh"
+echo "  bash $SCRIPT_DIR/scripts/phase<N>_<name>.sh"
 echo
 
 if [ ${#FAILED_PHASES[@]} -eq 0 ]; then

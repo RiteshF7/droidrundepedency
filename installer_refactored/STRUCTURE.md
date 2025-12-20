@@ -10,13 +10,15 @@ The installation process has been refactored from a single monolithic script (`i
 installer_refactored/
 ├── common.sh                    # Shared functions and utilities
 ├── install_droidrun.sh          # Main orchestrator script
-├── phase1_build_tools.sh         # Phase 1: Build tools
-├── phase2_numpy.sh               # Phase 2: NumPy
-├── phase3_scientific.sh         # Phase 3: Scientific stack
-├── phase4_jiter.sh               # Phase 4: Jiter (Rust)
-├── phase5_compiled.sh            # Phase 5: Compiled packages
-├── phase6_optional.sh            # Phase 6: Optional packages
-├── phase7_providers.sh          # Phase 7: Droidrun + providers
+├── scripts/                     # Phase scripts directory
+│   ├── phase1_build_tools.sh    # Phase 1: Build tools
+│   ├── phase2_numpy.sh          # Phase 2: NumPy
+│   ├── phase3_scientific.sh     # Phase 3: Scientific stack
+│   ├── phase4_jiter.sh          # Phase 4: Jiter (Rust)
+│   ├── phase5_compiled.sh       # Phase 5: Compiled packages
+│   ├── phase6_optional.sh       # Phase 6: Optional packages
+│   ├── phase7_providers.sh      # Phase 7: Droidrun + providers
+│   └── install_droidrun_providers.sh  # Provider installation script
 ├── README.md                     # Usage documentation
 └── STRUCTURE.md                  # This file
 ```
@@ -115,7 +117,7 @@ bash installer_refactored/install_droidrun.sh
 
 ### Run Specific Phase
 ```bash
-bash installer_refactored/phase3_scientific.sh
+bash installer_refactored/scripts/phase3_scientific.sh
 ```
 
 ### Resume After Interruption

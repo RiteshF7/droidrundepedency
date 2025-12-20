@@ -6,7 +6,7 @@ set -euo pipefail
 
 # Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../common.sh"
 
 # Initialize logging
 init_logging
@@ -33,8 +33,8 @@ cd "$HOME"
 
 # Find install_droidrun_providers.sh script
 PROVIDERS_SCRIPT=""
-if [ -f "${SCRIPT_DIR}/../install_droidrun_providers.sh" ]; then
-    PROVIDERS_SCRIPT="${SCRIPT_DIR}/../install_droidrun_providers.sh"
+if [ -f "${SCRIPT_DIR}/install_droidrun_providers.sh" ]; then
+    PROVIDERS_SCRIPT="${SCRIPT_DIR}/install_droidrun_providers.sh"
 elif [ -f "${HOME}/droidrundepedency/install_droidrun_providers.sh" ]; then
     PROVIDERS_SCRIPT="${HOME}/droidrundepedency/install_droidrun_providers.sh"
 elif [ -f "./install_droidrun_providers.sh" ]; then
@@ -58,7 +58,7 @@ if [ -n "$PROVIDERS_SCRIPT" ] && [ -f "$PROVIDERS_SCRIPT" ]; then
 else
     log_warning "install_droidrun_providers.sh not found, falling back to inline installation"
     log_warning "Expected locations:"
-    log_warning "  ${SCRIPT_DIR}/../install_droidrun_providers.sh"
+    log_warning "  ${SCRIPT_DIR}/install_droidrun_providers.sh"
     log_warning "  ${HOME}/droidrundepedency/install_droidrun_providers.sh"
     log_warning "  ./install_droidrun_providers.sh"
     

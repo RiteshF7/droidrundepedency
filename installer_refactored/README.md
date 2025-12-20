@@ -6,13 +6,15 @@ This directory contains a modular installation system for droidrun, split into s
 
 - `common.sh` - Shared functions and utilities used by all phase scripts
 - `install_droidrun.sh` - Main orchestrator script that runs all phases sequentially
-- `phase1_build_tools.sh` - Installs build tools (wheel, setuptools, Cython, meson-python, maturin)
-- `phase2_numpy.sh` - Installs numpy
-- `phase3_scientific.sh` - Installs scipy, pandas, scikit-learn
-- `phase4_jiter.sh` - Installs jiter (Rust package)
-- `phase5_compiled.sh` - Installs pyarrow, psutil, grpcio, pillow
-- `phase6_optional.sh` - Installs optional packages (tokenizers, safetensors, etc.)
-- `phase7_providers.sh` - Installs droidrun core and LLM providers
+- `scripts/` - Directory containing all phase scripts:
+  - `phase1_build_tools.sh` - Installs build tools (wheel, setuptools, Cython, meson-python, maturin)
+  - `phase2_numpy.sh` - Installs numpy
+  - `phase3_scientific.sh` - Installs scipy, pandas, scikit-learn
+  - `phase4_jiter.sh` - Installs jiter (Rust package)
+  - `phase5_compiled.sh` - Installs pyarrow, psutil, grpcio, pillow
+  - `phase6_optional.sh` - Installs optional packages (tokenizers, safetensors, etc.)
+  - `phase7_providers.sh` - Installs droidrun core and LLM providers
+  - `install_droidrun_providers.sh` - Provider installation script
 
 ## Usage
 
@@ -35,8 +37,8 @@ The script will:
 You can run individual phase scripts directly:
 
 ```bash
-bash installer_refactored/phase1_build_tools.sh
-bash installer_refactored/phase2_numpy.sh
+bash installer_refactored/scripts/phase1_build_tools.sh
+bash installer_refactored/scripts/phase2_numpy.sh
 # etc.
 ```
 
