@@ -4,16 +4,17 @@
 import sys
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 current_dir = Path(__file__).parent.absolute()
 sys.path.insert(0, str(current_dir))
 
 try:
-    from .common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME
+    from .common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME, log_error
     from .build_utils import build_package
 except ImportError:
-    from common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME
+    from common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME, log_error
     from build_utils import build_package
 
 
@@ -48,27 +49,36 @@ def main() -> int:
     wheels_dir = Path(os.environ.get("WHEELS_DIR", str(HOME / "wheels")))
     
     # Copy pre-built wheels
-    for pkg in missing:
+    installed_from_wheels = []
+    for pkg in missing[:]:  # Use slice copy to avoid modification during iteration
         wheel = find_wheels(pkg)
         if wheel:
+            wheels_dir.mkdir(parents=True, exist_ok=True)
             shutil.copy2(wheel, wheels_dir / wheel.name)
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "--find-links", str(wheels_dir), pkg],
                 capture_output=True,
                 check=False
             )
-            if result.returncode == 0:
+            if result.returncode == 0 and python_pkg_installed(pkg, pkg):
+                installed_from_wheels.append(pkg)
                 missing.remove(pkg)
     
     # Build remaining from source
     for pkg in missing:
         env_vars = {"CXXFLAGS": "-D_GNU_SOURCE"} if pkg == "tokenizers" else None
-        build_package(pkg, pkg, env_vars=env_vars)
+        if not build_package(pkg, pkg, env_vars=env_vars):
+            return 1  # Build failed
+    
+    # Verify all packages are installed
+    still_missing = [pkg for pkg in packages if not python_pkg_installed(pkg, pkg)]
+    if still_missing:
+        log_error(f"Phase 6 failed: packages still missing: {still_missing}")
+        return 1
     
     mark_phase_complete(6)
     return 0
 
 
 if __name__ == "__main__":
-    import subprocess
     sys.exit(main())
