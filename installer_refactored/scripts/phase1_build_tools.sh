@@ -159,13 +159,25 @@ if ! python_pkg_installed "maturin" "maturin<2,>=1.9.4"; then
     
     # Try PyPI only if wheel installation failed
     if [ "$MATURIN_INSTALLED" = false ]; then
-        # Check if Rust is available (required for building maturin from source)
-        if ! command_exists rustc; then
-            log_info "Rust compiler not found - skipping maturin installation (optional for Phase 1)"
-            log_info "Note: maturin will be needed for Phase 4 (jiter)"
-            log_info "Solution: Install Rust with 'pkg install rust' or provide pre-built maturin wheel"
+        # Check if Rust compiler actually works (not just if command exists)
+        # Test by trying to run rustc --version
+        RUST_WORKS=false
+        if command_exists rustc; then
+            if rustc --version >/dev/null 2>&1; then
+                RUST_WORKS=true
+            fi
+        fi
+        
+        if [ "$RUST_WORKS" = false ]; then
+            log_info "Rust compiler not working (rustc cannot execute) - skipping maturin installation (optional for Phase 1)"
+            log_info "Note: Rust is installed but rustc has library linking issues (known Termux issue)"
+            log_info "maturin will be needed for Phase 4 (jiter). Solutions:"
+            log_info "  - Provide pre-built maturin wheel in dependencies/wheels directory (recommended)"
+            log_info "  - Provide pre-built jiter wheel for Phase 4 (recommended)"
+            log_info "  - Rust installation in Termux may have compatibility issues"
             echo "=== maturin installation skipped at $(date) ===" >> "$LOG_FILE"
-            echo "Reason: Rust compiler not found (optional tool)" >> "$LOG_FILE"
+            echo "Reason: Rust compiler installed but cannot execute (library linking issue)" >> "$LOG_FILE"
+            echo "This is a known issue with Rust in Termux on Android" >> "$LOG_FILE"
             echo "" >> "$LOG_FILE"
         else
             log_info "Attempting to install maturin from PyPI (Rust is available)..."
