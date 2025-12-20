@@ -15,9 +15,10 @@ log_info "=========================================="
 log_info "Phase 5: Compiled Packages Installation"
 log_info "=========================================="
 
-# Check if phase is already complete
-if is_phase_complete "5"; then
+# Check if phase should be skipped (respects FORCE_RERUN)
+if should_skip_phase "5"; then
     log_success "Phase 5 already completed (skipping)"
+    log_info "To force rerun, set FORCE_RERUN=1 environment variable"
     exit 0
 fi
 

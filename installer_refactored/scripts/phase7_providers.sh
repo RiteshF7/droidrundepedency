@@ -15,9 +15,10 @@ log_info "=========================================="
 log_info "Phase 7: Droidrun and Providers Installation"
 log_info "=========================================="
 
-# Check if phase is already complete
-if is_phase_complete "7"; then
+# Check if phase should be skipped (respects FORCE_RERUN)
+if should_skip_phase "7"; then
     log_success "Phase 7 already completed (skipping)"
+    log_info "To force rerun, set FORCE_RERUN=1 environment variable"
     exit 0
 fi
 

@@ -528,6 +528,29 @@ is_phase_complete() {
     return 1
 }
 
+# Function to check if phase should be skipped (respects FORCE_RERUN)
+should_skip_phase() {
+    local phase=$1
+    
+    # If FORCE_RERUN is set, don't skip
+    if [ -n "${FORCE_RERUN:-}" ]; then
+        log_warning "FORCE_RERUN is set - Phase $phase will be rerun even if previously completed"
+        # Clear phase completion status
+        if [ -f "$PROGRESS_FILE" ]; then
+            sed -i "/^PHASE_${phase}_COMPLETE=/d" "$PROGRESS_FILE" 2>/dev/null || true
+            log_info "Phase $phase completion status cleared"
+        fi
+        return 1  # Don't skip
+    fi
+    
+    # Check if phase is complete
+    if is_phase_complete "$phase"; then
+        return 0  # Skip (phase is complete)
+    fi
+    
+    return 1  # Don't skip (phase not complete or force rerun)
+}
+
 # Function to save environment variables
 save_env_vars() {
     cat > "$ENV_FILE" <<EOF
