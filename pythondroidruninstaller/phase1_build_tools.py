@@ -3,6 +3,7 @@
 
 import sys
 import os
+import subprocess
 import shutil
 from pathlib import Path
 
@@ -134,5 +135,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    import subprocess
     sys.exit(main())
