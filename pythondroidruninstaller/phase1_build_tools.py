@@ -100,20 +100,14 @@ def main() -> int:
         return 1
     
     # Verify packages can be imported (some build tools may not be importable)
-    # meson-python is a build tool, not a runtime library - check if command exists instead
+    # meson-python is a PEP 517 build backend, not a runtime library - just verify it's installed
     import_errors = []
     for name, spec in essential:
         import_name = name.replace('-', '_')
-        # meson-python is a build tool, verify it's available as a command
+        # meson-python is a build backend, not importable - just check it's installed (already verified above)
         if name == "meson-python":
-            # Check if meson-python command is available
-            result = subprocess.run(
-                [sys.executable, "-m", "meson_python", "--version"],
-                capture_output=True,
-                check=False
-            )
-            if result.returncode != 0:
-                import_errors.append(f"{name}: command not available")
+            # Already verified it's installed above, skip import check
+            log_info(f"{name} is a build backend (PEP 517), installation verified")
         else:
             try:
                 __import__(import_name)
@@ -121,7 +115,7 @@ def main() -> int:
                 import_errors.append(f"{name}: {e}")
     
     if import_errors:
-        log_error(f"Phase 1 verification failed - errors: {import_errors}")
+        log_error(f"Phase 1 verification failed - import errors: {import_errors}")
         return 1
     
     # Verify maturin is installed (required for Phase 4)
