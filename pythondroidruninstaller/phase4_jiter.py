@@ -10,9 +10,9 @@ current_dir = Path(__file__).parent.absolute()
 sys.path.insert(0, str(current_dir))
 
 try:
-    from .common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME, get_clean_env, log_info, log_success, log_error
+    from .common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME, get_clean_env, log_info, log_success, log_error, log_warning
 except ImportError:
-    from common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME, get_clean_env, log_info, log_success, log_error
+    from common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME, get_clean_env, log_info, log_success, log_error, log_warning
 
 
 def find_wheel(name: str) -> Path:
@@ -45,6 +45,15 @@ def main() -> int:
             return 0
         except ImportError:
             log_warning("jiter marked as installed but import failed, reinstalling...")
+            # Unmark phase as complete if import fails
+            try:
+                from .common import PROGRESS_FILE
+            except ImportError:
+                from common import PROGRESS_FILE
+            if PROGRESS_FILE.exists():
+                content = PROGRESS_FILE.read_text()
+                content = content.replace("PHASE_4_COMPLETE\n", "")
+                PROGRESS_FILE.write_text(content)
     
     # Try pre-built wheel
     jiter_wheel = find_wheel("jiter")
@@ -54,7 +63,6 @@ def main() -> int:
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", "--find-links", str(wheels_dir), 
              "--no-index", str(jiter_wheel)],
-            capture_output=True,
             check=False
         )
         if result.returncode == 0 and python_pkg_installed("jiter", "jiter==0.12.0"):
@@ -79,19 +87,24 @@ def main() -> int:
         check=False
     )
     
-    if result.returncode == 0 and python_pkg_installed("jiter", "jiter==0.12.0"):
-        # Verify jiter can be imported
-        try:
-            import jiter
-            log_success("jiter installed and verified successfully")
-            mark_phase_complete(4)
-            return 0
-        except ImportError as e:
-            log_error(f"jiter installed but import failed: {e}")
-            return 1
+    if result.returncode != 0:
+        log_error(f"jiter installation failed with exit code {result.returncode}")
+        log_error("Check the output above for detailed error messages")
+        return 1
     
-    log_error("Failed to install jiter")
-    return 1
+    if not python_pkg_installed("jiter", "jiter==0.12.0"):
+        log_error("jiter installation succeeded but package not found")
+        return 1
+    
+    # Verify jiter can be imported
+    try:
+        import jiter
+        log_success("jiter installed and verified successfully")
+        mark_phase_complete(4)
+        return 0
+    except ImportError as e:
+        log_error(f"jiter installed but import failed: {e}")
+        return 1
 
 
 if __name__ == "__main__":

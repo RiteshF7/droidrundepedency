@@ -51,3 +51,4 @@ if ($pathsToAdd.Count -gt 0) {
 }
 
 
+

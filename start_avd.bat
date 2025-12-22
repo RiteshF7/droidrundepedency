@@ -26,3 +26,4 @@ echo.
 echo To check if it's ready, run: adb devices
 echo To stop the emulator, close the emulator window or run: adb emu kill
 
+

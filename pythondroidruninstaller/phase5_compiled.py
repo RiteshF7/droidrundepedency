@@ -70,10 +70,12 @@ def main() -> int:
             env=build_env,
             check=False
         )
-        if result.returncode == 0 and python_pkg_installed("pyarrow", "pyarrow"):
-            log_success("pyarrow installed successfully")
+        if result.returncode != 0:
+            log_warning(f"pyarrow installation failed with exit code {result.returncode} (optional, continuing...)")
+        elif not python_pkg_installed("pyarrow", "pyarrow"):
+            log_warning("pyarrow installation succeeded but package not found (optional, continuing...)")
         else:
-            log_warning("pyarrow installation failed, but continuing...")
+            log_success("pyarrow installed successfully")
     
     # psutil (optional) - can work without CC/CXX
     if not python_pkg_installed("psutil", "psutil"):
@@ -84,10 +86,12 @@ def main() -> int:
             env=clean_env,
             check=False
         )
-        if result.returncode == 0 and python_pkg_installed("psutil", "psutil"):
-            log_success("psutil installed successfully")
+        if result.returncode != 0:
+            log_warning(f"psutil installation failed with exit code {result.returncode} (optional, continuing...)")
+        elif not python_pkg_installed("psutil", "psutil"):
+            log_warning("psutil installation succeeded but package not found (optional, continuing...)")
         else:
-            log_warning("psutil installation failed, but continuing...")
+            log_success("psutil installed successfully")
     
     # grpcio - can try without CC/CXX first, but may need special handling
     if not python_pkg_installed("grpcio", "grpcio"):
@@ -113,11 +117,11 @@ def main() -> int:
             # Fallback to wheel build method
             log_warning("Direct install failed, trying wheel build method...")
             wheels_dir = Path(os.environ.get("WHEELS_DIR", str(HOME / "wheels")))
+            wheels_dir.mkdir(parents=True, exist_ok=True)
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "wheel", "grpcio", "--no-deps", 
                  "--no-build-isolation", "--wheel-dir", str(wheels_dir)],
                 env=clean_env,
-                capture_output=True,
                 check=False
             )
             
@@ -128,17 +132,24 @@ def main() -> int:
                     
                     # Install typing-extensions first
                     if not python_pkg_installed("typing-extensions", "typing-extensions>=4.12"):
-                        subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "typing-extensions>=4.12"], 
+                        dep_result = subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "typing-extensions>=4.12"], 
                                      env=clean_env, check=False)
+                        if dep_result.returncode != 0:
+                            log_warning(f"Failed to install typing-extensions: {dep_result.returncode}")
                     
                     # Install grpcio
-                    subprocess.run([sys.executable, "-m", "pip", "install", "--no-deps", str(grpcio_wheels[0])], 
+                    install_result = subprocess.run([sys.executable, "-m", "pip", "install", "--no-deps", str(grpcio_wheels[0])], 
                                  env=clean_env, check=False)
+                    if install_result.returncode != 0:
+                        log_error(f"Failed to install grpcio from wheel: {install_result.returncode}")
+                        return 1
         
-        if python_pkg_installed("grpcio", "grpcio"):
-            log_success("grpcio installed successfully")
-        else:
-            log_warning("grpcio installation failed, but continuing...")
+        if not python_pkg_installed("grpcio", "grpcio"):
+            log_error("grpcio installation failed - required package")
+            log_error("Check the output above for detailed error messages")
+            return 1
+        
+        log_success("grpcio installed successfully")
         
         # Set LD_LIBRARY_PATH
         os.environ["LD_LIBRARY_PATH"] = f"{PREFIX}/lib:{os.environ.get('LD_LIBRARY_PATH', '')}"
@@ -161,10 +172,12 @@ def main() -> int:
             env=build_env,
             check=False
         )
-        if result.returncode == 0 and python_pkg_installed("pillow", "pillow"):
-            log_success("pillow installed successfully")
+        if result.returncode != 0:
+            log_warning(f"pillow installation failed with exit code {result.returncode} (optional, continuing...)")
+        elif not python_pkg_installed("pillow", "pillow"):
+            log_warning("pillow installation succeeded but package not found (optional, continuing...)")
         else:
-            log_warning("pillow installation failed, but continuing...")
+            log_success("pillow installed successfully")
     
     # Verify required packages are installed (grpcio is required, others optional)
     required_packages = [

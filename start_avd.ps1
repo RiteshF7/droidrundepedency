@@ -34,3 +34,4 @@ Write-Host ""
 Write-Host "To check if it's ready, run: adb devices"
 Write-Host "To stop the emulator, close the emulator window or run: adb emu kill"
 
+

@@ -1,0 +1,11 @@
+install numpy - pip install
+    install patchif - pip install 
+        intall patch -> pkg search patch, pkg install patch
+
+Phase 2 will install numpy 
+
+running again ;; building pandas
+
+current -> install phase 1 and two then pip install droidrun
+pandas intalled  waiting for scikit-learn to install 
+error in scikit-learn 

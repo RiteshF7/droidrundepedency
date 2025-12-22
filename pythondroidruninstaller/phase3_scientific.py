@@ -14,14 +14,6 @@ except ImportError:
     from common import should_skip_phase, mark_phase_complete, setup_build_environment, python_pkg_installed, HOME, get_build_env_with_compilers, get_clean_env, log_info, log_success, log_error, log_warning
 
 
-def find_script(name: str) -> Path:
-    """Find build script."""
-    for loc in [Path(__file__).parent.parent / name, HOME / "droidrundepedency" / name]:
-        if loc.exists():
-            return loc
-    return None
-
-
 def main() -> int:
     if should_skip_phase(3):
         return 0
@@ -37,8 +29,12 @@ def main() -> int:
             env=build_env,
             check=False
         )
-        if result.returncode != 0 or not python_pkg_installed("scipy", "scipy>=1.8.0,<1.17.0"):
-            log_error("Failed to install scipy")
+        if result.returncode != 0:
+            log_error(f"scipy installation failed with exit code {result.returncode}")
+            log_error("Check the output above for detailed error messages")
+            return 1
+        if not python_pkg_installed("scipy", "scipy>=1.8.0,<1.17.0"):
+            log_error("scipy installation succeeded but package not found")
             return 1
         log_success("scipy installed successfully")
     
@@ -48,39 +44,26 @@ def main() -> int:
         # Install deps first (pure Python, no CC/CXX needed)
         clean_env = get_clean_env()
         for dep in ["python-dateutil>=2.8.2", "pytz>=2020.1", "tzdata>=2022.7"]:
-            subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", dep], 
-                         env=clean_env, capture_output=True, check=False)
+            result = subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", dep], 
+                         env=clean_env, check=False)
+            if result.returncode != 0:
+                log_warning(f"Failed to install {dep}, but continuing...")
         
-        # Try build script first
-        build_script = find_script("build_pandas.sh")
-        if build_script:
-            result = subprocess.run(["bash", str(build_script)], check=False)
-            if result.returncode == 0 and python_pkg_installed("pandas", "pandas<2.3.0"):
-                log_success("pandas installed via build script")
-            else:
-                # Fallback to pip install with CC/CXX
-                build_env = get_build_env_with_compilers()
-                result = subprocess.run(
-                    [sys.executable, "-m", "pip", "install", "--no-cache-dir", "pandas<2.3.0"],
-                    env=build_env,
-                    check=False
-                )
-                if result.returncode != 0 or not python_pkg_installed("pandas", "pandas<2.3.0"):
-                    log_error("Failed to install pandas")
-                    return 1
-                log_success("pandas installed successfully")
-        else:
-            # Direct pip install with CC/CXX
-            build_env = get_build_env_with_compilers()
-            result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "--no-cache-dir", "pandas<2.3.0"],
-                env=build_env,
-                check=False
-            )
-            if result.returncode != 0 or not python_pkg_installed("pandas", "pandas<2.3.0"):
-                log_error("Failed to install pandas")
-                return 1
-            log_success("pandas installed successfully")
+        # Direct pip install with CC/CXX
+        build_env = get_build_env_with_compilers()
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--no-cache-dir", "pandas<2.3.0"],
+            env=build_env,
+            check=False
+        )
+        if result.returncode != 0:
+            log_error(f"pandas installation failed with exit code {result.returncode}")
+            log_error("Check the output above for detailed error messages")
+            return 1
+        if not python_pkg_installed("pandas", "pandas<2.3.0"):
+            log_error("pandas installation succeeded but package not found")
+            return 1
+        log_success("pandas installed successfully")
     
     # scikit-learn - needs CC/CXX for C extensions
     if not python_pkg_installed("scikit-learn", "scikit-learn"):
@@ -88,35 +71,26 @@ def main() -> int:
         # Install deps first (pure Python, no CC/CXX needed)
         clean_env = get_clean_env()
         for dep in ["joblib>=1.3.0", "threadpoolctl>=3.2.0"]:
-            subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", dep], 
-                         env=clean_env, capture_output=True, check=False)
-        
-        # Try build script first
-        build_script = find_script("build_scikit_learn.sh")
-        if build_script:
-            result = subprocess.run(["bash", str(build_script)], check=False)
-            if result.returncode == 0 and python_pkg_installed("scikit-learn", "scikit-learn"):
-                log_success("scikit-learn installed via build script")
-            else:
-                # Fallback to pip install with CC/CXX
-                build_env = get_build_env_with_compilers()
-                result = subprocess.run(
-                    [sys.executable, "-m", "pip", "install", "--no-cache-dir", "scikit-learn"],
-                    env=build_env,
-                    check=False
-                )
-                if result.returncode != 0 or not python_pkg_installed("scikit-learn", "scikit-learn"):
-                    log_warning("scikit-learn installation failed, but continuing...")
-        else:
-            # Direct pip install with CC/CXX
-            build_env = get_build_env_with_compilers()
-            result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "--no-cache-dir", "scikit-learn"],
-                env=build_env,
-                check=False
-            )
+            result = subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", dep], 
+                         env=clean_env, check=False)
             if result.returncode != 0:
-                log_warning("scikit-learn installation failed, but continuing...")
+                log_warning(f"Failed to install {dep}, but continuing...")
+        
+        # Direct pip install with CC/CXX
+        build_env = get_build_env_with_compilers()
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--no-cache-dir", "scikit-learn"],
+            env=build_env,
+            check=False
+        )
+        if result.returncode != 0:
+            log_error(f"scikit-learn installation failed with exit code {result.returncode}")
+            log_error("Check the output above for detailed error messages")
+            return 1
+        if not python_pkg_installed("scikit-learn", "scikit-learn"):
+            log_error("scikit-learn installation succeeded but package not found")
+            return 1
+        log_success("scikit-learn installed successfully")
     
     # Verify all required packages are installed before marking complete
     required_packages = [

@@ -55,7 +55,6 @@ def main() -> int:
             shutil.copy2(wheel, wheels_dir / wheel.name)
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "--find-links", str(wheels_dir), pkg],
-                capture_output=True,
                 check=False
             )
             if result.returncode == 0 and python_pkg_installed(pkg, pkg):
@@ -83,12 +82,13 @@ def main() -> int:
         )
         
         if result.returncode != 0:
-            log_error(f"Failed to install {pkg}")
+            log_error(f"{pkg} installation failed with exit code {result.returncode}")
+            log_error("Check the output above for detailed error messages")
             return 1
         
         # Verify installation
         if not python_pkg_installed(pkg, pkg):
-            log_error(f"{pkg} installation completed but package not found")
+            log_error(f"{pkg} installation succeeded but package not found")
             return 1
         
         log_success(f"{pkg} installed successfully")
