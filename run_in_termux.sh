@@ -60,10 +60,9 @@ echo ""
 echo "Step 3: Executing installdroidrun.sh..."
 echo "=========================================="
 echo ""
-adb shell "run-as com.termux sh -c 'cd $FULL_PATH && bash installdroidrun.sh'"
-
 echo ""
 echo "=========================================="
 echo "Script execution completed"
 echo "=========================================="
+
 

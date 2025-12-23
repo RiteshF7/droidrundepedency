@@ -56,6 +56,25 @@ def main() -> int:
                 log_warning("Failed to install flang - scikit-learn build may fail")
             else:
                 log_success("flang installed successfully")
+        
+        # Install autotools (required for building patchelf and other packages)
+        for pkg_name in ["autoconf", "automake", "libtool"]:
+            if not pkg_installed(pkg_name):
+                log_info(f"Installing {pkg_name}...")
+                result = subprocess.run(["pkg", "install", "-y", pkg_name], check=False)
+                if result.returncode != 0:
+                    log_warning(f"Failed to install {pkg_name} - some builds may fail")
+                else:
+                    log_success(f"{pkg_name} installed successfully")
+        
+        # Install patchelf (required for fixing ELF binaries)
+        if not pkg_installed("patchelf"):
+            log_info("Installing patchelf...")
+            result = subprocess.run(["pkg", "install", "-y", "patchelf"], check=False)
+            if result.returncode != 0:
+                log_warning("Failed to install patchelf - some wheel fixes may fail")
+            else:
+                log_success("patchelf installed successfully")
     
     # Install Rust and maturin first (required for Phase 4)
     log_info("Installing Rust and maturin...")
