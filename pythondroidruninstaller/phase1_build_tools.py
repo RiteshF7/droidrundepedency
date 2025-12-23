@@ -49,6 +49,13 @@ def main() -> int:
     if IS_TERMUX and command_exists("pkg"):
         if not pkg_installed("python-pip"):
             subprocess.run(["pkg", "install", "-y", "python-pip"], check=False)
+        if not pkg_installed("flang"):
+            log_info("Installing flang...")
+            result = subprocess.run(["pkg", "install", "-y", "flang"], check=False)
+            if result.returncode != 0:
+                log_warning("Failed to install flang - scikit-learn build may fail")
+            else:
+                log_success("flang installed successfully")
     
     # Install Rust and maturin first (required for Phase 4)
     log_info("Installing Rust and maturin...")

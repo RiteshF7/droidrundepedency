@@ -8,4 +8,6 @@ running again ;; building pandas
 
 current -> install phase 1 and two then pip install droidrun
 pandas intalled  waiting for scikit-learn to install 
-error in scikit-learn 
+error in scikit-learn ( install flang check pkg install flang also fortran and link it is doing in script for now in script also add pkg install flang)
+working scikit install script standlone now installing scripy building lets see
+1,2 ,stanalone then space issue fixing 
