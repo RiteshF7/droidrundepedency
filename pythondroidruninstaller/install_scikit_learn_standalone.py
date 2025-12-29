@@ -145,29 +145,71 @@ def install_scikit_learn() -> bool:
     wheels_dir = HOME / "wheels"
     wheels_dir.mkdir(exist_ok=True)
     
-    # Download source
-    log_info("Downloading scikit-learn source...")
-    result = subprocess.run(
-        [
-            sys.executable, "-m", "pip", "download", "scikit-learn",
-            "--dest", str(wheels_dir), "--no-cache-dir", "--no-binary", ":all:"
-        ],
-        env=clean_env,
-        check=False
-    )
+    # Download source tarball directly from PyPI (bypasses metadata preparation)
+    log_info("Downloading scikit-learn source tarball directly from PyPI...")
     
-    if result.returncode != 0:
-        log_error("Failed to download scikit-learn source")
-        return False
+    import urllib.request
+    import json
     
-    # Find downloaded tarball
-    source_files = list(wheels_dir.glob("scikit-learn-*.tar.gz"))
-    if not source_files:
+    # Get latest version and download URL from PyPI JSON API
+    try:
+        log_info("Fetching scikit-learn package info from PyPI...")
+        with urllib.request.urlopen("https://pypi.org/pypi/scikit-learn/json", timeout=30) as response:
+            pypi_data = json.loads(response.read())
+            version = pypi_data["info"]["version"]
+            log_info(f"Latest version: {version}")
+            
+            # Find source distribution URL
+            source_url = None
+            for url_info in pypi_data["urls"]:
+                if url_info["packagetype"] == "sdist":
+                    source_url = url_info["url"]
+                    log_info(f"Found source distribution URL: {source_url}")
+                    break
+            
+            if not source_url:
+                # Fallback: construct URL manually using files.pythonhosted.org
+                source_url = f"https://files.pythonhosted.org/packages/source/s/scikit-learn/scikit-learn-{version}.tar.gz"
+                log_info(f"Using constructed URL: {source_url}")
+    except Exception as e:
+        log_warning(f"Failed to fetch from PyPI: {e}, using fallback")
+        version = "1.8.0"
+        # Use files.pythonhosted.org (correct PyPI file hosting)
+        source_url = f"https://files.pythonhosted.org/packages/source/s/scikit-learn/scikit-learn-{version}.tar.gz"
+        log_info(f"Using fallback URL: {source_url}")
+    
+    # Download source tarball directly
+    # Note: PyPI uses scikit_learn (underscore) in the filename, not scikit-learn (hyphen)
+    source_filename = f"scikit-learn-{version}.tar.gz"
+    source_file = wheels_dir / source_filename
+    
+    # Also check for underscore version (actual PyPI naming)
+    source_file_alt = wheels_dir / f"scikit_learn-{version}.tar.gz"
+    
+    # Determine actual filename from URL (PyPI uses scikit_learn with underscore)
+    actual_filename = source_url.split("/")[-1]  # Get filename from URL
+    actual_source_file = wheels_dir / actual_filename
+    
+    if actual_source_file.exists():
+        log_info(f"Source tarball already exists: {actual_source_file.name}")
+        source_file = actual_source_file
+    elif source_file.exists():
+        log_info(f"Source tarball already exists: {source_file.name}")
+    else:
+        log_info(f"Downloading from: {source_url}")
+        try:
+            urllib.request.urlretrieve(source_url, actual_source_file)
+            log_success(f"Downloaded: {actual_source_file.name} ({actual_source_file.stat().st_size / 1024 / 1024:.2f} MB)")
+            source_file = actual_source_file
+        except Exception as e:
+            log_error(f"Failed to download source tarball: {e}")
+            return False
+    
+    if not source_file.exists():
         log_error("Downloaded source file not found")
         return False
     
-    source_file = source_files[0]
-    log_info(f"Found source: {source_file.name}")
+    log_info(f"Using source: {source_file.name}")
     
     # Extract and fix
     import tempfile
@@ -184,15 +226,20 @@ def install_scikit_learn() -> bool:
             log_error("Failed to extract source")
             return False
         
-        # Find package directory
-        pkg_dirs = list(extract_dir.glob("scikit-learn-*"))
+        # Find package directory (handle both scikit-learn-* and scikit_learn-* naming)
+        pkg_dirs = list(extract_dir.glob("scikit-learn-*")) + list(extract_dir.glob("scikit_learn-*"))
         if not pkg_dirs:
             log_error("Extracted package directory not found")
+            log_info(f"Contents of extract directory: {list(extract_dir.iterdir())}")
             return False
         
         pkg_dir = pkg_dirs[0]
-        pkg_version = pkg_dir.name.replace("scikit-learn-", "")
-        log_info(f"Package version: {pkg_version}")
+        # Handle both naming conventions
+        if "scikit-learn-" in pkg_dir.name:
+            pkg_version = pkg_dir.name.replace("scikit-learn-", "")
+        else:
+            pkg_version = pkg_dir.name.replace("scikit_learn-", "")
+        log_info(f"Package directory: {pkg_dir.name}, version: {pkg_version}")
         
         # Fix version.py (add shebang if missing)
         version_py = pkg_dir / "sklearn" / "_build_utils" / "version.py"

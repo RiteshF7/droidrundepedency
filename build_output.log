@@ -1,0 +1,25 @@
+[0;34m========================================[0m
+[0;32mBuilding grpcio wheel for Android x86_64[0m
+[0;34m========================================[0m
+
+[0;32m✓ NDK found at: /home/trex/Android/Sdk/ndk/r26b[0m
+[0;32m✓ Compiler found: /home/trex/Android/Sdk/ndk/r26b/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android30-clang[0m
+
+[0;34mBuild Configuration:[0m
+  NDK: /home/trex/Android/Sdk/ndk/r26b
+  Toolchain: linux-x86_64
+  CC: /home/trex/Android/Sdk/ndk/r26b/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android30-clang
+  CXX: /home/trex/Android/Sdk/ndk/r26b/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android30-clang++
+  Target: Android x86_64 (API 30)
+  Output: ./wheels
+
+[1;33mEnvironment variables:[0m
+  ANDROID_NDK=/home/trex/Android/Sdk/ndk/r26b
+  ANDROID_ABI=x86_64
+  ANDROID_PLATFORM=android-30
+  ARCH=x86_64
+  TARGET_ARCH=x86_64-linux-android
+  CFLAGS=-U__ANDROID_API__ -D__ANDROID_API__=30 --sysroot=/home/trex/Android/Sdk/ndk/r26b/toolchains/llvm/prebuilt/linux-x86_64/sysroot -I/home/trex/Android/Sdk/ndk/r26b/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -I/home/trex/Android/Sdk/ndk/r26b/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/x86_64-linux-android -fPIC -target x86_64-linux-android30
+  LDFLAGS=--sysroot=/home/trex/Android/Sdk/ndk/r26b/toolchains/llvm/prebuilt/linux-x86_64/sysroot -llog -L/home/trex/Android/Sdk/ndk/r26b/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/x86_64-linux-android/30 -fuse-ld=lld -target x86_64-linux-android30
+
+[0;31mError: pip not found[0m
