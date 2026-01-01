@@ -1,3 +1,6 @@
 # Only ignore depedencies folder
 depedencies/
 E:\Code\LunarLand\MiniLinux\droidrunBuild\rundroidrun.shgp
+
+# Ignore laptoptermuxbuild directory (wheels and build artifacts)
+laptoptermuxbuild/
