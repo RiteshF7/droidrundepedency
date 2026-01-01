@@ -494,63 +494,39 @@ def run_phase3_scikit_learn(wheels_dir: Path) -> int:
         log_error("numpy must be installed first (Phase 2)")
         return 1
     
-    # Install scipy
-    if not python_pkg_installed("scipy", "scipy>=1.8.0,<1.17.0"):
-        log_info("Installing scipy with wheel preservation...")
-        
-        # Ensure gfortran symlink exists
-        if not ensure_gfortran_symlink():
-            log_error("Cannot proceed without gfortran symlink")
-            return 1
-        
-        # Install scipy with Fortran compiler
-        build_env = get_build_env_with_compilers()
-        build_env["FC"] = f"{PREFIX}/bin/flang"
-        build_env["F77"] = f"{PREFIX}/bin/flang"
-        build_env["F90"] = f"{PREFIX}/bin/flang"
-        
-        if not install_with_wheel_preservation("scipy>=1.8.0,<1.17.0", wheels_dir, build_env=build_env):
-            log_error("scipy installation failed")
-            return 1
-        
-        if not python_pkg_installed("scipy", "scipy>=1.8.0,<1.17.0"):
-            log_error("scipy installation succeeded but package not found")
-            return 1
-        
-        log_success("scipy installed successfully")
-    else:
-        log_info("scipy is already installed")
-    
-    # Install scikit-learn
+    # Install scipy and scikit-learn using the standalone script
     if not python_pkg_installed("scikit-learn", "scikit-learn"):
-        log_info("Installing scikit-learn with wheel preservation...")
+        log_info("Installing scikit-learn using install_scikit_learn_standalone.py...")
         
-        # Install dependencies first (pure Python, no CC/CXX needed)
-        clean_env = get_clean_env()
-        for dep in ["joblib>=1.3.0", "threadpoolctl>=3.2.0"]:
-            if not python_pkg_installed(dep.split(">=")[0].split("==")[0]):
-                log_info(f"Installing {dep} with wheel preservation...")
-                if not install_with_wheel_preservation(dep, wheels_dir, build_env=clean_env):
-                    log_warning(f"Failed to install {dep}, but continuing...")
+        # Import and run the standalone script
+        standalone_script = Path(__file__).parent / "install_scikit_learn_standalone.py"
+        if not standalone_script.exists():
+            log_error(f"install_scikit_learn_standalone.py not found at {standalone_script}")
+            return 1
         
-        # Install scikit-learn with build environment
-        # Use --no-deps since scipy and numpy are already installed via pkg
-        build_env = get_build_env_with_compilers()
+        # Run the standalone script
+        result = subprocess.run([sys.executable, str(standalone_script)], check=False)
+        if result.returncode != 0:
+            log_error("scikit-learn installation failed (standalone script returned error)")
+            return 1
         
-        log_info("Building scikit-learn wheel (scipy and numpy already installed via pkg, using --no-deps)...")
-        if not install_with_wheel_preservation(
-            "scikit-learn", wheels_dir, build_env=build_env, no_build_isolation=True, no_deps=True
-        ):
-            log_warning("scikit-learn installation with --no-deps failed, trying without --no-deps...")
-            if not install_with_wheel_preservation(
-                "scikit-learn", wheels_dir, build_env=build_env, no_build_isolation=True
-            ):
-                log_error("scikit-learn installation failed")
-                return 1
-        
+        # Verify installation
         if not python_pkg_installed("scikit-learn", "scikit-learn"):
             log_error("scikit-learn installation succeeded but package not found")
             return 1
+        
+        # Copy any wheels built by the standalone script to our wheels directory
+        # The standalone script uses HOME / "wheels", so copy from there
+        standalone_wheels_dir = HOME / "wheels"
+        if standalone_wheels_dir.exists():
+            log_info(f"Copying wheels from {standalone_wheels_dir} to {wheels_dir}...")
+            wheels_dir.mkdir(parents=True, exist_ok=True)
+            for wheel_file in standalone_wheels_dir.glob("*.whl"):
+                try:
+                    shutil.copy2(wheel_file, wheels_dir / wheel_file.name)
+                    log_info(f"Copied wheel: {wheel_file.name}")
+                except Exception as e:
+                    log_warning(f"Failed to copy wheel {wheel_file.name}: {e}")
         
         log_success("scikit-learn installed successfully")
     else:
