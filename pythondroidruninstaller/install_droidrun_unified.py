@@ -534,14 +534,17 @@ def run_phase3_scikit_learn(wheels_dir: Path) -> int:
                     log_warning(f"Failed to install {dep}, but continuing...")
         
         # Install scikit-learn with build environment
+        # Use --no-deps since scipy and numpy are already installed via pkg
         build_env = get_build_env_with_compilers()
         
-        # Try with wheel preservation and --no-build-isolation
+        log_info("Building scikit-learn wheel (scipy and numpy already installed via pkg, using --no-deps)...")
         if not install_with_wheel_preservation(
-            "scikit-learn", wheels_dir, build_env=build_env, no_build_isolation=True
+            "scikit-learn", wheels_dir, build_env=build_env, no_build_isolation=True, no_deps=True
         ):
-            log_warning("scikit-learn installation with --no-build-isolation failed, trying normal install...")
-            if not install_with_wheel_preservation("scikit-learn", wheels_dir, build_env=build_env):
+            log_warning("scikit-learn installation with --no-deps failed, trying without --no-deps...")
+            if not install_with_wheel_preservation(
+                "scikit-learn", wheels_dir, build_env=build_env, no_build_isolation=True
+            ):
                 log_error("scikit-learn installation failed")
                 return 1
         
