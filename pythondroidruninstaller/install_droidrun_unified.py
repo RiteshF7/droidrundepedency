@@ -560,6 +560,65 @@ def run_phase3_scikit_learn(wheels_dir: Path) -> int:
     return 0
 
 
+def try_install_via_pkg(python_pkg_name: str) -> bool:
+    """
+    Try to install a Python package via pkg if available.
+    
+    Args:
+        python_pkg_name: Python package name (e.g., "pydantic-core", "pandas")
+    
+    Returns:
+        True if installed or already installed, False otherwise
+    """
+    if not IS_TERMUX or not command_exists("pkg"):
+        return False
+    
+    # Map Python package names to pkg package names
+    # Most follow the pattern python-{package_name}, but some differ
+    pkg_name_map = {
+        "grpcio": "python-grpcio",
+        "pillow": "python-pillow",
+        "scipy": "python-scipy",
+        "numpy": "python-numpy",
+        "scikit-learn": "python-scikit-learn",
+        "pydantic-core": "python-pydantic-core",
+        "pandas": "python-pandas",
+        "pyarrow": "python-pyarrow",
+        "psutil": "python-psutil",
+        "cryptography": "python-cryptography",
+    }
+    
+    # Check if already installed as Python package
+    if python_pkg_installed(python_pkg_name, python_pkg_name):
+        return True
+    
+    # Get pkg name (default to python-{package_name})
+    pkg_name = pkg_name_map.get(python_pkg_name, f"python-{python_pkg_name}")
+    
+    # Check if pkg package exists (try pkg show)
+    check_cmd = ["pkg", "show", pkg_name]
+    result = subprocess.run(check_cmd, capture_output=True, check=False)
+    if result.returncode != 0:
+        # Package not available via pkg
+        return False
+    
+    # Try installing via pkg
+    log_info(f"Installing {python_pkg_name} via pkg ({pkg_name})...")
+    install_cmd = ["pkg", "install", "-y", pkg_name]
+    result = subprocess.run(install_cmd, check=False)
+    
+    if result.returncode == 0:
+        if python_pkg_installed(python_pkg_name, python_pkg_name):
+            log_success(f"{python_pkg_name} installed successfully via pkg")
+            return True
+        else:
+            log_warning(f"{pkg_name} installed via pkg but {python_pkg_name} not found as Python package")
+            return False
+    else:
+        log_warning(f"Failed to install {pkg_name} via pkg")
+        return False
+
+
 def run_phase4_droidrun(wheels_dir: Path) -> int:
     """Phase 4: Install droidrun."""
     if python_pkg_installed("droidrun", "droidrun"):
@@ -571,18 +630,26 @@ def run_phase4_droidrun(wheels_dir: Path) -> int:
     log_info("Installing droidrun...")
     clean_env = get_clean_env()
     
-    # Packages already installed via pkg that droidrun depends on
-    # pip wheel will try to rebuild these, but they're already installed
-    pkg_installed_deps = ["grpcio", "pillow", "scipy", "numpy", "scikit-learn"]
-    already_installed = []
-    for dep in pkg_installed_deps:
-        if python_pkg_installed(dep, dep):
-            already_installed.append(dep)
+    # List of packages that are commonly available via pkg and should be installed via pkg first
+    # to avoid rebuilding them
+    pkg_available_deps = [
+        "grpcio", "pillow", "scipy", "numpy", "scikit-learn",
+        "pydantic-core", "pandas", "pyarrow", "psutil", "cryptography"
+    ]
+    
+    # Try installing packages via pkg first (if available)
+    log_info("Checking for packages available via pkg install...")
+    installed_via_pkg = []
+    for dep in pkg_available_deps:
+        if try_install_via_pkg(dep):
+            installed_via_pkg.append(dep)
+        elif python_pkg_installed(dep, dep):
+            installed_via_pkg.append(dep)
     
     wheels_dir.mkdir(parents=True, exist_ok=True)
     
-    if already_installed:
-        log_info(f"Packages already installed via pkg: {', '.join(already_installed)}")
+    if installed_via_pkg:
+        log_info(f"Packages installed/available via pkg: {', '.join(installed_via_pkg)}")
         log_info("Using pip install (respects already-installed packages, avoids rebuilding)")
         
         # Use pip install directly - it won't rebuild already-installed packages
