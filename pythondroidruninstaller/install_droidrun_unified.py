@@ -568,13 +568,53 @@ def run_phase4_droidrun(wheels_dir: Path) -> int:
     
     setup_build_environment()
     
-    log_info("Installing droidrun with wheel preservation...")
+    log_info("Installing droidrun...")
     clean_env = get_clean_env()
     
-    # Install droidrun with wheel preservation to capture all dependencies
-    if not install_with_wheel_preservation("droidrun", wheels_dir, build_env=clean_env):
-        log_error("droidrun installation failed")
-        return 1
+    # Packages already installed via pkg that droidrun depends on
+    # pip wheel will try to rebuild these, but they're already installed
+    pkg_installed_deps = ["grpcio", "pillow", "scipy", "numpy", "scikit-learn"]
+    already_installed = []
+    for dep in pkg_installed_deps:
+        if python_pkg_installed(dep, dep):
+            already_installed.append(dep)
+    
+    wheels_dir.mkdir(parents=True, exist_ok=True)
+    
+    if already_installed:
+        log_info(f"Packages already installed via pkg: {', '.join(already_installed)}")
+        log_info("Using pip install (respects already-installed packages, avoids rebuilding)")
+        
+        # Use pip install directly - it won't rebuild already-installed packages
+        install_cmd = [
+            sys.executable, "-m", "pip", "install",
+            "--no-cache-dir",
+            "droidrun"
+        ]
+        
+        result = subprocess.run(install_cmd, env=clean_env, check=False)
+        if result.returncode != 0:
+            log_error("droidrun installation failed")
+            return 1
+        
+        # Download wheels for droidrun and new dependencies (not already-installed ones)
+        log_info("Downloading wheels for droidrun and new dependencies...")
+        # Use pip download to get wheels without installing
+        download_cmd = [
+            sys.executable, "-m", "pip", "download",
+            "--dest", str(wheels_dir),
+            "--no-cache-dir",
+            "droidrun"
+        ]
+        subprocess.run(download_cmd, env=clean_env, check=False)
+        
+        log_info("Wheels downloaded (already-installed packages skipped)")
+    else:
+        # No pkg-installed deps, use normal wheel preservation
+        log_info("Installing droidrun with wheel preservation...")
+        if not install_with_wheel_preservation("droidrun", wheels_dir, build_env=clean_env):
+            log_error("droidrun installation failed")
+            return 1
     
     if not python_pkg_installed("droidrun", "droidrun"):
         log_error("droidrun installation succeeded but package not found")
