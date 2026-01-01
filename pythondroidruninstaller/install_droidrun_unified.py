@@ -595,6 +595,15 @@ def try_install_via_pkg(python_pkg_name: str) -> bool:
     # Get pkg name (default to python-{package_name})
     pkg_name = pkg_name_map.get(python_pkg_name, f"python-{python_pkg_name}")
     
+    # Check if pkg package is already installed via pkg
+    if pkg_installed(pkg_name):
+        # Package is installed via pkg, check if Python package is importable
+        if python_pkg_installed(python_pkg_name, python_pkg_name):
+            return True
+        else:
+            log_warning(f"{pkg_name} is installed via pkg but {python_pkg_name} not found as Python package")
+            return False
+    
     # Check if pkg package exists (try pkg show)
     check_cmd = ["pkg", "show", pkg_name]
     result = subprocess.run(check_cmd, capture_output=True, check=False)
