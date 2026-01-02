@@ -1,0 +1,74 @@
+# PKG INSTALL COMMANDS FOR DROIDRUN INSTALLATION
+# ================================================
+# This list contains packages that need to be installed via 'pkg install'
+# that are NOT already built as wheel files in the backup/wheels directory
+#
+# Generated from analysis of backup/wheels directory
+
+# ============================================
+# PYTHON PACKAGES (Missing Wheels)
+# ============================================
+# These Python packages don't have wheels in backup but are available via pkg
+# Install these to avoid building from source:
+
+python-scikit-learn
+python-grpcio
+python-pyarrow
+python-psutil
+
+# ============================================
+# INSTALLATION COMMAND
+# ============================================
+# Single command to install all missing Python packages:
+pkg install -y python-scikit-learn python-grpcio python-pyarrow python-psutil
+
+# ============================================
+# OR INSTALL INDIVIDUALLY:
+# ============================================
+pkg install -y python-scikit-learn
+pkg install -y python-grpcio
+pkg install -y python-pyarrow
+pkg install -y python-psutil
+
+# ============================================
+# SYSTEM BUILD DEPENDENCIES (Always Required)
+# ============================================
+# These system packages are always needed for building/installing Python packages
+# Install these even if you have wheels (they provide libraries and build tools):
+
+python python-pip
+autoconf automake libtool make binutils
+clang cmake ninja
+rust
+flang blas-openblas
+libjpeg-turbo libpng libtiff libwebp freetype
+libarrow-cpp
+openssl libc++ zlib
+protobuf libprotobuf
+abseil-cpp c-ares libre2
+patchelf
+
+# ============================================
+# COMPLETE SYSTEM DEPENDENCIES INSTALL
+# ============================================
+# Install all system dependencies in one command:
+pkg install -y python python-pip autoconf automake libtool make binutils clang cmake ninja rust flang blas-openblas libjpeg-turbo libpng libtiff libwebp freetype libarrow-cpp openssl libc++ zlib protobuf libprotobuf abseil-cpp c-ares libre2 patchelf
+
+# ============================================
+# POST-INSTALL SETUP
+# ============================================
+# After installing flang, create gfortran symlink:
+ln -sf $PREFIX/bin/flang $PREFIX/bin/gfortran
+
+# ============================================
+# SUMMARY
+# ============================================
+# Missing Python packages (4): python-scikit-learn, python-grpcio, python-pyarrow, python-psutil
+# System dependencies: All build tools and libraries listed above
+#
+# After installing these packages, you can install droidrun from wheels:
+# pip install --find-links ~/wheels --no-index droidrun
+
+
+
+
