@@ -162,7 +162,8 @@ def main() -> int:
         
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", "--no-cache-dir", 
-             "--upgrade-strategy", "only-if-needed", f"droidrun[{provider}]", "--find-links", str(wheels_dir)],
+             "--upgrade-strategy", "only-if-needed", "--no-build-isolation",
+             f"droidrun[{provider}]", "--find-links", str(wheels_dir)],
             env=clean_env,
             check=False
         )

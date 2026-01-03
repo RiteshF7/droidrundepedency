@@ -24,6 +24,7 @@ pkg install python-numpy
 pkg install python-scipy
 pkg install python-pandas
 pkg install python-grpcio
+pkg install python-pyarrow
 pkg install python-pillow
 
 for wheel in "$WHEELS_DIR"/*.whl; do
