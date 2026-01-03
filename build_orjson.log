@@ -1,0 +1,30 @@
+Collecting orjson
+  Using cached orjson-3.11.5.tar.gz (6.0 MB)
+  Preparing metadata (pyproject.toml): started
+  Running command Preparing metadata (pyproject.toml)
+  📦 Including license file `LICENSE-APACHE`
+  📦 Including license file `LICENSE-MIT`
+  🍹 Building a mixed python/rust project
+  🔗 Found pyo3-ffi bindings
+  💥 maturin failed
+    Caused by: Python interpreter should be a kind of interpreter (e.g. 'python3.14' or 'pypy3.11') when cross-compiling, got path to interpreter: /usr/bin/python3
+  Error running maturin: Command '['maturin', 'pep517', 'write-dist-info', '--metadata-directory', '/tmp/pip-modern-metadata-n7ntbycu', '--interpreter', '/usr/bin/python3']' returned non-zero exit status 1.
+  Checking for Rust toolchain....
+  Running `maturin pep517 write-dist-info --metadata-directory /tmp/pip-modern-metadata-n7ntbycu --interpreter /usr/bin/python3`
+  error: subprocess-exited-with-error
+  
+  × Preparing metadata (pyproject.toml) did not run successfully.
+  │ exit code: 1
+  ╰─> No available output.
+  
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+  full command: /usr/bin/python3 /home/trex/.local/lib/python3.12/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py prepare_metadata_for_build_wheel /tmp/tmp63j6fdge
+  cwd: /tmp/pip-wheel-nmhc047h/orjson_5f507dbee4c84451b7cf1dbbb5de3344
+  Preparing metadata (pyproject.toml): finished with status 'error'
+error: metadata-generation-failed
+
+× Encountered error while generating package metadata.
+╰─> orjson
+
+note: This is an issue with the package mentioned above, not pip.
+hint: See above for details.
