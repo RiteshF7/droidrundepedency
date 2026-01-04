@@ -140,7 +140,7 @@ def main() -> int:
         
         # Install Python packages via pkg (more stable for droidrun install)
         # Note: python-pip is already installed above
-        python_packages = ["python-pillow", "python-scipy", "python-numpy"]
+        python_packages = ["python-pillow", "python-scipy", "python-numpy", "python-grpcio", "python-orjson", "python-scikit-learn", "python-cryptography"]
         for pkg_name in python_packages:
             if not pkg_installed(pkg_name):
                 log_info(f"Installing {pkg_name} via pkg (required for droidrun)...")

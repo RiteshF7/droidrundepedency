@@ -4,3 +4,118 @@ E:\Code\LunarLand\MiniLinux\droidrunBuild\rundroidrun.shgp
 
 # Ignore laptoptermuxbuild directory (wheels and build artifacts)
 laptoptermuxbuild/
+
+# ============================================
+# Build Artifacts & Outputs
+# ============================================
+
+# Wheel files (Python package builds)
+*.whl
+wheels/
+backup/wheels/
+
+# Source archives (typically downloaded/build artifacts)
+*.tar.gz
+
+# Build directories
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+
+# ============================================
+# Log Files
+# ============================================
+
+# Build and installation logs
+*.log
+build_*.log
+*_build.log
+installation*.log
+build_output.log
+termux_error_log.txt
+
+# ============================================
+# Python Cache & Compiled Files
+# ============================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyo
+*.pyd
+
+# Distribution / packaging
+.Python
+*.manifest
+*.spec
+
+# ============================================
+# Testing & Coverage
+# ============================================
+
+.pytest_cache/
+.mypy_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.nox/
+
+# ============================================
+# IDE & Editor Files
+# ============================================
+
+# Vim
+*.swp
+*.swo
+*~
+.*.swp
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ============================================
+# Security & Sensitive Files
+# ============================================
+
+# Passwords and secrets
+system_pass.txt
+*.pem
+*.key
+*.env
+.env.local
+.secrets
+
+# ============================================
+# Cache Directories
+# ============================================
+
+.cache/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# ============================================
+# Temporary Files
+# ============================================
+
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# ============================================
+# OS-specific (duplicates removed - see IDE section above)
+# ============================================
