@@ -6,7 +6,7 @@ set -e
 
 # Configuration
 ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
-AVD_NAME="${AVD_NAME:-test_device}"
+AVD_NAME="${AVD_NAME:-android_dev}"
 EMULATOR_BIN="$ANDROID_HOME/emulator/emulator"
 ADB_BIN="$ANDROID_HOME/platform-tools/adb"
 LOG_FILE="/tmp/emulator.log"
@@ -245,7 +245,7 @@ show_usage() {
     echo ""
     echo "Environment variables:"
     echo "  ANDROID_HOME - Android SDK location (default: \$HOME/Android/Sdk)"
-    echo "  AVD_NAME     - AVD name to use (default: test_device)"
+    echo "  AVD_NAME     - AVD name to use (default: android_dev)"
     echo ""
     echo "Examples:"
     echo "  $0 launch"
